@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Log In - SecProg</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: #f5f5f5; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; color: #333; }
+    .card { background: #ffffff; padding: 40px; width: 100%; max-width: 440px; border-radius: 2px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .brand-header { display: flex; align-items: center; gap: 15px; margin-bottom: 25px; }
+    .logo { background-color: #4a6baf; color: white; font-weight: bold; font-size: 14px; padding: 10px; line-height: 1.1; text-align: center; border-radius: 2px; }
+    .title { font-size: 28px; font-weight: 400; color: #222; }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 8px; }
+    input[type="text"], input[type="password"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 2px; font-size: 14px; }
+    input:focus { outline: none; border-color: #4a6baf; }
+    .btn-primary { width: 100%; background-color: #4a6baf; color: white; border: none; padding: 12px; font-size: 15px; font-weight: 500; border-radius: 2px; cursor: pointer; }
+    .btn-primary:hover { background-color: #3b5792; }
+    .bottom-section { margin-top: 30px; text-align: center; }
+    .bottom-section p { font-size: 14px; color: #444; margin-bottom: 12px; }
+    .btn-secondary { background-color: #eee; color: #333; border: 1px solid #ccc; padding: 10px 20px; font-size: 14px; border-radius: 2px; cursor: pointer; text-decoration: none; display: inline-block; }
+    .error-box { margin-top: 15px; font-size: 14px; text-align: center; font-weight: 500; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <div class="brand-header">
+      <div class="logo">Sec<br>Prog</div>
+      <h1 class="title">Log In</h1>
+    </div>
+
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="username">User Name</label>
+        <input type="text" id="username" required>
+      </div>
+
+      <div class="form-group">
+        <label for="passcode">Passcode</label>
+        <input type="password" id="passcode" required>
+      </div>
+
+      <button type="submit" class="btn-primary">Log In</button>
+    </form>
+
+    <div id="errorMsg" class="error-box"></div>
+  </div>
+
+  <div class="bottom-section">
+    <p>Do you need an account?</p>
+    <a href="new-account.html" class="btn-secondary">Create New Account</a>
+  </div>
+
+  <script>
+    // AUTO-LOGIN CHECK: Redirect if authenticated session keys exist in localStorage
+    if (localStorage.getItem('congregation_passcode') && localStorage.getItem('username')) {
+      window.location.href = '/';
+    }
+
+    // Save SQLite records into browser's IndexedDB
+    function saveToIndexedDB(data) {
+      return new Promise((resolve, reject) => {
+        const tableNames = Object.keys(data);
+        const request = indexedDB.open("CongregationDB", 1);
+
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          tableNames.forEach((table) => {
+            if (!db.objectStoreNames.contains(table)) {
+              db.createObjectStore(table, { autoIncrement: true });
+            }
+          });
+        };
+
+        request.onsuccess = (event) => {
+          const db = event.target.result;
+          const missingStores = tableNames.filter(t => !db.objectStoreNames.contains(t));
+          
+          if (missingStores.length > 0) {
+            db.close();
+            const upgradeReq = indexedDB.open("CongregationDB", db.version + 1);
+            upgradeReq.onupgradeneeded = (e) => {
+              const upgradedDb = e.target.result;
+              missingStores.forEach(t => upgradedDb.createObjectStore(t, { autoIncrement: true }));
+            };
+            upgradeReq.onsuccess = (e) => storeRecords(e.target.result, data, resolve, reject);
+            return;
+          }
+
+          storeRecords(db, data, resolve, reject);
+        };
+
+        request.onerror = (err) => reject(err);
+      });
+    }
+
+    function storeRecords(db, data, resolve, reject) {
+      const tableNames = Object.keys(data);
+      if (tableNames.length === 0) return resolve(true);
+
+      const transaction = db.transaction(tableNames, "readwrite");
+      tableNames.forEach((table) => {
+        const store = transaction.objectStore(table);
+        store.clear();
+        data[table].forEach((row) => store.add(row));
+      });
+
+      transaction.oncomplete = () => resolve(true);
+      transaction.onerror = (err) => reject(err);
+    }
+
+    // Form login
+   document.getElementById('loginForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const username = document.getElementById('username').value.trim();
+      const passcode = document.getElementById('passcode').value.trim();
+      const errorMsg = document.getElementById('errorMsg');
+
+      errorMsg.style.color = '#4a6baf';
+      errorMsg.textContent = 'Authenticating...';
+
+      try {
+        const loginRes = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, passcode })
+        });
+
+        const loginData = await loginRes.json();
+        if (!loginRes.ok) throw new Error(loginData.detail || 'Invalid username or passcode.');
+
+        errorMsg.textContent = 'Syncing data to browser storage...';
+
+        const reportRes = await fetch(`/api/reports?passcode=${encodeURIComponent(passcode)}`);
+        const reportData = await reportRes.json();
+        if (!reportRes.ok) throw new Error('Failed to download congregation records.');
+
+        await saveToIndexedDB(reportData.data);
+
+        // FIXED: Changed to 'user_passcode' to match index.html security guard
+        localStorage.setItem('user_passcode', passcode);
+        localStorage.setItem('username', username);
+
+        errorMsg.style.color = '#2e7d32';
+        errorMsg.textContent = 'Login successful! Redirecting...';
+
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 800);
+
+      } catch (err) {
+        errorMsg.style.color = '#c62828';
+        errorMsg.textContent = err.message;
+      }
+});
+  </script>
+
+</body>
+</html>

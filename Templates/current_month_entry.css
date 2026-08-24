@@ -1,0 +1,109 @@
+/* Root Container Scope */
+.current-month-workspace {
+  display: flex;
+  gap: 15px;
+  width: 100%;
+  height: calc(100vh - 120px);
+  box-sizing: border-box;
+  padding: 10px;
+}
+
+/* Left Control Sidebar */
+.current-month-workspace .entry-controls {
+  width: 250px;
+  background-color: #f4f6f8;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.current-month-workspace .month-header-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+  border-bottom: 2px solid #007bff;
+  padding-bottom: 5px;
+}
+
+.current-month-workspace .filter-group-box label,
+.current-month-workspace .status-box .title {
+  font-weight: bold;
+  font-size: 13px;
+  display: block;
+  margin-bottom: 5px;
+}
+
+.current-month-workspace .filter-group-box select {
+  width: 100%;
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+}
+
+.current-month-workspace .status-box {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  padding: 10px;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.current-month-workspace .btn-action {
+  padding: 8px;
+  border: none;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  color: white;
+}
+
+.current-month-workspace .btn-template { background-color: #28a745; }
+.current-month-workspace .btn-export { background-color: #17a2b8; }
+.current-month-workspace .btn-exit { background-color: #dc3545; margin-top: auto; }
+
+/* Right Table Panel */
+.current-month-workspace .entry-table-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.current-month-workspace table.data-grid {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.current-month-workspace table.data-grid th {
+  background-color: #b0c4de;
+  color: #000;
+  padding: 8px;
+  border: 1px solid #999;
+  font-size: 12px;
+  position: sticky;
+  top: 0;
+}
+
+.current-month-workspace table.data-grid td {
+  border: 1px solid #ddd;
+  padding: 6px;
+  font-size: 13px;
+}
+
+.current-month-workspace .entry-summary {
+  display: flex;
+  gap: 20px;
+  padding: 10px 15px;
+  background-color: #f8f9fa;
+  border-top: 1px solid #ccc;
+  font-weight: bold;
+  font-size: 13px;
+}

@@ -1,0 +1,134 @@
+📋 SecProgram Project Technical Blueprint
+Project Overview
+Purpose: Cloud-based web app for Congregation Secretaries to manage 100+ publishers, monthly service reports, S-21 publisher record cards, and congregation service totals.
+
+Legacy System: MS Access database (Publishers, MonthlyRecord, Record tables across 12+ years of data).
+
+Target Stack (100% Free): Python (FastAPI/Flask), PostgreSQL (Supabase/Neon), Bootstrap 5, PDF Export (ReportLab/WeasyPrint), Hosting (Render/PythonAnywhere).
+
+
+
+
+Phase 1: Database Setup & Models (1-2 Days)
+  ├── Setup SQLite database
+  └── Define SQLite models in Python
+
+Phase 2: Authentication & Core Features (3-5 Days)
+  ├── Build Secretary Login system
+  ├── CRUD operations for Publishers
+  └── Monthly Report Entry interface
+
+Phase 3: Migration Tooling (2-3 Days)
+  ├── Build CSV import module to parse legacy MS Access data
+  └── Test data migration using your 12-year historical database
+
+Phase 4: Reports & Exports (2-3 Days)
+  ├── S-21 Record Card view & PDF generator
+  └── Analytics & Aggregation dashboard
+
+Phase 5: Free Cloud Deployment (1 Day)
+  └── Deploy to Render.com / PythonAnywhere
+
+
+
++-------------------+       +-----------------------+       +------------------------+
+|    PUBLISHERS     |       |        RECORDS        |       |     MonthlyRecords     |
++-------------------+       +-----------------------+       +------------------------+
+| IDPub (PK)        |<----->| IdPubs (FK)           |       | ID (PK)                |
+| FNAME, LName      |       | NUMBER (Service M/Y)  |       | NUMBER (M/Y Index)     |
+| Status, Group     |       | Date_entered (M/Y)    |<----->| ActivePublishers       |
+| Privileges        |       | HRS, BS, Placements...|       | Meeting Attendance...  |
++-------------------+       +-----------------------+       +------------------------+
+
+
+======================================================================
+1. MONTH (Congregation Settings - 1 Row)
+======================================================================
+- MONTH_            : Text (Active Month Name)
+- NUM               : Integer (Active M/Y ID Pointer)
+- Congregation      : Text (Congregation Name)
+- CongNumber        : Text (Branch Congregation ID)
+- Address           : Text (Kingdom Hall Address)
+- Province          : Text (Province / State)
+- CBOE              : Text (Coordinator Name)
+- SO                : Text (Service Overseer Name)
+- SEC               : Text (Secretary Name)
+
+======================================================================
+2. GROUPS (Field Service Groups - ~6 Rows)
+======================================================================
+- id                : Primary Key
+- Group             : Text / Integer (Group Number/Name)
+- Overseer          : Text (Overseer Name / ID)
+- Assistant         : Text (Assistant Name / ID)
+- MeetingPlace      : Text (Ministry Meeting Location)
+- Remarks           : Text (Group Notes)
+
+======================================================================
+3. PUBLISHERS (Publisher Master Records - ~100 Rows)
+======================================================================
+- IDPub             : Primary Key (Legacy Access ID)
+- FNAME             : Text (First Name)
+- MName             : Text (Middle Name)
+- LName             : Text (Last Name)
+- Nname             : Text (Nickname)
+- Birthdate         : Date
+- Male              : Boolean / Char (Y/N)
+- Female            : Boolean / Char (Y/N)
+- Address           : Text
+- TelCp             : Text (Mobile Phone)
+- Baptism           : Date
+- Elder             : Boolean (Y/N)
+- MS                : Boolean (Y/N)
+- RP                : Boolean (Y/N)
+- RpNumber          : Text (Pioneer Registration Number)
+- RpDateStarted     : Date
+- GROUP             : Foreign Key -> GROUPS.id
+- Status            : Text ("Moved Out", "Removed", "Disqualified", or NULL for Active)
+- Started           : Integer (First Month/Year ID Index)
+
+======================================================================
+4. MonthlyRecords (Congregation Monthly Summaries - 12 Rows/Year)
+======================================================================
+- ID                : Primary Key
+- NUMBER            : Integer (M/Y ID Index)
+- MONTH_            : Text / Integer (Month)
+- Year              : Integer (Calendar Year)
+- ServiceYear       : Integer (Service Year)
+- AttendcMidweekTotal : Integer (Total Midweek Attendance)
+- AttendcPublickTotal : Integer (Total Weekend Attendance)
+- NoMtgs1           : Integer (Midweek Meetings Count)
+- NoMtgs2           : Integer (Weekend Meetings Count)
+- ActivePublishers  : Integer (Locked Active Publisher Count)
+
+======================================================================
+5. RECORDS (Individual Monthly Service Reports - Thousands of Rows)
+======================================================================
+- IdPubs            : Foreign Key -> PUBLISHERS.IDPub
+- NUMBER            : Integer (Actual Service Month M/Y ID)
+- Date_entered      : Integer (Processing/Submission M/Y ID for Late Reports)
+- HRS               : Integer / Float (Field Service Hours)
+- AUX               : Boolean (Y/N - Auxiliary Pioneer for Month)
+- REMARKS           : Text (Flag keywords: "RP", "RP Moved In", "New UBP", etc.)
+- Note              : Text (General Secretary Remarks)
+======================================================================
+
+
+FORMS
++------------------------+-------------------+------------------------------+--------------------+
+|  Current Month Entry   |  PUBLISHER RECORD | CONGREGATION ANALYSIS REPORT | CONGREGATION REPORT|
++------------------------+-------------------+------------------------------+--------------------+
+
+[ FRONTEND UI (Web / FastAPI + HTML/Tailwind) ]
+  ├── Tab 1: Current Month Entry (Grid input -> RECORDS)
+  ├── Tab 2: Publisher Record (S-21 Card -> PUBLISHERS + RECORDS)
+  ├── Tab 3: Congregation Analysis (Metrics -> Summary Queries)
+  └── Tab 4: Congregation Report (S-1 Branch Form -> MONTH + MonthlyRecords)
+                        │
+                        ▼
+[ SQLITE / POSTGRESQL DATABASE (5 Tables) ]
+  ├── 1. MONTH (Congregation Settings & Officers)
+  ├── 2. GROUPS (Field Service Group Details)
+  ├── 3. PUBLISHERS (Master Profiles & Status)
+  ├── 4. MonthlyRecords (Locked Monthly Summary & Attendance)
+  └── 5. RECORDS (Individual Monthly Service Activity)

@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SecProgram - Congregation Management</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      background-color: #f4f6f8;
+      color: #333;
+    }
+
+    /* TOP HEADER BAR */
+    .top-bar {
+      display: flex;
+      height: 50px;
+      background-color: #333333;
+      color: #ffffff;
+      align-items: center;
+    }
+
+    .logo-section {
+      width: 240px;
+      height: 100%;
+      background-color: #d96b00; /* Official orange accent */
+      display: flex;
+      align-items: center;
+      padding: 0 15px;
+      font-weight: bold;
+      font-size: 18px;
+      letter-spacing: 0.5px;
+    }
+
+    .top-nav {
+      display: flex;
+      height: 100%;
+      align-items: center;
+    }
+
+    .top-nav button {
+      color: #ffffff;
+      background: transparent;
+      border: none;
+      padding: 0 18px;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      font-size: 12px;
+      font-weight: bold;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background-color 0.2s ease-in-out;
+    }
+
+    .top-nav button.active {
+      background-color: #d96b00;
+    }
+
+    .top-nav button:hover:not(.active) {
+      background-color: #444444;
+    }
+
+    .top-right {
+      margin-left: auto;
+      padding-right: 20px;
+    }
+
+    .top-right button {
+      color: #cccccc;
+      background: transparent;
+      border: none;
+      font-size: 12px;
+      text-transform: uppercase;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .top-right button:hover {
+      color: #ffffff;
+    }
+
+    /* MAIN CONTAINER (SIDEBAR + CONTENT) */
+    .main-container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* LEFT SIDEBAR */
+    .sidebar {
+      width: 240px;
+      background-color: #e9e9e9;
+      border-right: 1px solid #cccccc;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-menu {
+      list-style: none;
+    }
+
+    .sidebar-item {
+      border-bottom: 1px solid #dcdcdc;
+    }
+
+    .sidebar-item a {
+      display: block;
+      padding: 12px 15px;
+      color: #444444;
+      text-decoration: none;
+      font-size: 13px;
+    }
+
+    .sidebar-item.header {
+      font-weight: bold;
+      text-transform: uppercase;
+      color: #222;
+      padding: 15px 15px 5px 15px;
+      border-bottom: none;
+    }
+
+    .sidebar-sub-item a {
+      padding-left: 25px;
+      color: #2b547e;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .sidebar-sub-item a:hover {
+      background-color: #dfdfdf;
+      color: #d96b00;
+    }
+
+    /* MAIN CONTENT AREA */
+    .content-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 20px 30px;
+      overflow-y: auto;
+      background-color: #ffffff;
+    }
+
+    .user-profile-header {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      margin-bottom: 15px;
+      font-size: 12px;
+      color: #666666;
+    }
+
+    .user-profile-header select {
+      margin-left: 10px;
+      padding: 4px 8px;
+      border: 1px solid #ccc;
+    }
+
+    /* TAB CONTENT PANELS */
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.active {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+  </style>
+
+</head>
+<body>
+
+  <!-- TOP HEADER -->
+  <div class="top-bar">
+    <div class="logo-section">SecProgram Version 1.0</div>
+    
+    <nav class="top-nav">
+      <button class="tab-button active" onclick="switchTab(event, 'tab-1')">Current Month Entry</button>
+      <button class="tab-button" onclick="switchTab(event, 'tab-2')">Publisher Record</button>
+      <button class="tab-button" onclick="switchTab(event, 'tab-3')">Congregation Analysis Report</button>
+      <button class="tab-button" onclick="switchTab(event, 'tab-4')">Congregation Report</button>
+    </nav>
+
+    <!-- SYNC STATUS & BUTTON -->
+    <div style="display: flex; align-items: center; gap: 12px; margin-left: auto; margin-right: 20px;">
+      <span id="sync-status" style="font-size: 12px; font-weight: bold; color: #28a745;">● Saved</span>
+      <button id="btn-cloud-sync" onclick="syncPendingChanges()" style="padding: 6px 14px; background-color: #28a745; color: white; border: none; border-radius: 3px; font-size: 11px; font-weight: bold; cursor: pointer; text-transform: uppercase;">
+        Sync to Cloud
+      </button>
+    </div>
+
+    <div class="top-right">
+      <button id="logoutBtn" onclick="logout()" class="btn-logout">Log Out</button>
+    </div>
+  </div>
+
+  <!-- MAIN WRAPPER -->
+  <div class="main-container">
+
+    <!-- LEFT SIDEBAR -->
+    <div class="sidebar">
+      <ul class="sidebar-menu">
+        <li class="sidebar-item"><a href="#">&#8862; Home</a></li>
+        <li class="sidebar-item header">FIELD SERVICE</li>
+        <li class="sidebar-item sidebar-sub-item"><a href="#">Group Assignments</a></li>
+        <li class="sidebar-item sidebar-sub-item"><a href="#">S-21 Cards</a></li>
+        <li class="sidebar-item header">REPORTS</li>
+        <li class="sidebar-item sidebar-sub-item"><a href="#">Monthly S-1 Report</a></li>
+        <li class="sidebar-item sidebar-sub-item"><a href="#">Analysis Dashboard</a></li>
+        
+        <li class="sidebar-item header">DATA MANAGEMENT</li>
+        <li class="sidebar-item sidebar-sub-item"><a onclick="triggerMultipleUpload()">Import CSV Files</a></li>
+      </ul>
+
+      <input type="file" id="file-input" style="display: none;" multiple accept=".csv" />
+    </div>
+
+    <!-- MAIN CONTENT AREA -->
+    <div class="content-area">
+      
+      
+      <!-- DYNAMIC TAB PANELS -->
+    <div id="tab-1" class="tab-panel active">
+        <!-- 12-row full layout embedded seamlessly via iframe -->
+        <iframe src="/Templates/current_month_entry.html" style="width: 100%; height: 100%; border: none;"></iframe>
+      </div>
+      <div id="tab-2" class="tab-panel">
+    <iframe src="/Templates/PublishersRecord.html" style="width: 100%; height: 100%; border: none;"></iframe>
+   
+      </div>
+      <div id="tab-3" class="tab-panel"></div>
+      <div id="tab-4" class="tab-panel"></div>
+
+    </div>
+
+  </div>
+
+  <!-- MAIN SCRIPT FILE -->
+ <!-- MAIN SCRIPT FILE -->
+ <!-- MAIN SCRIPT FILE -->
+  <script>
+// 1. TAB CONFIGURATION & ROUTER
+const TAB_CONFIG = {
+  'tab-1': { form: 'current_month_entry.html', callback: () => renderCurrentMonthData() },
+  'tab-2': { form: 'PublishersRecord.html', callback: () => window.renderPublisherData?.() },
+  'tab-3': { form: 'congregation_analysis.html', callback: () => window.renderAnalysisData?.() },
+  'tab-4': { form: 'congregation_report.html', callback: () => window.renderReportData?.() }
+};
+
+async function logout() {
+    localStorage.removeItem('user_passcode');
+    localStorage.removeItem('username');
+    
+    // (Optional) Fallback to clear everything else if needed
+    localStorage.clear();
+    sessionStorage.clear();
+
+    // 2. Delete the IndexedDB database
+    const deleteReq = indexedDB.deleteDatabase("CongregationDB");
+
+    deleteReq.onsuccess = () => {
+      console.log("IndexedDB database deleted successfully.");
+      window.location.href = '/login.html';
+    };
+
+    deleteReq.onerror = (err) => {
+      console.error("Error deleting IndexedDB:", err);
+      window.location.href = '/login.html';
+    };
+
+    deleteReq.onblocked = () => {
+      // Force redirect if connections were blocked
+      window.location.href = '/login.html';
+    };
+  }
+
+// 2. TAB SWITCHING LOGIC
+async function switchTab(event, tabId) {
+  document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+  document.querySelectorAll('.top-nav button, .tab-btn').forEach(btn => btn.classList.remove('active'));
+
+  const activePanel = document.getElementById(tabId);
+  if (!activePanel) return;
+
+  activePanel.classList.add('active');
+  if (event && event.currentTarget) {
+    event.currentTarget.classList.add('active');
+  }
+
+  const config = TAB_CONFIG[tabId];
+  if (!config) return;
+
+  if (activePanel.children.length === 0) {
+    await loadSubForm(tabId, config.form, config.callback);
+  } else {
+    // If already loaded, just run the render callback directly
+    if (typeof config.callback === 'function') config.callback();
+  }
+}
+
+// 3. SUB-FORM LOADER
+async function loadSubForm(tabId, filename, callback) {
+    try {
+        const response = await fetch(`/Templates/${filename}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: Failed to load ${filename}`);
+        }
+        
+        const html = await response.text();
+        const panel = document.getElementById(tabId);
+        if (panel) {
+            panel.innerHTML = html;
+            if (typeof callback === 'function') {
+                callback();
+            }
+        }
+    } catch (error) {
+        console.error(`Error loading subform [${filename}]:`, error);
+    }
+}
+
+// 4. INDEXEDDB MULTI-TABLE STORAGE ENGINE (Protected against overwriting local edits)
+async function saveAllTablesToIndexedDB(allTablesData) {
+  const tableNames = Object.keys(allTablesData);
+
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open("CongregationDB", 5);
+    
+    request.onerror = () => reject(request.error);
+    
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      tableNames.forEach(tableName => {
+        if (!db.objectStoreNames.contains(tableName)) {
+          db.createObjectStore(tableName, { keyPath: "id", autoIncrement: true });
+        }
+      });
+    };
+
+    request.onsuccess = async (event) => {
+      const db = event.target.result;
+      const validTableNames = tableNames.filter(name => db.objectStoreNames.contains(name));
+      
+      if (validTableNames.length === 0) {
+        resolve(true);
+        return;
+      }
+
+      const transaction = db.transaction(validTableNames, "readwrite");
+
+      // Check each table individually before deciding to touch it
+      for (const tableName of validTableNames) {
+        const store = transaction.objectStore(tableName);
+        
+        await new Promise((resolveStore) => {
+          const countReq = store.count();
+          countReq.onsuccess = () => {
+            if (countReq.result > 0) {
+              // 🛡️ Table already has local edits! Skip clearing and updating entirely.
+              console.log(`🔒 Table '${tableName}' already contains local data. Skipping backend overwrite.`);
+              resolveStore();
+            } else {
+              // Table is completely empty (first-time open), safe to populate initial data
+              store.clear();
+              const rows = allTablesData[tableName];
+              if (Array.isArray(rows)) {
+                rows.forEach(row => store.put(row));
+              }
+              resolveStore();
+            }
+          };
+          countReq.onerror = () => resolveStore();
+        });
+      }
+
+      transaction.oncomplete = () => resolve(true);
+      transaction.onerror = () => reject(transaction.error);
+    };
+  });
+}
+
+// 5. FETCH FROM BACKEND AND CACHE LOCALLY
+async function loadAllTablesAndCache() {
+  try {
+    // Retrieve the passcode saved during login
+    const passcode = localStorage.getItem("user_passcode");
+    
+    if (!passcode) {
+      console.warn("⚠️ No passcode found in storage. Please log in first.");
+      return;
+    }
+
+    const response = await fetch(`http://127.0.0.1:8000/api/reports?passcode=${encodeURIComponent(passcode)}`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: Failed to fetch reports`);
+    }
+
+    const result = await response.json();
+    
+    // Your backend returns data wrapped in a "data" object
+    if (result.status === "success" && result.data) {
+      await saveAllTablesToIndexedDB(result.data);
+      console.log("✅ Tables successfully cached into IndexedDB.");
+    }
+  } catch (error) {
+    console.error('❌ Error loading tables from backend:', error);
+  }
+}
+
+
+
+
+
+document.addEventListener("DOMContentLoaded", async () => {
+  // 1. AUTHENTICATION GUARD: Match the key used during account creation
+    const passcode = localStorage.getItem("user_passcode");
+  
+  if (!passcode) {
+    console.warn("🔒 Unauthorized access detected. Redirecting to login...");
+    window.location.href = '/login.html';
+    return; // Stop execution
+  }
+
+  console.log("🚀 Initializing application...");
+  
+  // 2. Fetch backend data and cache into IndexedDB
+  await loadAllTablesAndCache();
+  
+  // 3. Load the active tab interface
+  await switchTab(null, 'tab-1');
+});
+
+
+async function syncPendingChanges() {
+    const passcode = localStorage.getItem('user_passcode');
+    if (!passcode) {
+        alert("Passcode missing. Please log in again.");
+        return;
+    }
+
+    const syncBtn = document.getElementById('btn-cloud-sync');
+    const syncStatus = document.getElementById('sync-status');
+
+    if (syncStatus) {
+        syncStatus.textContent = "● Syncing...";
+        syncStatus.style.color = "#ffc107";
+    }
+    if (syncBtn) syncBtn.disabled = true;
+
+    try {
+        const db = await openIndexedDB(); // Ensure openIndexedDB() resolves your IDBDatabase instance
+        const lastSync = Number(localStorage.getItem('last_sync_timestamp') || 0);
+
+        // Stores to collect delta changes from
+        const storeNames = ['CongInfo', 'GROUPS', 'PUBLISHERS', 'MonthlyRecords', 'RECORDS'];
+        const outgoingChanges = {};
+
+        // Extract changed records
+        for (const storeName of storeNames) {
+            outgoingChanges[storeName] = await getModifiedRecords(db, storeName, lastSync);
+        }
+
+        // Send payload to backend
+        const response = await fetch('/api/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                passcode: passcode,
+                last_sync: lastSync,
+                changes: outgoingChanges
+            })
+        });
+
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Sync request failed');
+
+        // Apply incoming updates to local IndexedDB
+        if (result.updates) {
+            await mergeServerUpdates(db, result.updates);
+        }
+
+        // Update local sync timestamp
+        localStorage.setItem('last_sync_timestamp', result.server_time);
+
+        if (syncStatus) {
+            syncStatus.textContent = "● Saved";
+            syncStatus.style.color = "#28a745";
+        }
+
+        // Refresh active views if function exists
+        if (typeof loadS21RecordsForPublisher === 'function') {
+            loadS21RecordsForPublisher();
+        }
+
+    } catch (err) {
+        console.error("Sync Error:", err);
+        if (syncStatus) {
+            syncStatus.textContent = "● Sync Error";
+            syncStatus.style.color = "#dc3545";
+        }
+    } finally {
+        if (syncBtn) syncBtn.disabled = false;
+    }
+}
+
+// Helper: Open IDB Database
+function openIndexedDB() {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open("CongregationDB");
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+
+// Helper: Extract modified records newer than lastSync
+function getModifiedRecords(db, storeName, lastSync) {
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(storeName, "readonly");
+        const store = tx.objectStore(storeName);
+        const req = store.getAll();
+
+        req.onsuccess = () => {
+            const records = req.result || [];
+            // Filter records updated since last sync (or include all if lastSync === 0)
+            const modified = records.filter(r => !r.updated_at || r.updated_at > lastSync);
+            resolve(modified);
+        };
+        req.onerror = () => reject(req.error);
+    });
+}
+
+// Helper: Apply server updates to local object stores
+function mergeServerUpdates(db, updates) {
+    return new Promise((resolve, reject) => {
+        const stores = Object.keys(updates).filter(k => updates[k] && updates[k].length > 0);
+        if (stores.length === 0) return resolve();
+
+        const tx = db.transaction(stores, "readwrite");
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+
+        stores.forEach(storeName => {
+            const store = tx.objectStore(storeName);
+            updates[storeName].forEach(item => {
+                // Remap field names where SQLite schema differs slightly from IDB store names
+                if (storeName === 'GROUPS' && item.Group_) {
+                    item.Group = item.Group_;
+                    delete item.Group_;
+                }
+                if (storeName === 'PUBLISHERS' && item.GROUP_) {
+                    item.GROUP = item.GROUP_;
+                    delete item.GROUP_;
+                }
+
+                if (item.is_deleted === 1) {
+                    const key = item.id || item.IDPub || item.NUM || item.ID;
+                    if (key) store.delete(key);
+                } else {
+                    store.put(item);
+                }
+            });
+        });
+    });
+}
+
+
+  </script>
+</body>
+</html>

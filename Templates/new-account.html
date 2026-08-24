@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Account - SecProg</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    body {
+      background-color: #f5f5f5;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      color: #333;
+      padding: 20px 0;
+    }
+    .lang-selector-container {
+      width: 100%;
+      max-width: 440px;
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 10px;
+    }
+    .lang-btn {
+      background: #ffffff;
+      border: 1px solid #ccc;
+      padding: 6px 12px;
+      font-size: 13px;
+      color: #4a6baf;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .card {
+      background: #ffffff;
+      padding: 40px;
+      width: 100%;
+      max-width: 440px;
+      border-radius: 2px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .brand-header {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+    .logo {
+      background-color: #4a6baf;
+      color: white;
+      font-weight: bold;
+      font-size: 14px;
+      padding: 10px;
+      line-height: 1.1;
+      text-align: center;
+      border-radius: 2px;
+    }
+    .title {
+      font-size: 28px;
+      font-weight: 400;
+      color: #222;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+    input[type="email"],
+    input[type="text"],
+    input[type="password"],
+    input[type="file"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 2px;
+      font-size: 14px;
+    }
+    input:focus {
+      outline: none;
+      border-color: #4a6baf;
+    }
+    .btn-primary {
+      width: 100%;
+      background-color: #4a6baf;
+      color: white;
+      border: none;
+      padding: 12px;
+      font-size: 15px;
+      font-weight: 500;
+      border-radius: 2px;
+      cursor: pointer;
+      margin-bottom: 20px;
+    }
+    .btn-primary:hover {
+      background-color: #3b5792;
+    }
+    .btn-primary:disabled {
+      background-color: #a0b2d6;
+      cursor: not-allowed;
+    }
+    .terms-text {
+      font-size: 12px;
+      color: #555;
+      line-height: 1.4;
+    }
+    .terms-text a {
+      color: #4a6baf;
+      text-decoration: none;
+    }
+    .terms-text a:hover {
+      text-decoration: underline;
+    }
+    .bottom-section {
+      margin-top: 30px;
+      text-align: center;
+      font-size: 14px;
+      color: #444;
+    }
+    .bottom-section a {
+      color: #4a6baf;
+      text-decoration: none;
+    }
+    .bottom-section a:hover {
+      text-decoration: underline;
+    }
+    .status-msg {
+      margin-bottom: 15px;
+      font-size: 14px;
+      text-align: center;
+      font-weight: 500;
+    }
+    .status-success { color: #2e7d32; }
+    .status-error { color: #c62828; }
+  </style>
+</head>
+<body>
+
+  <div class="lang-selector-container">
+    <button class="lang-btn">🌐 English</button>
+  </div>
+
+  <div class="card">
+    <div class="brand-header">
+      <div class="logo">Sec<br>Prog</div>
+      <h1 class="title">Create Account</h1>
+    </div>
+
+    <form id="createAccountForm">
+      <div class="form-group">
+        <label for="username">User Name</label>
+        <input type="text" id="username" name="username" required>
+      </div>
+
+      <div class="form-group">
+        <label for="congregation">Congregation Name</label>
+        <input type="text" id="congregation" name="congregation" required>
+      </div>
+
+      <div class="form-group">
+        <label for="password">Create Passcode</label>
+       <input type="password" id="passcode" name="passcode" required>
+      </div>
+
+      <div class="form-group">
+        <label for="confirm-password">Confirm Passcode</label>
+        <input type="password" id="confirmPassword" name="confirmPassword" required>
+      </div>
+
+      <!-- Optional MS Access CSV Files Import Field -->
+      <div class="form-group">
+        <label for="csvFiles">Import MS Access CSV Files (Optional)</label>
+        <input type="file" id="csvFiles" name="csvFiles" multiple accept=".csv">
+        <small style="color: #666; display: block; margin-top: 5px;">
+          Select CSV files (PUBLISHERS, RECORDS, MONTH, GROUPS) if available.
+        </small>
+      </div>
+
+      <div id="statusMsg" class="status-msg"></div>
+
+      <button type="submit" id="submitBtn" class="btn-primary">CREATE</button>
+    </form>
+
+    <p class="terms-text">
+      This site is protected by reCAPTCHA and the Google 
+      <a href="#">Privacy Policy</a> and 
+      <a href="#">Terms of Service</a> apply.
+    </p>
+  </div>
+
+  <div class="bottom-section">
+    Do you already have an account? <a href="login.html">Log In</a>
+  </div>
+
+  <script>
+   document.addEventListener('DOMContentLoaded', () => {
+    const createAccountForm = document.getElementById('createAccountForm');
+    const passwordInput = document.getElementById('passcode');          
+    const confirmPasswordInput = document.getElementById('confirmPassword'); 
+    const fileInput = document.getElementById('csvFiles');
+    const submitBtn = document.getElementById('submitBtn');
+    const statusMsg = document.getElementById('statusMsg');
+
+    // ==========================================
+    // 1. CREATE ACCOUNT & CSV IMPORT SUBMISSION
+    // ==========================================
+    if (createAccountForm) {
+        createAccountForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const username = document.getElementById('username').value.trim();
+            const congregation = document.getElementById('congregation').value.trim();
+            const passcode = passwordInput.value.trim();          
+            const confirmPassword = confirmPasswordInput.value.trim(); 
+
+            statusMsg.textContent = '';
+            statusMsg.className = 'status-msg';
+
+            // Check if passcodes match
+            if (passcode !== confirmPassword) {
+                statusMsg.textContent = "Passcodes do not match.";
+                statusMsg.className = "status-msg status-error";
+                return;
+            }
+
+            // Strictly enforce exactly 5 CSV files requirement
+            if (fileInput.files.length !== 5) {
+                statusMsg.textContent = `Error: Exactly 5 CSV files are required (you selected ${fileInput.files.length}).`;
+                statusMsg.className = "status-msg status-error";
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('passcode', passcode);
+            formData.append('username', username);
+            formData.append('congregation', congregation);
+
+            // Append all 5 files safely
+            for (let i = 0; i < fileInput.files.length; i++) {
+                formData.append('files', fileInput.files[i]);
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = "PROCESSING...";
+
+            try {
+                const response = await fetch('/api/import-all-csv', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                // Safely parse JSON response whether success or error
+                const result = await response.json().catch(() => ({}));
+
+                if (response.ok) {
+                    // Save credentials locally so index.html auth guard passes immediately
+                    localStorage.setItem('user_passcode', passcode);
+                    localStorage.setItem('username', username);
+                    
+                    statusMsg.textContent = "Account created successfully! Loading dashboard...";
+                    statusMsg.className = "status-msg status-success";
+                    
+                    // Use relative path 'index.html' to ensure smooth transition
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1500);
+                } else {
+                    throw new Error(result.detail || result.message || `Server returned status ${response.status}`);
+                }
+            } catch (err) {
+                statusMsg.textContent = "Error: " + err.message;
+                statusMsg.className = "status-msg status-error";
+                submitBtn.disabled = false;
+                submitBtn.textContent = "CREATE";
+            }
+        });
+    }
+
+    // ==========================================
+    // 2. REAL-TIME PASSCODE MATCHING WIDGET
+    // ==========================================
+    let matchMsg = document.getElementById('passcodeMatchMsg');
+    if (!matchMsg && confirmPasswordInput) {
+        matchMsg = document.createElement('div');
+        matchMsg.id = 'passcodeMatchMsg';
+        matchMsg.style.fontSize = '13px';
+        matchMsg.style.marginTop = '5px';
+        confirmPasswordInput.insertAdjacentElement('afterend', matchMsg);
+    }
+
+    function checkPasscodeMatch() {
+        if (!passwordInput || !confirmPasswordInput || !matchMsg) return;
+
+        const pwd = passwordInput.value;
+        const confirmPwd = confirmPasswordInput.value;
+
+        if (confirmPwd === "") {
+            matchMsg.textContent = "";
+            confirmPasswordInput.style.borderColor = "";
+            return;
+        }
+
+        // Do not trigger errors while still typing shorter inputs
+        if (confirmPwd.length < pwd.length) {
+            matchMsg.textContent = "";
+            confirmPasswordInput.style.borderColor = "";
+            return;
+        }
+
+        // Compare equality once lengths match or exceed
+        if (pwd !== confirmPwd) {
+            matchMsg.style.color = "#c62828";
+            matchMsg.textContent = "❌ Passcodes do not match.";
+            confirmPasswordInput.style.borderColor = "#c62828";
+        } else {
+            matchMsg.style.color = "#2e7d32";
+            matchMsg.textContent = "✅ Passcodes match.";
+            confirmPasswordInput.style.borderColor = "#2e7d32";
+        }
+    }
+
+    if (passwordInput && confirmPasswordInput) {
+        passwordInput.addEventListener('input', () => {
+            if (confirmPasswordInput.value !== "") {
+                checkPasscodeMatch();
+            } else {
+                matchMsg.textContent = "";
+                confirmPasswordInput.style.borderColor = "";
+            }
+        });
+
+        confirmPasswordInput.addEventListener('input', checkPasscodeMatch);
+    }
+});
+  </script>
+
+</body>
+</html>
