@@ -1,5 +1,5 @@
 const DB_NAME = "CongregationDB";
-const DB_VERSION = 5;
+const DB_VERSION = 7;
 
 const DB_STORES = {
     CongInfo: "passcode",
@@ -15,6 +15,7 @@ const DB_STORES = {
 // ============================================================
 function openCongregationDB() {
     return new Promise((resolve, reject) => {
+
         const request = indexedDB.open(DB_NAME, DB_VERSION);
 
         request.onupgradeneeded = event => {
@@ -24,113 +25,66 @@ function openCongregationDB() {
                 `🔄 IndexedDB upgrade: ${event.oldVersion} → ${event.newVersion}`
             );
 
-            // ==========================================
-            // CongInfo
-            // ==========================================
             if (!db.objectStoreNames.contains("CongInfo")) {
                 db.createObjectStore("CongInfo", {
                     keyPath: "passcode"
                 });
             }
 
-            // ==========================================
-            // GROUPS
-            // ==========================================
             if (!db.objectStoreNames.contains("GROUPS")) {
                 db.createObjectStore("GROUPS", {
                     keyPath: "Group"
                 });
             }
 
-            // ==========================================
-            // PUBLISHERS
-            // ==========================================
             if (!db.objectStoreNames.contains("PUBLISHERS")) {
                 db.createObjectStore("PUBLISHERS", {
                     keyPath: "IDPub"
                 });
             }
 
-            // ==========================================
-            // MonthlyRecords
-            // ==========================================
             if (!db.objectStoreNames.contains("MonthlyRecords")) {
                 db.createObjectStore("MonthlyRecords", {
                     keyPath: "NUMBER"
                 });
             }
 
-            // ==========================================
-            // RECORDS
-            // ==========================================
-            //
-            // This store MUST use the composite key:
-            //
-            //   IdPubs + NUMBER
-            //
-            // Example:
-            //   IdPubs = "470"
-            //   NUMBER = 202
-            //
-            // Key becomes:
-            //   ["470", 202]
-            //
-            if (db.objectStoreNames.contains("RECORDS")) {
-                db.deleteObjectStore("RECORDS");
+            if (!db.objectStoreNames.contains("RECORDS")) {
+                db.createObjectStore("RECORDS", {
+                    keyPath: ["IdPubs", "NUMBER"]
+                });
             }
 
-            db.createObjectStore("RECORDS", {
-                keyPath: ["IdPubs", "NUMBER"]
-            });
-
             console.log(
-                "✅ IndexedDB schema ready."
-            );
-
-            console.log(
-                "📦 Stores:",
+                "✅ Stores:",
                 Array.from(db.objectStoreNames)
-            );
-
-            console.log(
-                "🔑 RECORDS keyPath:",
-                db.transaction
-                    ? "['IdPubs', 'NUMBER']"
-                    : "pending"
             );
         };
 
-        request.onsuccess = () => {
-            const db = request.result;
+        request.onsuccess = event => {
+            const db = event.target.result;
 
             console.log(
                 "✅ IndexedDB opened:",
-                DB_NAME,
-                "version",
-                db.version
+                db.version,
+                Array.from(db.objectStoreNames)
             );
 
             resolve(db);
         };
 
-        request.onerror = () => {
+        request.onerror = event => {
             console.error(
                 "❌ IndexedDB open error:",
-                request.error
+                event.target.error
             );
 
-            reject(request.error);
+            reject(event.target.error);
         };
 
         request.onblocked = () => {
             console.error(
                 "❌ IndexedDB upgrade blocked."
-            );
-
-            reject(
-                new Error(
-                    "IndexedDB is blocked. Please close other tabs using CongregationDB."
-                )
             );
         };
     });
