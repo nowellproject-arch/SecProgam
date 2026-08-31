@@ -569,6 +569,9 @@
             </div>
         </div>
 
+        
+
+<script src="/static/js/indexeddb.js"></script>
 <script>
 
 // ==========================================
@@ -1611,7 +1614,7 @@ function saveS21MonthRecord(monthIndex, eventTarget) {
                         updated_at: Date.now(),
                         is_deleted: 0
                     };
-
+                    setSyncUnsaved();  
                     const addReq = store.add(payload);
                     addReq.onsuccess = () => console.log(`✨ Record saved with sync timestamps for publisher ${targetPublisherId}`);
                     addReq.onerror = (err) => console.error("❌ Error adding record:", err.target.error);
@@ -1725,8 +1728,10 @@ function attachS21AutoCheckListeners(monthIndex, m, explicitTargetNumber) {
                 if (recIndex !== -1) {
                     window.recordsData.splice(recIndex, 1);
                 }
-            }
 
+                  
+            }
+           
             // Debounce IndexedDB saves & in-place metric updates
             if (!window._s21SaveTimers) window._s21SaveTimers = {};
             const timerKey = `${targetPublisherId}-${monthIndex}`;
@@ -1744,11 +1749,13 @@ function attachS21AutoCheckListeners(monthIndex, m, explicitTargetNumber) {
         }
     };
 
+
     hrsEl.addEventListener('change', handleAutoLogic);
     bsEl.addEventListener('change', handleAutoLogic);
     minEl.addEventListener('change', handleAutoLogic);
     if (auxEl) auxEl.addEventListener('change', handleAutoLogic);
     if (remSelEl) remSelEl.addEventListener('change', handleAutoLogic);
+     
 }
 
 // 1. Reusable calculation function
@@ -2283,19 +2290,45 @@ function saveMonthlyAttendanceData() {
 
                         console.log(`🟡 Action: UPDATE | Reason: Found existing row matching NUMBER ${targetNumber}`);
 
-                        const updatedRecord = {
-                            ...existing,
-                            NUMBER: targetNumber,
-                            MONTH_: monthName,
-                            Year: calYear,
-                            ServiceYear: computedServiceYear,
-                            ActivePublishers: activePublisher,
-                            AttendcMidweekTotal: inputMidweek,
-                            AttendcPublickTotal: inputPublic,
-                            NoMtgs1: inputNoMtgs1,
-                            NoMtgs2: inputNoMtgs2,
-                            Closed: existing.Closed ?? 0
-                        };
+                        if (Number(cursor.value.NUMBER) === targetNumber) {
+
+                                found = true;
+
+                                console.log(
+                                    `🟡 Action: UPDATE | Reason: Found existing row matching NUMBER ${targetNumber}`
+                                );
+
+                                const existing = cursor.value;
+
+                                // IMPORTANT:
+                                // Do NOT touch existing.NUMBER.
+                                // It must remain exactly identical to the IndexedDB cursor key.
+
+                                existing.MONTH_ = monthName;
+                                existing.Year = calYear;
+                                existing.ServiceYear = computedServiceYear;
+                                existing.ActivePublishers = activePublisher;
+                                existing.AttendcMidweekTotal = inputMidweek;
+                                existing.AttendcPublickTotal = inputPublic;
+                                existing.NoMtgs1 = inputNoMtgs1;
+                                existing.NoMtgs2 = inputNoMtgs2;
+                                existing.Closed = existing.Closed ?? 0;
+
+                                console.log(
+                                    "🔑 Existing NUMBER:",
+                                    existing.NUMBER,
+                                    "| Type:",
+                                    typeof existing.NUMBER,
+                                    "| Cursor key:",
+                                    cursor.primaryKey,
+                                    "| Cursor key type:",
+                                    typeof cursor.primaryKey
+                                );
+
+                                cursor.update(existing);
+
+                                return;
+                            }
 
                         cursor.update(updatedRecord);
                         return;
@@ -2322,6 +2355,7 @@ function saveMonthlyAttendanceData() {
 
                     store.add(newRecord);
                 }
+             
             };
 
             cursorReq.onerror = (err) => {
@@ -3210,17 +3244,11 @@ function updateSidebarClosedState() {
         const tx = db.transaction(["MonthlyRecords"], "readonly");
         const store = tx.objectStore("MonthlyRecords");
 
-        // 🎯 Use the index created for NUMBER instead of direct primary key store.get()
-        const numberIndex = store.index("NUMBER"); 
-        const request = numberIndex.get(targetNumber);
+        // Helper function to process UI updating once record is found
+        const handleRecordResult = (rec) => {
+            console.log(`📦 [DEBUG] Record result for NUMBER ${targetNumber}:`, rec);
 
-        request.onsuccess = (e) => {
-            const rec = e.target.result;
-            console.log(`📦 [DEBUG] Index record result for NUMBER ${targetNumber}:`, rec);
-
-            // Now if you delete the row with NUMBER === 205, rec will properly be undefined!
             const isClosed = rec ? Number(rec.Closed) === 1 : false;
-
             window.currentMonthClosed = isClosed ? 1 : 0;
 
             const statusBtn = document.getElementById("monthStatusBtn");
@@ -3254,6 +3282,23 @@ function updateSidebarClosedState() {
                 });
             }
         };
+
+        // 🛡️ Safely query via index if it exists, or fall back to scanning store records
+        if (store.indexNames.contains("NUMBER")) {
+            const numberIndex = store.index("NUMBER");
+            const request = numberIndex.get(targetNumber);
+            request.onsuccess = (e) => handleRecordResult(e.target.result);
+            request.onerror = () => handleRecordResult(undefined);
+        } else {
+            console.warn("⚠️ Index 'NUMBER' missing on MonthlyRecords. Using getAll fallback.");
+            const getAllReq = store.getAll();
+            getAllReq.onsuccess = (e) => {
+                const records = e.target.result || [];
+                const matched = records.find(r => Number(r.NUMBER) === targetNumber || Number(r.number) === targetNumber);
+                handleRecordResult(matched);
+            };
+            getAllReq.onerror = () => handleRecordResult(undefined);
+        }
     });
 }
 
@@ -3281,6 +3326,10 @@ function showCustomConfirm(message) {
         cancelBtn.addEventListener('click', onCancel);
     });
 }
+
+
+
+
 
 
 </script>

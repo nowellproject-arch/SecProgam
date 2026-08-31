@@ -166,6 +166,30 @@
       border: 1px solid #ccc;
     }
 
+
+    .tab-button {
+      position: relative;
+      background: transparent;
+      border: none;
+      z-index: 1;
+    }
+
+    .tab-button.active {
+      background: transparent;
+    }
+
+    .tab-button.active::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 10%;
+      height: 80%;
+      background: #f59e0b;
+      border-radius: 6px;
+      z-index: -1;
+    }
+
     /* TAB CONTENT PANELS */
     .tab-panel {
       display: none;
@@ -182,28 +206,275 @@
 <body>
 
   <!-- TOP HEADER -->
-  <div class="top-bar">
-    <div class="logo-section">SecProgram Version 1.0</div>
-    
-    <nav class="top-nav">
-      <button class="tab-button active" onclick="switchTab(event, 'tab-1')">Current Month Entry</button>
-      <button class="tab-button" onclick="switchTab(event, 'tab-2')">Publisher Record</button>
-      <button class="tab-button" onclick="switchTab(event, 'tab-3')">Congregation Analysis Report</button>
-      <button class="tab-button" onclick="switchTab(event, 'tab-4')">Congregation Report</button>
-    </nav>
+<div class="top-bar">
 
-    <!-- SYNC STATUS & BUTTON -->
-    <div style="display: flex; align-items: center; gap: 12px; margin-left: auto; margin-right: 20px;">
-      <span id="sync-status" style="font-size: 12px; font-weight: bold; color: #28a745;">● Saved</span>
-      <button id="btn-cloud-sync" onclick="syncPendingChanges()" style="padding: 6px 14px; background-color: #28a745; color: white; border: none; border-radius: 3px; font-size: 11px; font-weight: bold; cursor: pointer; text-transform: uppercase;">
-        Sync to Cloud
-      </button>
+  <div class="logo-section">
+    SecProgram Version 1.0
+  </div>
+
+  <nav class="top-nav">
+    <button class="tab-button active"
+      onclick="switchTab(event, 'tab-1')">
+      Current Month Entry
+    </button>
+
+    <button class="tab-button"
+      onclick="switchTab(event, 'tab-2')">
+      Publisher Record
+    </button>
+
+    <button class="tab-button"
+      onclick="switchTab(event, 'tab-3')">
+      Congregation Analysis Report
+    </button>
+
+    <button class="tab-button"
+      onclick="switchTab(event, 'tab-4')">
+      Congregation Report
+    </button>
+  </nav>
+
+      <!-- SYNC STATUS & CLOUD DROPDOWN -->
+<div style="
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin-left:auto;
+  margin-right:20px;
+  position:relative;
+">
+
+  <span id="sync-status" style="
+    font-size:12px;
+    font-weight:bold;
+    color:#28a745;
+  ">
+    ● Saved
+  </span>
+
+  <!-- CLOUD BUTTON -->
+  <button
+    id="btn-cloud-sync"
+    onclick="toggleCloudMenu(event)"
+    title="Cloud Options"
+    style="
+      background:none;
+      border:none;
+      cursor:pointer;
+      padding:4px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      outline:none;
+    "
+  >
+    <svg
+      width="32"
+      height="32"
+      viewBox="0 0 86 52"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+
+      <!-- Cloud -->
+      <path
+        d="
+          M25 40
+          C17 40 12 35 12 28
+          C12 21 17 16 24 16
+          C27 10 32 7 39 7
+          C47 7 53 12 55 18
+          C63 18 69 23 69 30
+          C69 36 64 40 57 40
+          H25
+        "
+        stroke="#FFB347"
+        stroke-width="3"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+
+      <!-- Upload Arrow -->
+      <!-- Upload Arrow -->
+      <path
+        d="
+          M42 47
+          V14
+          M42 14
+          L32 24
+          M42 14
+          L52 24
+        "
+        stroke="#FFB347"
+        stroke-width="3"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+
+    </svg>
+  </button>
+
+
+  <!-- CLOUD DROPDOWN -->
+  <!-- CLOUD DROPDOWN -->
+<div id="cloud-dropdown"
+  style="
+    display:none;
+    position:absolute;
+    top:100%;
+    right:0;
+    margin-top:6px;
+    background:#fff;
+    border:1px solid #ddd;
+    border-radius:10px;
+    box-shadow:0 4px 14px rgba(0,0,0,.12);
+    min-width:180px;
+    z-index:1000;
+    overflow:hidden;
+  "
+>
+
+  <!-- BACKUP -->
+    <div
+      onclick="toggleBackupSubmenu(event)"
+      style="
+        padding:11px 14px;
+        font-size:14px;
+        color:#333;
+        cursor:pointer;
+        user-select:none;
+      "
+      onmouseover="this.style.background='#f7f7f7'"
+      onmouseout="this.style.background='transparent'"
+    >
+      <span id="backup-arrow"
+        style="
+          display:inline-block;
+          width:16px;
+          font-size:13px;
+        "
+      >▸</span>
+      <span>Backup</span>
     </div>
 
-    <div class="top-right">
-      <button id="logoutBtn" onclick="logout()" class="btn-logout">Log Out</button>
+  <!-- BACKUP OPTIONS -->
+  <div id="backup-submenu"
+    style="
+      display:none;
+      background:#fafafa;
+      border-top:1px solid #eee;
+      border-bottom:1px solid #eee;
+    "
+  >
+
+    <div
+      onclick="handleBackupAction(event)"
+      style="
+        padding:10px 14px 10px 28px;
+        font-size:13px;
+        color:#444;
+        cursor:pointer;
+      "
+      onmouseover="this.style.background='#f0f0f0'"
+      onmouseout="this.style.background='transparent'"
+    >
+      Cloud
+    </div>
+
+    <div
+      onclick="handleExportBackup(event)"
+      style="
+        padding:10px 14px 10px 28px;
+        font-size:13px;
+        color:#444;
+        cursor:pointer;
+      "
+      onmouseover="this.style.background='#f0f0f0'"
+      onmouseout="this.style.background='transparent'"
+    >
+      Export Backup
+    </div>
+
+  </div>
+
+
+  <!-- RESTORE -->
+  <!-- RESTORE -->
+    <div
+      onclick="toggleRestoreSubmenu(event)"
+      style="
+        padding:11px 14px;
+        font-size:14px;
+        color:#333;
+        cursor:pointer;
+        user-select:none;
+      "
+      onmouseover="this.style.background='#f7f7f7'"
+      onmouseout="this.style.background='transparent'"
+    >
+      <span id="restore-arrow"
+        style="
+          display:inline-block;
+          width:16px;
+          font-size:13px;
+        "
+      >▸</span>
+      <span>Restore</span>
+    </div>
+
+  <!-- RESTORE OPTIONS -->
+  <div id="restore-submenu"
+    style="
+      display:none;
+      background:#fafafa;
+      border-top:1px solid #eee;
+    "
+  >
+
+    <div
+      onclick="handleRestoreFromCloud(event)"
+      style="
+        padding:10px 14px 10px 28px;
+        font-size:13px;
+        color:#444;
+        cursor:pointer;
+      "
+      onmouseover="this.style.background='#f0f0f0'"
+      onmouseout="this.style.background='transparent'"
+    >
+      From Cloud
+    </div>
+
+    <div
+      onclick="handleImportBackup(event)"
+      style="
+        padding:10px 14px 10px 28px;
+        font-size:13px;
+        color:#444;
+        cursor:pointer;
+      "
+      onmouseover="this.style.background='#f0f0f0'"
+      onmouseout="this.style.background='transparent'"
+    >
+      Import Backup
     </div>
   </div>
+  </div>
+</div>
+
+
+<!-- LOG OUT -->
+<div class="top-right">
+  <button
+    id="logoutBtn"
+    onclick="logout()"
+    class="btn-logout"
+  >
+    Log Out
+  </button>
+</div>
+
+</div>
 
   <!-- MAIN WRAPPER -->
   <div class="main-container">
@@ -247,9 +518,12 @@
   </div>
 
   <!-- MAIN SCRIPT FILE -->
- <!-- MAIN SCRIPT FILE -->
- <!-- MAIN SCRIPT FILE -->
+
+  <script src="/static/js/indexeddb.js"></script>
+
+  
   <script>
+
 // 1. TAB CONFIGURATION & ROUTER
 const TAB_CONFIG = {
   'tab-1': { form: 'current_month_entry.html', callback: () => renderCurrentMonthData() },
@@ -257,6 +531,8 @@ const TAB_CONFIG = {
   'tab-3': { form: 'congregation_analysis.html', callback: () => window.renderAnalysisData?.() },
   'tab-4': { form: 'congregation_report.html', callback: () => window.renderReportData?.() }
 };
+
+
 
 async function logout() {
     localStorage.removeItem('user_passcode');
@@ -331,65 +607,7 @@ async function loadSubForm(tabId, filename, callback) {
     }
 }
 
-// 4. INDEXEDDB MULTI-TABLE STORAGE ENGINE (Protected against overwriting local edits)
-async function saveAllTablesToIndexedDB(allTablesData) {
-  const tableNames = Object.keys(allTablesData);
 
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open("CongregationDB", 5);
-    
-    request.onerror = () => reject(request.error);
-    
-    request.onupgradeneeded = (event) => {
-      const db = event.target.result;
-      tableNames.forEach(tableName => {
-        if (!db.objectStoreNames.contains(tableName)) {
-          db.createObjectStore(tableName, { keyPath: "id", autoIncrement: true });
-        }
-      });
-    };
-
-    request.onsuccess = async (event) => {
-      const db = event.target.result;
-      const validTableNames = tableNames.filter(name => db.objectStoreNames.contains(name));
-      
-      if (validTableNames.length === 0) {
-        resolve(true);
-        return;
-      }
-
-      const transaction = db.transaction(validTableNames, "readwrite");
-
-      // Check each table individually before deciding to touch it
-      for (const tableName of validTableNames) {
-        const store = transaction.objectStore(tableName);
-        
-        await new Promise((resolveStore) => {
-          const countReq = store.count();
-          countReq.onsuccess = () => {
-            if (countReq.result > 0) {
-              // 🛡️ Table already has local edits! Skip clearing and updating entirely.
-              console.log(`🔒 Table '${tableName}' already contains local data. Skipping backend overwrite.`);
-              resolveStore();
-            } else {
-              // Table is completely empty (first-time open), safe to populate initial data
-              store.clear();
-              const rows = allTablesData[tableName];
-              if (Array.isArray(rows)) {
-                rows.forEach(row => store.put(row));
-              }
-              resolveStore();
-            }
-          };
-          countReq.onerror = () => resolveStore();
-        });
-      }
-
-      transaction.oncomplete = () => resolve(true);
-      transaction.onerror = () => reject(transaction.error);
-    };
-  });
-}
 
 // 5. FETCH FROM BACKEND AND CACHE LOCALLY
 async function loadAllTablesAndCache() {
@@ -422,99 +640,146 @@ async function loadAllTablesAndCache() {
 
 
 
-
-
 document.addEventListener("DOMContentLoaded", async () => {
-  // 1. AUTHENTICATION GUARD: Match the key used during account creation
+
+    // 1. AUTHENTICATION GUARD
     const passcode = localStorage.getItem("user_passcode");
-  
-  if (!passcode) {
-    console.warn("🔒 Unauthorized access detected. Redirecting to login...");
-    window.location.href = '/login.html';
-    return; // Stop execution
-  }
 
-  console.log("🚀 Initializing application...");
-  
-  // 2. Fetch backend data and cache into IndexedDB
-  await loadAllTablesAndCache();
-  
-  // 3. Load the active tab interface
-  await switchTab(null, 'tab-1');
-});
-
-
-async function syncPendingChanges() {
-    const passcode = localStorage.getItem('user_passcode');
     if (!passcode) {
-        alert("Passcode missing. Please log in again.");
+        console.warn(
+            "🔒 Unauthorized access detected. Redirecting to login..."
+        );
+
+        window.location.href = "/login.html";
         return;
     }
 
-    const syncBtn = document.getElementById('btn-cloud-sync');
-    const syncStatus = document.getElementById('sync-status');
+    console.log("🚀 Initializing application...");
+
+    // 2. Fetch backend data and cache into IndexedDB
+    await loadAllTablesAndCache();
+
+    // 3. Restore sync-status visibility
+    const syncStatus =
+        document.getElementById("sync-status");
+
+    const syncUnsaved =
+        localStorage.getItem("sync_unsaved") === "true";
 
     if (syncStatus) {
-        syncStatus.textContent = "● Syncing...";
-        syncStatus.style.color = "#ffc107";
-    }
-    if (syncBtn) syncBtn.disabled = true;
 
-    try {
-        const db = await openIndexedDB(); // Ensure openIndexedDB() resolves your IDBDatabase instance
-        const lastSync = Number(localStorage.getItem('last_sync_timestamp') || 0);
+        if (syncUnsaved) {
+            // Local changes exist → keep Saved hidden
+            syncStatus.style.display = "none";
 
-        // Stores to collect delta changes from
-        const storeNames = ['CongInfo', 'GROUPS', 'PUBLISHERS', 'MonthlyRecords', 'RECORDS'];
-        const outgoingChanges = {};
+            console.log(
+                "🔴 Sync status hidden: local changes are unsaved."
+            );
 
-        // Extract changed records
-        for (const storeName of storeNames) {
-            outgoingChanges[storeName] = await getModifiedRecords(db, storeName, lastSync);
-        }
-
-        // Send payload to backend
-        const response = await fetch('/api/sync', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                passcode: passcode,
-                last_sync: lastSync,
-                changes: outgoingChanges
-            })
-        });
-
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error || 'Sync request failed');
-
-        // Apply incoming updates to local IndexedDB
-        if (result.updates) {
-            await mergeServerUpdates(db, result.updates);
-        }
-
-        // Update local sync timestamp
-        localStorage.setItem('last_sync_timestamp', result.server_time);
-
-        if (syncStatus) {
+        } else {
+            // No unsaved changes → show Saved
+            syncStatus.style.display = "inline";
             syncStatus.textContent = "● Saved";
             syncStatus.style.color = "#28a745";
-        }
 
-        // Refresh active views if function exists
-        if (typeof loadS21RecordsForPublisher === 'function') {
-            loadS21RecordsForPublisher();
+            console.log(
+                "🟢 Sync status shown: data is saved."
+            );
         }
-
-    } catch (err) {
-        console.error("Sync Error:", err);
-        if (syncStatus) {
-            syncStatus.textContent = "● Sync Error";
-            syncStatus.style.color = "#dc3545";
-        }
-    } finally {
-        if (syncBtn) syncBtn.disabled = false;
     }
+
+    // 4. Load the active tab interface
+    await switchTab(null, "tab-1");
+});
+/**
+ * Filters out invalid or inactive records ("garbage") from raw database arrays.
+ * 
+ * @param {Array<Object>} records - Array of IndexedDB store items
+ * @returns {Array<Object>} Sanitized array containing valid records only
+ */
+function sanitizeStoreRecords(records) {
+  if (!Array.isArray(records)) return [];
+
+  return records.filter((item) => {
+    // 1. Filter out entries missing essential identification properties
+    const hasValidIdentifier = Boolean(
+      item.id || 
+      item.ID || 
+      item.number || 
+      item.NUMBER || 
+      item.publisher_id
+    );
+    if (!hasValidIdentifier) return false;
+
+    // 2. Filter out entries with zero activity / ministry metrics
+    const hasActivity = 
+      (item.ministry && item.ministry !== 0) ||
+      (item.hours && item.hours > 0) ||
+      (item.shared_in_ministry === true) ||
+      (item.active === true);
+
+    // Keep records that have a valid ID AND active data
+    return hasValidIdentifier && hasActivity;
+  });
 }
+
+// ============================================================
+// EXPORT ALL 5 INDEXEDDB STORES
+// ============================================================
+async function exportIndexedDBData() {
+
+    const db = await openIndexedDB();
+
+    const storeNames = [
+        "CongInfo",
+        "GROUPS",
+        "PUBLISHERS",
+        "MonthlyRecords",
+        "RECORDS"
+    ];
+
+    const payload = {};
+
+    return new Promise((resolve, reject) => {
+
+        const transaction = db.transaction(
+            storeNames,
+            "readonly"
+        );
+
+        storeNames.forEach(storeName => {
+
+            const store = transaction.objectStore(storeName);
+            const request = store.getAll();
+
+            request.onsuccess = () => {
+                payload[storeName] = request.result || [];
+            };
+
+            request.onerror = () => {
+                reject(request.error);
+            };
+        });
+
+        transaction.oncomplete = () => {
+            db.close();
+
+            console.log(
+                "✅ All 5 IndexedDB stores exported:",
+                payload
+            );
+
+            resolve(payload);
+        };
+
+        transaction.onerror = () => {
+            db.close();
+            reject(transaction.error);
+        };
+    });
+}
+
+
 
 // Helper: Open IDB Database
 function openIndexedDB() {
@@ -576,6 +841,323 @@ function mergeServerUpdates(db, updates) {
     });
 }
 
+
+
+
+// Toggle Dropdown Visibility
+function toggleCloudMenu(event) {
+  event.stopPropagation();
+  const dropdown = document.getElementById('cloud-dropdown');
+  dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', () => {
+  const dropdown = document.getElementById('cloud-dropdown');
+  if (dropdown) dropdown.style.display = 'none';
+});
+
+// 1. Backup Action (Backup to Cloud)
+async function handleBackupAction() {
+    console.time("⏱️ Backup Duration");
+    console.log("🚀 Initializing full cloud backup...");
+
+    const passcode = localStorage.getItem('user_passcode');
+    if (!passcode) {
+        console.warn("⚠️ Backup aborted: Missing passcode in localStorage.");
+        alert("Passcode missing. Please log in again.");
+        return;
+    }
+
+    const cloudBtn = document.getElementById('btn-cloud-sync');
+    const syncStatus = document.getElementById('sync-status');
+
+
+ 
+
+    if (syncStatus) {
+        syncStatus.style.display = "inline";
+        syncStatus.textContent = "● Backing up...";
+        syncStatus.style.color = "#ffc107";
+    }
+    if (cloudBtn) cloudBtn.disabled = true;
+ 
+
+    try {
+        // 1. Extract full snapshot from IndexedDB
+        console.log("📦 Reading all stores from IndexedDB...");
+        const fullPayload = await exportIndexedDBData();
+
+        const totalRecords = Object.values(fullPayload).reduce((acc, arr) => acc + (arr ? arr.length : 0), 0);
+        console.log(`📤 Extracted ${totalRecords} total record(s) across all stores for backup.`);
+
+        // 2. Point to the correct API endpoint URL
+        // 💡 UPDATE THIS PATH if your backend API is on a different route or port (e.g., 'http://127.0.0.1:8000/backup')
+        const BACKUP_URL = '/api/backup';
+        console.log(`📡 Sending POST request to ${BACKUP_URL}...`);
+
+        const response = await fetch(BACKUP_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                passcode: passcode,
+                payload: fullPayload
+            })
+        });
+
+        // 3. Safe response handler (prevents SyntaxError on 404 HTML responses)
+        if (!response.ok) {
+            let errorMessage = `Server status ${response.status} (${response.statusText})`;
+            try {
+                const errorJson = await response.json();
+                errorMessage = errorJson.detail || errorJson.error || errorMessage;
+            } catch (_) {
+                // Server returned non-JSON response (e.g., standard 404 HTML page)
+            }
+            throw new Error(errorMessage);
+        }
+
+        const result = await response.json();
+        console.log("📥 Backup Response Received:", result);
+
+        // 4. Update sync status UI and local timestamp
+        const backupTime = result.updated_at || Date.now();
+        localStorage.setItem('last_sync_timestamp', backupTime);
+
+        if (syncStatus) {
+            syncStatus.style.display = "inline";
+            syncStatus.textContent = "● Saved";
+            syncStatus.style.color = "#28a745";
+            
+        }
+          localStorage.setItem("sync_unsaved", "false");
+      
+       
+
+    } catch (err) {
+        console.error("❌ Backup failed with error:", err);
+        if (syncStatus) {
+            syncStatus.textContent = "● Backup Error";
+            syncStatus.style.color = "#dc3545";
+        }
+       
+    } finally {
+        if (cloudBtn) cloudBtn.disabled = false;
+        console.timeEnd("⏱️ Backup Duration");
+    }
+}
+
+// 2. Open Restore Modal & Display Available Backup Slots
+async function openRestoreModal() {
+  document.getElementById('cloud-dropdown').style.display = 'none';
+  const modal = document.getElementById('restore-modal');
+  const container = document.getElementById('backup-list-container');
+
+  // Check all possible storage keys or fallback to active session variable
+  const passcode = (
+    localStorage.getItem('user_passcode') || 
+    localStorage.getItem('passcode') || 
+    window.currentPasscode || 
+    ''
+  ).trim();
+
+  // Console log to verify what string is actually being sent
+  console.log("Fetching backups for passcode:", passcode);
+
+  if (!passcode) {
+    alert("Passcode missing from storage! Please check your login session.");
+    return;
+  }
+
+  container.innerHTML = '<div style="text-align:center; padding: 10px; color: #666; font-size: 13px;">Loading backups...</div>';
+  modal.style.display = 'flex';
+
+  try {
+    const res = await fetch(`/api/backup-slots?passcode=${encodeURIComponent(passcode)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const backups = await res.json();
+
+    if (!backups || backups.length === 0) {
+      container.innerHTML = `<div style="text-align:center; padding: 10px; color: #777; font-size: 13px;">No backups found for passcode: ${passcode}</div>`;
+      return;
+    }
+
+    container.innerHTML = '';
+    backups.forEach((backup, index) => {
+      const btn = document.createElement('button');
+      btn.style.cssText = 'width: 100%; padding: 10px; text-align: left; background: #f8f9fa; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 13px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;';
+      btn.onmouseover = () => btn.style.backgroundColor = '#e9ecef';
+      btn.onmouseout = () => btn.style.backgroundColor = '#f8f9fa';
+
+      const tag = index === 0 ? '<span style="background: #28a745; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-left: 6px;">LATEST</span>' : '';
+
+      btn.innerHTML = `<div>📅 ${backup.updated_at} ${tag}</div> <strong style="color: #6f42c1;">Restore</strong>`;
+      btn.onclick = () => confirmRestore(backup.id);
+      container.appendChild(btn);
+    });
+
+  } catch (err) {
+    container.innerHTML = `<div style="text-align:center; color: red; font-size: 13px;">Error loading backups: ${err.message}</div>`;
+  }
+}
+
+function closeRestoreModal() {
+  document.getElementById('restore-modal').style.display = 'none';
+}
+
+function confirmRestore(backupId) {
+  if (confirm("Restoring this backup will replace current local data. Continue?")) {
+    // Call your restore execution logic passing backupId
+    executeRestore(backupId);
+  }
+}
+
+
+
+// 3. Execute Restore from Chosen Slot
+async function executeRestore(slotNumber) {
+  const passcode = localStorage.getItem('user_passcode');
+  if (!confirm(`Restore data from Backup Slot ${slotNumber}? Unsaved local changes will be replaced.`)) return;
+
+  try {
+    const res = await fetch(`/api/restore-slot?passcode=${encodeURIComponent(passcode)}&slot=${slotNumber}`);
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.detail || 'Restore failed.');
+
+    await saveToIndexedDB(result.data);
+    alert('Restore completed successfully!');
+    closeRestoreModal();
+    window.location.reload();
+  } catch (err) {
+    alert(`Restore Error: ${err.message}`);
+  }
+}
+
+
+function toggleCloudMenu(event) {
+    event.stopPropagation();
+
+    const dropdown = document.getElementById("cloud-dropdown");
+    if (!dropdown) return;
+
+    const isOpen = dropdown.style.display === "block";
+
+    closeCloudSubmenus();
+
+    dropdown.style.display = isOpen ? "none" : "block";
+}
+
+function toggleBackupSubmenu(event) {
+    event.stopPropagation();
+
+    const backup =
+        document.getElementById("backup-submenu");
+
+    const restore =
+        document.getElementById("restore-submenu");
+
+    const backupArrow =
+        document.getElementById("backup-arrow");
+
+    const restoreArrow =
+        document.getElementById("restore-arrow");
+
+    if (!backup) return;
+
+    const isOpen =
+        backup.style.display === "block";
+
+    // Close Restore
+    if (restore) {
+        restore.style.display = "none";
+    }
+
+    if (restoreArrow) {
+        restoreArrow.textContent = "▸";
+    }
+
+    // Toggle Backup
+    backup.style.display =
+        isOpen ? "none" : "block";
+
+    if (backupArrow) {
+        backupArrow.textContent =
+            isOpen ? "▸" : "▾";
+    }
+}
+
+
+function toggleRestoreSubmenu(event) {
+    event.stopPropagation();
+
+    const restore =
+        document.getElementById("restore-submenu");
+
+    const backup =
+        document.getElementById("backup-submenu");
+
+    const restoreArrow =
+        document.getElementById("restore-arrow");
+
+    const backupArrow =
+        document.getElementById("backup-arrow");
+
+    if (!restore) return;
+
+    const isOpen =
+        restore.style.display === "block";
+
+    // Close Backup
+    if (backup) {
+        backup.style.display = "none";
+    }
+
+    if (backupArrow) {
+        backupArrow.textContent = "▸";
+    }
+
+    // Toggle Restore
+    restore.style.display =
+        isOpen ? "none" : "block";
+
+    if (restoreArrow) {
+        restoreArrow.textContent =
+            isOpen ? "▸" : "▾";
+    }
+}
+
+
+function closeCloudSubmenus() {
+    const backup = document.getElementById("backup-submenu");
+    const restore = document.getElementById("restore-submenu");
+
+    if (backup) backup.style.display = "none";
+    if (restore) restore.style.display = "none";
+}
+
+
+document.addEventListener("click", function (event) {
+  const dropdown = document.getElementById("cloud-dropdown");
+  const cloudBtn = document.getElementById("btn-cloud-sync");
+
+  if (!dropdown || !cloudBtn) return;
+
+  // Clicked outside both Cloud button and dropdown
+  if (!dropdown.contains(event.target) &&
+      !cloudBtn.contains(event.target)) {
+
+    dropdown.style.display = "none";
+
+    // Close Backup submenu
+    const backup = document.getElementById("backup-submenu");
+    if (backup) backup.style.display = "none";
+
+    // Close Restore submenu
+    const restore = document.getElementById("restore-submenu");
+    if (restore) restore.style.display = "none";
+  }
+});
 
   </script>
 </body>

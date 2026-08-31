@@ -1,11 +1,15 @@
 import base64
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+import json
 import os
-import sqlite3
-from datetime import datetime
 from pathlib import Path
-from typing import Any, List, Union
+import traceback
+from typing import Any, Dict, Union
+from urllib.parse import unquote, urlparse
 
-from fastapi import Body, FastAPI, File, Form, HTTPException, Request, UploadFile
+from dotenv import load_dotenv
+from fastapi import Body, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -14,13 +18,38 @@ from google.auth.transport.requests import Request as GoogleRequest
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
+import pg8000.native
 from pydantic import BaseModel
 
-from csv_importer import import_csv_files
-from Sync import sync_router  # 🎯 Import sync router
+# Import custom routers (using importer_router consistently)
+from csv_importer import router as importer_router
+from Sync import sync_router
+
+from fastapi.responses import JSONResponse
+from datetime import datetime
+
+# --- LOAD ENVIRONMENT VARIABLES ---
+load_dotenv()
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+# --- DATABASE HELPER FOR PG8000 ---
+def get_db_connection():
+    if not DATABASE_URL:
+        raise HTTPException(status_code=500, detail="DATABASE_URL configuration missing.")
+    parsed_url = urlparse(DATABASE_URL)
+    return pg8000.native.Connection(
+        user=unquote(parsed_url.username or ""),
+        password=unquote(parsed_url.password or ""),
+        host=parsed_url.hostname or "",
+        port=parsed_url.port or 5432,
+        database=parsed_url.path.lstrip("/"),
+        ssl_context=True
+    )
 
 # --- 1. INITIALIZE FASTAPI APP (SINGLE INSTANCE) ---
 app = FastAPI(title="congReport Congregation Management")
+
+
 
 # --- 2. CORS MIDDLEWARE ---
 app.add_middleware(
@@ -31,13 +60,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- 3. REGISTER ROUTERS FIRST ---
+# Register Routers
+app.include_router(importer_router, prefix="/api")
 app.include_router(sync_router, prefix="/api")
-print("---> SYNC ROUTER LOADED SUCCESSFULLY <---")
 
 # --- 4. MOUNT STATIC DIRECTORIES & TEMPLATES ---
 BASE_DIR = Path(__file__).resolve().parent
-TEMPLATES_DIR = BASE_DIR / "Templates" if (BASE_DIR / "Templates").exists() else BASE_DIR / "templates"
+TEMPLATES_DIR = (
+    BASE_DIR / "Templates"
+    if (BASE_DIR / "Templates").exists()
+    else BASE_DIR / "templates"
+)
 STATIC_DIR = BASE_DIR / "static"
 
 if not STATIC_DIR.exists():
@@ -46,7 +79,11 @@ if not STATIC_DIR.exists():
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 if TEMPLATES_DIR.exists():
-    app.mount("/Templates", StaticFiles(directory=TEMPLATES_DIR), name="templates_static")
+    app.mount(
+        "/Templates",
+        StaticFiles(directory=TEMPLATES_DIR),
+        name="templates_static",
+    )
     templates = Jinja2Templates(directory=TEMPLATES_DIR)
 else:
     templates = Jinja2Templates(directory=BASE_DIR)
@@ -55,6 +92,7 @@ else:
 class LoginRequest(BaseModel):
     username: str
     passcode: str
+
 # -------------------------------------------------------------------
 # HTML Page & Static View Routes
 # -------------------------------------------------------------------
@@ -92,102 +130,93 @@ async def get_template_file(request: Request, form_name: str):
 
 @app.post("/api/login")
 async def login(data: LoginRequest):
-    conn = sqlite3.connect(BASE_DIR / "congReport.db") 
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    
+    conn = None
     try:
-        cursor.execute(
-            "SELECT * FROM CongInfo WHERE user = ? AND passcode = ?", 
-            (data.username, data.passcode)
-        )
-        user_record = cursor.fetchone()
+        conn = get_db_connection()
+
+        # Query MasterList joined with UserBackups
+        query = """
+            SELECT m."username", m."passcode", b."payload"
+            FROM "MasterList" m
+            LEFT JOIN "UserBackups" b ON m."passcode" = b."passcode"
+            WHERE m."username" = :username AND m."passcode" = :passcode;
+        """
         
-        if not user_record:
+        result = conn.run(
+            query, 
+            username=data.username.strip(), 
+            passcode=data.passcode.strip()
+        )
+
+        if not result:
             raise HTTPException(
-                status_code=401, 
+                status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid username or passcode."
             )
-            
+
+        db_user, db_passcode, payload_raw = result[0]
+        payload = json.loads(payload_raw) if isinstance(payload_raw, str) else (payload_raw or {})
+
         return {
-            "status": "success", 
+            "status": "success",
             "message": "Login successful",
-            "username": user_record["user"]
+            "username": db_user,
+            "passcode": db_passcode,
+            "data": payload
         }
-        
-    except sqlite3.Error as e:
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Database error: {str(e)}"
-        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
 @app.get("/api/reports")
+@app.get("/api/restore")
 async def api_reports(passcode: str):
-    db_path = BASE_DIR / "congReport.db"
-    if not db_path.exists():
-        raise HTTPException(status_code=500, detail="Database file 'congReport.db' does not exist.")
-
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    
+    conn = None
     try:
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        tables = [row["name"] for row in cursor.fetchall() if row["name"] != "sqlite_sequence"]
-        
-        db_data = {}
-        for table in tables:
-            cursor.execute(f"SELECT * FROM {table}")
-            rows = [dict(row) for row in cursor.fetchall()]
-            db_data[table] = rows
-            
-        conn.close()
-        return {"status": "success", "data": db_data}
-    except Exception as e:
-        conn.close()
-        raise HTTPException(status_code=500, detail=str(e))
+        conn = get_db_connection()
 
-@app.post("/api/import-all-csv")
-async def api_import_all_csv(
-        files: List[UploadFile] = File(...),
-        passcode: str = Form(...),
-        username: str = Form("")
-    ):
-    """Receives CSV files from new-account.html and imports them into congReport.db."""
-    try:
-        clean_passcode = passcode.strip()
-        clean_username = username.strip()
-        
-        if not clean_passcode:
-            raise HTTPException(status_code=400, detail="Passcode is required.")
+        query = """
+            SELECT m."username", m."congregation", b."payload", b."updated_at"
+            FROM "MasterList" m
+            LEFT JOIN "UserBackups" b ON m."passcode" = b."passcode"
+            WHERE m."passcode" = :passcode;
+        """
+        result = conn.run(query, passcode=passcode.strip())
 
-        files_data = []
-        for file in files:
-            content = await file.read()
-            files_data.append((file.filename, content))
-            
-        db_path = BASE_DIR / "congReport.db"
-        
-        summaries = import_csv_files(
-            files_data=files_data, 
-            passcode=clean_passcode, 
-            username=clean_username, 
-            db_file=db_path
-        )
-        
+        if not result:
+            raise HTTPException(status_code=404, detail="Account or passcode not found.")
+
+        username, congregation, payload_raw, updated_at = result[0]
+
+        if not payload_raw:
+            raise HTTPException(status_code=404, detail="No backup snapshot found for this passcode.")
+
+        payload = json.loads(payload_raw) if isinstance(payload_raw, str) else payload_raw
+
         return {
-            "status": "success", 
-            "message": "Account created and all records successfully imported.",
-            "summaries": summaries
+            "status": "success",
+            "user": {
+                "username": username,
+                "congregation": congregation,
+                "last_backup": updated_at
+            },
+            "data": payload
         }
-        
-    except HTTPException as he:
-        raise he
+
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"❌ CSV Import Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    finally:
+        if conn:
+            conn.close()
 
 @app.post("/api/generate-pdf")
 def api_generate_pdf(data_payload: Union[dict, list] = Body(...)):
@@ -338,3 +367,205 @@ def generate_publisher_record_pdf(data_payload):
 
     finally:
         drive_service.files().delete(fileId=temp_pres_id).execute()
+
+
+class BackupRequest(BaseModel):
+    passcode: str
+    payload: Dict[str, Any]
+
+@app.post("/api/backup")
+async def save_indexeddb_backup(data: BackupRequest):
+    clean_passcode = data.passcode.strip()
+
+    if not clean_passcode:
+        raise HTTPException(
+            status_code=400,
+            detail="Passcode parameter is required."
+        )
+ 
+    conn = None
+
+    try:
+        conn = get_db_connection()
+
+        current_time = datetime.now(
+            timezone.utc
+        ).astimezone(
+            ZoneInfo("Asia/Manila")
+        )
+
+        formatted_time = current_time.strftime(
+            "%Y-%m-%d %I:%M:%S%p"
+        ).replace(
+            " 0", " "
+        ).lower()
+
+        # 1. Delete existing backup for this passcode
+        delete_query = """
+            DELETE FROM "UserBackups"
+            WHERE "passcode" = :passcode;
+        """
+
+        conn.run(
+            delete_query,
+            passcode=clean_passcode
+        )
+
+        print(
+            f"🗑️ Deleted existing backup for "
+            f"passcode: {clean_passcode}"
+        )
+
+        # 2. Insert the new backup
+        insert_query = """
+            INSERT INTO "UserBackups"
+                ("passcode", "payload", "updated_at")
+            VALUES
+                (:passcode, CAST(:payload AS JSONB), :updated_at);
+        """
+
+        conn.run(
+            insert_query,
+            passcode=clean_passcode,
+            payload=json.dumps(data.payload),
+            updated_at=formatted_time
+        )
+
+        print(
+            f"☁️ New backup saved for "
+            f"passcode: {clean_passcode}"
+        )
+
+        return {
+            "status": "success",
+            "message": (
+                "Existing backup replaced successfully."
+            ),
+            "updated_at": formatted_time
+        }
+
+    except Exception as e:
+        traceback.print_exc()
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Database backup error: {str(e)}"
+        )
+
+    finally:
+        if conn and hasattr(conn, "close"):
+            conn.close()
+
+
+@app.get("/api/backup-restore/{passcode}")
+async def get_backup_payload(passcode: str):
+    conn = None
+
+    try:
+        clean_passcode = passcode.strip()
+
+        if not clean_passcode:
+            raise HTTPException(
+                status_code=400,
+                detail="Passcode is required."
+            )
+
+        conn = get_db_connection()
+
+        query = """
+            SELECT payload, updated_at
+            FROM "UserBackups"
+            WHERE "passcode" = :passcode
+            ORDER BY "updated_at" DESC
+            LIMIT 1;
+        """
+
+        rows = conn.run(
+            query,
+            passcode=clean_passcode
+        )
+
+        if not rows:
+            raise HTTPException(
+                status_code=404,
+                detail="No cloud backup found for this passcode."
+            )
+
+        return {
+            "payload": rows[0][0],
+            "updated_at": rows[0][1]
+        }
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        traceback.print_exc()
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Restore error: {str(e)}"
+        )
+
+    finally:
+        if conn and hasattr(conn, "close"):
+            conn.close()
+
+
+# -------------------------------------------------------------------
+# Backup export
+# -------------------------------------------------------------------
+
+@app.get("/api/export-backup")
+def export_backup():
+
+    try:
+        # Congregation Information
+        cong_info = []
+
+        # Groups
+        groups = []
+
+        # Publishers
+        publishers = []
+
+        # Monthly Records
+        monthly_records = []
+
+        # Records
+        records = []
+
+        backup_data = {
+            "CongInfo": cong_info,
+            "GROUPS": groups,
+            "PUBLISHERS": publishers,
+            "MonthlyRecords": monthly_records,
+            "RECORDS": records
+        }
+
+        return JSONResponse(
+            content=backup_data,
+            headers={
+                "Content-Disposition":
+                f'attachment; filename="Backup_{datetime.now().strftime("%Y%m%d")}.crb"'
+            }
+        )
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=int(os.getenv("PORT", 8000)),
+        reload=True
+    )

@@ -178,14 +178,13 @@
         <input type="password" id="confirmPassword" name="confirmPassword" required>
       </div>
 
-      <!-- Optional MS Access CSV Files Import Field -->
       <div class="form-group">
-        <label for="csvFiles">Import MS Access CSV Files (Optional)</label>
-        <input type="file" id="csvFiles" name="csvFiles" multiple accept=".csv">
-        <small style="color: #666; display: block; margin-top: 5px;">
-          Select CSV files (PUBLISHERS, RECORDS, MONTH, GROUPS) if available.
-        </small>
-      </div>
+          <label for="crbFile">Import Backup File (.crb)</label>
+          <input type="file" id="crbFile" name="crbFile" accept=".crb,.json" required>
+          <small style="color: #666; display: block; margin-top: 5px;">
+            Select your exported .crb backup file.
+          </small>
+        </div>
 
       <div id="statusMsg" class="status-msg"></div>
 
@@ -202,7 +201,7 @@
   <div class="bottom-section">
     Do you already have an account? <a href="login.html">Log In</a>
   </div>
-
+<script src="/static/js/indexeddb.js"></script>
   <script>
    document.addEventListener('DOMContentLoaded', () => {
     const createAccountForm = document.getElementById('createAccountForm');
@@ -215,77 +214,120 @@
     // ==========================================
     // 1. CREATE ACCOUNT & CSV IMPORT SUBMISSION
     // ==========================================
-    if (createAccountForm) {
-        createAccountForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
+   if (createAccountForm) {
+    createAccountForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
 
-            const username = document.getElementById('username').value.trim();
-            const congregation = document.getElementById('congregation').value.trim();
-            const passcode = passwordInput.value.trim();          
-            const confirmPassword = confirmPasswordInput.value.trim(); 
+        const username = document.getElementById('username').value.trim();
+        const congregation = document.getElementById('congregation').value.trim();
+        const passcode = passwordInput.value.trim();          
+        const confirmPassword = confirmPasswordInput.value.trim(); 
+        const fileInput = document.getElementById('crbFile');
 
-            statusMsg.textContent = '';
-            statusMsg.className = 'status-msg';
+        statusMsg.textContent = '';
+        statusMsg.className = 'status-msg';
 
-            // Check if passcodes match
-            if (passcode !== confirmPassword) {
-                statusMsg.textContent = "Passcodes do not match.";
-                statusMsg.className = "status-msg status-error";
-                return;
-            }
+        // Check if passcodes match
+        if (passcode !== confirmPassword) {
+            statusMsg.textContent = "Passcodes do not match.";
+            statusMsg.className = "status-msg status-error";
+            return;
+        }
 
-            // Strictly enforce exactly 5 CSV files requirement
-            if (fileInput.files.length !== 5) {
-                statusMsg.textContent = `Error: Exactly 5 CSV files are required (you selected ${fileInput.files.length}).`;
-                statusMsg.className = "status-msg status-error";
-                return;
-            }
+        // Validate that exactly 1 .crb file is selected
+        if (!fileInput.files || fileInput.files.length !== 1) {
+            statusMsg.textContent = "Error: Please select a valid .crb backup file.";
+            statusMsg.className = "status-msg status-error";
+            return;
+        }
 
-            const formData = new FormData();
-            formData.append('passcode', passcode);
-            formData.append('username', username);
-            formData.append('congregation', congregation);
+        const formData = new FormData();
+        formData.append('passcode', passcode);
+        formData.append('username', username);
+        formData.append('congregation', congregation);
+        formData.append('file', fileInput.files[0]); // Attach single .crb file
 
-            // Append all 5 files safely
-            for (let i = 0; i < fileInput.files.length; i++) {
-                formData.append('files', fileInput.files[i]);
-            }
+        submitBtn.disabled = true;
+        submitBtn.textContent = "PROCESSING...";
 
-            submitBtn.disabled = true;
-            submitBtn.textContent = "PROCESSING...";
+        try {
+            const response = await fetch('/api/import-crb', {
+                method: 'POST',
+                body: formData
+            });
 
-            try {
-                const response = await fetch('/api/import-all-csv', {
-                    method: 'POST',
-                    body: formData
-                });
+            const result = await response.json().catch(() => ({}));
 
-                // Safely parse JSON response whether success or error
-                const result = await response.json().catch(() => ({}));
+            if (response.ok) {
+                // Save credentials locally
+                localStorage.setItem('user_passcode', passcode);
+                localStorage.setItem('username', username);
 
-                if (response.ok) {
-                    // Save credentials locally so index.html auth guard passes immediately
-                    localStorage.setItem('user_passcode', passcode);
-                    localStorage.setItem('username', username);
-                    
-                    statusMsg.textContent = "Account created successfully! Loading dashboard...";
-                    statusMsg.className = "status-msg status-success";
-                    
-                    // Use relative path 'index.html' to ensure smooth transition
-                    setTimeout(() => {
-                        window.location.href = '/';
-                    }, 1500);
-                } else {
-                    throw new Error(result.detail || result.message || `Server returned status ${response.status}`);
+                // --- SAVE CRB DATA TO LOCAL INDEXEDDB ---
+                if (result.data) {
+                    statusMsg.textContent = "Saving records to local storage...";
+                    // Wipes existing IndexedDB tables and writes the new payload
+                    await saveAllTablesToIndexedDB(result.data);
                 }
-            } catch (err) {
-                statusMsg.textContent = "Error: " + err.message;
-                statusMsg.className = "status-msg status-error";
-                submitBtn.disabled = false;
-                submitBtn.textContent = "CREATE";
+                
+                statusMsg.textContent = result.action === "login" 
+                    ? "Logged in successfully! Loading dashboard..." 
+                    : "Account created successfully! Loading dashboard...";
+                statusMsg.className = "status-msg status-success";
+                
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1500);
+            } else {
+                throw new Error(result.detail || result.message || `Server returned status ${response.status}`);
             }
-        });
-    }
+        } catch (err) {
+            statusMsg.textContent = "Error: " + err.message;
+            statusMsg.className = "status-msg status-error";
+            submitBtn.disabled = false;
+            submitBtn.textContent = "CREATE";
+        }
+    });
+}
+
+// --- HELPER FUNCTION: WRITE ALL RETURNED TABLES TO INDEXEDDB ---
+function saveImportedDataToIndexedDB(payloadData, passcode) {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('CongregationDB', 1);
+
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains('CongInfo')) db.createObjectStore('CongInfo', { keyPath: 'passcode' });
+            if (!db.objectStoreNames.contains('GROUPS')) db.createObjectStore('GROUPS', { keyPath: 'id', autoIncrement: true });
+            if (!db.objectStoreNames.contains('PUBLISHERS')) db.createObjectStore('PUBLISHERS', { keyPath: ['IDPub', 'passcode'] });
+            if (!db.objectStoreNames.contains('MonthlyRecords')) db.createObjectStore('MonthlyRecords', { keyPath: 'ID', autoIncrement: true });
+            if (!db.objectStoreNames.contains('RECORDS')) db.createObjectStore('RECORDS', { keyPath: ['IdPubs', 'NUMBER', 'passcode'] });
+        };
+
+        request.onsuccess = (event) => {
+            const db = event.target.result;
+            const stores = ['CongInfo', 'GROUPS', 'PUBLISHERS', 'MonthlyRecords', 'RECORDS'];
+            const transaction = db.transaction(stores, 'readwrite');
+
+            stores.forEach(storeName => {
+                if (payloadData[storeName] && Array.isArray(payloadData[storeName])) {
+                    const store = transaction.objectStore(storeName);
+                    payloadData[storeName].forEach(item => {
+                        item.passcode = passcode; // Ensure passcode key exists
+                        store.put(item);
+                    });
+                }
+            });
+
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = (err) => reject(err);
+        };
+
+        request.onerror = (err) => reject(err);
+    });
+}
+
+
 
     // ==========================================
     // 2. REAL-TIME PASSCODE MATCHING WIDGET

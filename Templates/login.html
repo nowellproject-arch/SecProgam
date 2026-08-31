@@ -53,110 +53,171 @@
     <a href="new-account.html" class="btn-secondary">Create New Account</a>
   </div>
 
-  <script>
-    // AUTO-LOGIN CHECK: Redirect if authenticated session keys exist in localStorage
-    if (localStorage.getItem('congregation_passcode') && localStorage.getItem('username')) {
-      window.location.href = '/';
-    }
+ <script>
+// 1. Auto-redirect check
+if (localStorage.getItem('user_passcode') && localStorage.getItem('username')) {
+  window.location.href = '/';
+}
 
-    // Save SQLite records into browser's IndexedDB
-    function saveToIndexedDB(data) {
-      return new Promise((resolve, reject) => {
-        const tableNames = Object.keys(data);
-        const request = indexedDB.open("CongregationDB", 1);
+// 2. Primary key mappings to avoid key collisions
+const PRIMARY_KEYS = {
+  CongInfo: 'passcode',
+  GROUPS: 'id',
+  PUBLISHERS: 'IDPub',
+  MonthlyRecords: 'ID',
+  RECORDS: 'id'
+};
 
-        request.onupgradeneeded = (event) => {
-          const db = event.target.result;
-          tableNames.forEach((table) => {
-            if (!db.objectStoreNames.contains(table)) {
-              db.createObjectStore(table, { autoIncrement: true });
+// 3. Store name mapping to preserve uppercase names for queries
+const STORE_MAP = {
+  publishers: 'PUBLISHERS',
+  records: 'RECORDS',
+  monthlyrecords: 'MonthlyRecords',
+  groups: 'GROUPS',
+  conginfo: 'CongInfo'
+};
+
+const REQUIRED_STORES = {
+  CongInfo: 'passcode',
+  GROUPS: 'id',
+  PUBLISHERS: 'IDPub',
+  MonthlyRecords: 'ID',
+  RECORDS: 'id'
+};
+
+function saveToIndexedDB(data) {
+  return new Promise((resolve, reject) => {
+    // Open DB with upgrade handler instead of destructive deletion
+    const request = indexedDB.open("CongregationDB", 1);
+
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      console.log("🛠️ Creating object stores in IndexedDB...");
+
+      Object.entries(REQUIRED_STORES).forEach(([storeName, keyPath]) => {
+        if (!db.objectStoreNames.contains(storeName)) {
+          db.createObjectStore(storeName, { keyPath: keyPath });
+        }
+      });
+    };
+
+    request.onsuccess = (event) => {
+      const db = event.target.result;
+      const storeNames = Object.keys(REQUIRED_STORES);
+      
+      const transaction = db.transaction(storeNames, "readwrite");
+
+      storeNames.forEach((table) => {
+        const rows = data[table] || [];
+        if (db.objectStoreNames.contains(table)) {
+          const store = transaction.objectStore(table);
+          const keyPath = REQUIRED_STORES[table];
+          store.clear();
+
+          rows.forEach((row, index) => {
+            // Polyfill missing primary key if empty/undefined
+            if (!row[keyPath] && row[keyPath] !== 0) {
+              if (table === 'CongInfo') {
+                row[keyPath] = localStorage.getItem('user_passcode') || 'DEFAULT';
+              } else {
+                row[keyPath] = index + 1; // Assign numeric fallback ID
+              }
             }
+            store.put(row);
           });
-        };
-
-        request.onsuccess = (event) => {
-          const db = event.target.result;
-          const missingStores = tableNames.filter(t => !db.objectStoreNames.contains(t));
-          
-          if (missingStores.length > 0) {
-            db.close();
-            const upgradeReq = indexedDB.open("CongregationDB", db.version + 1);
-            upgradeReq.onupgradeneeded = (e) => {
-              const upgradedDb = e.target.result;
-              missingStores.forEach(t => upgradedDb.createObjectStore(t, { autoIncrement: true }));
-            };
-            upgradeReq.onsuccess = (e) => storeRecords(e.target.result, data, resolve, reject);
-            return;
-          }
-
-          storeRecords(db, data, resolve, reject);
-        };
-
-        request.onerror = (err) => reject(err);
-      });
-    }
-
-    function storeRecords(db, data, resolve, reject) {
-      const tableNames = Object.keys(data);
-      if (tableNames.length === 0) return resolve(true);
-
-      const transaction = db.transaction(tableNames, "readwrite");
-      tableNames.forEach((table) => {
-        const store = transaction.objectStore(table);
-        store.clear();
-        data[table].forEach((row) => store.add(row));
+        }
       });
 
-      transaction.oncomplete = () => resolve(true);
-      transaction.onerror = (err) => reject(err);
+      transaction.oncomplete = () => {
+        console.log("✅ Records successfully saved to IndexedDB.");
+        db.close();
+        resolve(true);
+      };
+
+      transaction.onerror = (err) => {
+        console.error("❌ IndexedDB Save Error:", transaction.error);
+        db.close();
+        reject(transaction.error);
+      };
+    };
+
+    request.onerror = (err) => reject(request.error);
+  });
+}
+
+function storeRecords(db, data, resolve, reject) {
+  const validStores = Object.keys(data)
+    .map(key => STORE_MAP[key.toLowerCase()] || key)
+    .filter(storeName => db.objectStoreNames.contains(storeName));
+
+  if (validStores.length === 0) return resolve(true);
+
+  const transaction = db.transaction(validStores, "readwrite");
+
+  Object.keys(data).forEach((key) => {
+    const targetStore = STORE_MAP[key.toLowerCase()] || key;
+    if (db.objectStoreNames.contains(targetStore)) {
+      const store = transaction.objectStore(targetStore);
+      store.clear();
+      data[key].forEach((row) => store.put(row));
     }
+  });
 
-    // Form login
-   document.getElementById('loginForm').addEventListener('submit', async function(e) {
-      e.preventDefault();
+  transaction.oncomplete = () => resolve(true);
+  transaction.onerror = (err) => reject(err);
+}
 
-      const username = document.getElementById('username').value.trim();
-      const passcode = document.getElementById('passcode').value.trim();
-      const errorMsg = document.getElementById('errorMsg');
+// 4. Form Submit Listener
+document.addEventListener('DOMContentLoaded', () => {
+  const loginForm = document.getElementById('loginForm');
+  if (!loginForm) return;
 
-      errorMsg.style.color = '#4a6baf';
-      errorMsg.textContent = 'Authenticating...';
+  loginForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
 
-      try {
-        const loginRes = await fetch('/api/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, passcode })
-        });
+    const username = document.getElementById('username').value.trim();
+    const passcode = document.getElementById('passcode').value.trim();
+    const errorMsg = document.getElementById('errorMsg');
 
-        const loginData = await loginRes.json();
-        if (!loginRes.ok) throw new Error(loginData.detail || 'Invalid username or passcode.');
+    errorMsg.style.color = '#4a6baf';
+    errorMsg.textContent = 'Authenticating...';
 
-        errorMsg.textContent = 'Syncing data to browser storage...';
+    try {
+      const loginRes = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, passcode })
+      });
 
-        const reportRes = await fetch(`/api/reports?passcode=${encodeURIComponent(passcode)}`);
-        const reportData = await reportRes.json();
-        if (!reportRes.ok) throw new Error('Failed to download congregation records.');
+      const loginData = await loginRes.json();
+      if (!loginRes.ok) throw new Error(loginData.detail || 'Invalid username or passcode.');
 
-        await saveToIndexedDB(reportData.data);
+      errorMsg.textContent = 'Syncing data to browser storage...';
 
-        // FIXED: Changed to 'user_passcode' to match index.html security guard
-        localStorage.setItem('user_passcode', passcode);
-        localStorage.setItem('username', username);
+      const reportRes = await fetch(`/api/reports?passcode=${encodeURIComponent(passcode)}`);
+      const reportData = await reportRes.json();
+      if (!reportRes.ok) throw new Error('Failed to download congregation records.');
 
-        errorMsg.style.color = '#2e7d32';
-        errorMsg.textContent = 'Login successful! Redirecting...';
+      await saveToIndexedDB(reportData.data);
 
-        setTimeout(() => {
-          window.location.href = '/';
-        }, 800);
+      localStorage.setItem('user_passcode', passcode);
+      localStorage.setItem('username', username);
+      localStorage.setItem('last_sync_timestamp', Date.now());
 
-      } catch (err) {
-        errorMsg.style.color = '#c62828';
-        errorMsg.textContent = err.message;
-      }
+      errorMsg.style.color = '#2e7d32';
+      errorMsg.textContent = 'Login successful! Redirecting...';
+
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 800);
+
+    } catch (err) {
+      errorMsg.style.color = '#c62828';
+      errorMsg.textContent = err.message;
+    }
+  });
 });
-  </script>
+</script>
 
 </body>
 </html>
