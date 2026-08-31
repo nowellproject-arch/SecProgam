@@ -759,38 +759,71 @@ function syncGlobalsFromMonthNumber(targetNumber) {
 
     // 4. Load Data from IndexedDB
     function loadPublishersFromIndexedDB() {
-        const request = indexedDB.open("CongregationDB");
-        
-        request.onerror = (event) => {
-            console.error("Failed to open IndexedDB:", event.target.error);
-        };
-        
-        request.onsuccess = (event) => {
-            const db = event.target.result;
-            const storeNames = Array.from(db.objectStoreNames);
-            const targetStore = storeNames.find(name => name.toUpperCase() === "PUBLISHERS");
-            
-            if (!targetStore) {
-                console.error("Could not find a publishers table in IndexedDB.");
-                return;
-            }
-            
-            const transaction = db.transaction([targetStore], "readonly");
-            const store = transaction.objectStore(targetStore);
-            const getAllRequest = store.getAll();
-            
-            getAllRequest.onsuccess = () => {
-                publishersData = getAllRequest.result || [];
-                console.log("Publishers successfully loaded:", publishersData.length);
-                renderListbox();
-            };
-            
-            getAllRequest.onerror = (event) => {
-                console.error("Error retrieving publishers:", event.target.error);
-            };
-        };
-    }
+    const request = indexedDB.open("CongregationDB", 5);
 
+    request.onerror = (event) => {
+        console.error(
+            "Failed to open IndexedDB:",
+            event.target.error
+        );
+    };
+
+    request.onsuccess = (event) => {
+        const db = event.target.result;
+
+        const storeNames =
+            Array.from(db.objectStoreNames);
+
+        const targetStore =
+            storeNames.find(
+                name =>
+                    name.toUpperCase() === "PUBLISHERS"
+            );
+
+        if (!targetStore) {
+            console.error(
+                "Could not find a publishers table in IndexedDB."
+            );
+            db.close();
+            return;
+        }
+
+        const transaction =
+            db.transaction(
+                [targetStore],
+                "readonly"
+            );
+
+        const store =
+            transaction.objectStore(targetStore);
+
+        const getAllRequest =
+            store.getAll();
+
+        getAllRequest.onsuccess = () => {
+            publishersData =
+                getAllRequest.result || [];
+
+            console.log(
+                "Publishers successfully loaded:",
+                publishersData.length
+            );
+
+            renderListbox();
+        };
+
+        getAllRequest.onerror = (event) => {
+            console.error(
+                "Error retrieving publishers:",
+                event.target.error
+            );
+        };
+
+        transaction.oncomplete = () => {
+            db.close();
+        };
+    };
+}
    
 
 // 6. Main Listbox Renderer & Filter (Default category changed to ACTIVE PUBLISHERS)
@@ -2137,19 +2170,19 @@ function onMonthOrYearChanged() {
 // 2. INDEXEDDB DATABASE OPERATIONS
 // ==========================================
 function openCongregationDB(callback) {
-    // Omitting the version parameter safely opens the existing database version
-    const request = indexedDB.open("CongregationDB");
+    const request = indexedDB.open("CongregationDB", 5);
 
     request.onsuccess = (event) => {
         callback(event.target.result);
     };
 
     request.onerror = (event) => {
-        console.error("❌ IndexedDB open error:", event.target.error);
+        console.error(
+            "❌ IndexedDB open error:",
+            event.target.error
+        );
     };
 }
-
-
 
 // 🌐 Expose globally so it can be called across iframes and external scripts
 window.loadMonthlyAttendanceData = loadMonthlyAttendanceData;
@@ -2984,7 +3017,6 @@ function updateMonthDisplay() {
     const monthName = calendarMonthNames[activeCalendarMonth] || "";
     displayEl.textContent = `${monthName} ${activeCalendarYear}`;
 }
-
 async function syncMonthStatusUI() {
     const btn = document.getElementById("monthStatusBtn");
     if (!btn) return;
@@ -2994,63 +3026,126 @@ async function syncMonthStatusUI() {
     }
 
     const activeMonthIndex = Number(
-        window.currentActiveMonthIndex ?? 
+        window.currentActiveMonthIndex ??
         (typeof getMonthIndex === "function" ? getMonthIndex() : 0)
     );
 
-    console.group(`🔄 [syncMonthStatusUI] Checking status for NUMBER: ${activeMonthIndex}`);
+    console.group(
+        `🔄 [syncMonthStatusUI] Checking status for NUMBER: ${activeMonthIndex}`
+    );
 
-    const request = indexedDB.open("CongregationDB");
-    
-    request.onerror = (err) => {
-        console.error("❌ Database open error in syncMonthStatusUI:", err.target.error);
+    // IMPORTANT:
+    // Always open the database using the current application version.
+    // This allows old databases to upgrade to the correct schema.
+    const request = indexedDB.open("CongregationDB", 5);
+
+    request.onerror = (event) => {
+        console.error(
+            "❌ Database open error in syncMonthStatusUI:",
+            event.target.error
+        );
+
         setButtonUIState(btn, false);
         console.groupEnd();
     };
 
-    request.onsuccess = (e) => {
-        const db = e.target.result;
+    request.onupgradeneeded = (event) => {
+        console.log(
+            `🔄 IndexedDB upgrade:
+             ${event.oldVersion} → ${event.newVersion}`
+        );
+    };
+
+    request.onsuccess = (event) => {
+        const db = event.target.result;
+
+        console.log("📦 DB VERSION:", db.version);
+
         if (!db.objectStoreNames.contains("MonthlyRecords")) {
-            console.warn("⚠️ MonthlyRecords object store missing; defaulting button to open.");
+            console.warn(
+                "⚠️ MonthlyRecords object store missing; " +
+                "defaulting button to open."
+            );
+
             setButtonUIState(btn, false);
+            db.close();
             console.groupEnd();
             return;
         }
 
-        const tx = db.transaction(["MonthlyRecords"], "readonly");
+        const tx = db.transaction(
+            ["MonthlyRecords"],
+            "readonly"
+        );
+
         const store = tx.objectStore("MonthlyRecords");
 
         let found = false;
+
         const cursorReq = store.openCursor();
 
         cursorReq.onsuccess = (evt) => {
             const cursor = evt.target.result;
 
             if (cursor) {
-                if (Number(cursor.value.NUMBER) === activeMonthIndex) {
-                    found = true;
-                    const rec = cursor.value;
-                    const isClosed = Number(rec.Closed) === 1;
 
-                    console.log(`✅ [FOUND] Record for NUMBER ${activeMonthIndex} | Closed Status: ${isClosed} (${rec.Closed})`);
-                    setButtonUIState(btn, isClosed);
+                if (
+                    Number(cursor.value.NUMBER) ===
+                    activeMonthIndex
+                ) {
+                    found = true;
+
+                    const rec = cursor.value;
+
+                    const isClosed =
+                        Number(rec.Closed) === 1;
+
+                    console.log(
+                        `✅ [FOUND] Record for NUMBER ${activeMonthIndex} | ` +
+                        `Closed Status: ${isClosed} (${rec.Closed})`
+                    );
+
+                    setButtonUIState(
+                        btn,
+                        isClosed
+                    );
+
+                    db.close();
                     console.groupEnd();
+
                     return;
                 }
+
                 cursor.continue();
                 return;
             }
 
             if (!found) {
-                console.log(`ℹ️ [NOT FOUND] No record for NUMBER ${activeMonthIndex} | Defaulting button state to OPEN (false)`);
+
+                console.log(
+                    `ℹ️ [NOT FOUND] No record for NUMBER ` +
+                    `${activeMonthIndex} | ` +
+                    `Defaulting button state to OPEN (false)`
+                );
+
                 setButtonUIState(btn, false);
+
+                db.close();
                 console.groupEnd();
             }
         };
 
-        cursorReq.onerror = (err) => {
-            console.error(`❌ Cursor error checking status for NUMBER ${activeMonthIndex}:`, err.target.error);
+        cursorReq.onerror = (event) => {
+
+            console.error(
+                `❌ Cursor error checking status for NUMBER ` +
+                `${activeMonthIndex}:`,
+                event.target.error
+            );
+
             setButtonUIState(btn, false);
+
+            db.close();
             console.groupEnd();
         };
     };
