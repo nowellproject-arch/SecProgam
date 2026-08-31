@@ -20,36 +20,61 @@ function openCongregationDB() {
         request.onupgradeneeded = event => {
             const db = event.target.result;
 
+            console.log(
+                `🔄 IndexedDB upgrade: ${event.oldVersion} → ${event.newVersion}`
+            );
+
+            // ==========================================
             // CongInfo
+            // ==========================================
             if (!db.objectStoreNames.contains("CongInfo")) {
                 db.createObjectStore("CongInfo", {
                     keyPath: "passcode"
                 });
             }
 
+            // ==========================================
             // GROUPS
+            // ==========================================
             if (!db.objectStoreNames.contains("GROUPS")) {
                 db.createObjectStore("GROUPS", {
                     keyPath: "Group"
                 });
             }
 
+            // ==========================================
             // PUBLISHERS
+            // ==========================================
             if (!db.objectStoreNames.contains("PUBLISHERS")) {
                 db.createObjectStore("PUBLISHERS", {
-                    keyPath: ["IDPub"]
+                    keyPath: "IDPub"
                 });
             }
 
+            // ==========================================
             // MonthlyRecords
+            // ==========================================
             if (!db.objectStoreNames.contains("MonthlyRecords")) {
                 db.createObjectStore("MonthlyRecords", {
                     keyPath: "NUMBER"
                 });
             }
 
+            // ==========================================
             // RECORDS
-            // Recreate it if the old database has the wrong keyPath.
+            // ==========================================
+            //
+            // This store MUST use the composite key:
+            //
+            //   IdPubs + NUMBER
+            //
+            // Example:
+            //   IdPubs = "470"
+            //   NUMBER = 202
+            //
+            // Key becomes:
+            //   ["470", 202]
+            //
             if (db.objectStoreNames.contains("RECORDS")) {
                 db.deleteObjectStore("RECORDS");
             }
@@ -59,22 +84,54 @@ function openCongregationDB() {
             });
 
             console.log(
-                "✅ IndexedDB upgraded: RECORDS keyPath is now ['IdPubs', 'NUMBER']"
+                "✅ IndexedDB schema ready."
+            );
+
+            console.log(
+                "📦 Stores:",
+                Array.from(db.objectStoreNames)
+            );
+
+            console.log(
+                "🔑 RECORDS keyPath:",
+                db.transaction
+                    ? "['IdPubs', 'NUMBER']"
+                    : "pending"
             );
         };
 
         request.onsuccess = () => {
-            resolve(request.result);
+            const db = request.result;
+
+            console.log(
+                "✅ IndexedDB opened:",
+                DB_NAME,
+                "version",
+                db.version
+            );
+
+            resolve(db);
         };
 
         request.onerror = () => {
+            console.error(
+                "❌ IndexedDB open error:",
+                request.error
+            );
+
             reject(request.error);
         };
 
         request.onblocked = () => {
-            reject(new Error(
-                "IndexedDB is blocked. Please close other tabs using CongregationDB."
-            ));
+            console.error(
+                "❌ IndexedDB upgrade blocked."
+            );
+
+            reject(
+                new Error(
+                    "IndexedDB is blocked. Please close other tabs using CongregationDB."
+                )
+            );
         };
     });
 }
