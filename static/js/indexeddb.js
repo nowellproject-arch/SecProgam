@@ -129,6 +129,7 @@ function openIndexedDB() {
 // CLEAR ALL 5 STORES AND IMPORT CRB DATA
 // ============================================================
 async function saveAllTablesToIndexedDB(allTablesData) {
+
     const db = await openIndexedDB();
 
     const storeNames = [
@@ -141,132 +142,13 @@ async function saveAllTablesToIndexedDB(allTablesData) {
 
     return new Promise((resolve, reject) => {
 
-        const transaction = db.transaction(storeNames, "readwrite");
+        const transaction =
+            db.transaction(storeNames, "readwrite");
 
-        for (const storeName of storeNames) {
-
-            const store = transaction.objectStore(storeName);
-            const rows = allTablesData[storeName];
-
-            console.log(
-                `📥 Importing ${storeName}:`,
-                Array.isArray(rows) ? rows.length : 0,
-                "records"
-            );
-
-            // Clear existing data first
-            store.clear();
-
-            if (!Array.isArray(rows)) {
-                continue;
-            }
-
-            
-
-        rows.forEach((row, index) => {
-
-                try {
-
-                    if (storeName === "RECORDS") {
-
-                        // DEBUG: inspect the problem area
-                        if (index >= 2725 && index <= 2729) {
-
-                            console.log(
-                                "🔍 RECORDS DEBUG ROW",
-                                index,
-                                JSON.stringify(row, null, 2)
-                            );
-
-                            console.log(
-                                "🔑 IdPubs:",
-                                row.IdPubs,
-                                "type:",
-                                typeof row.IdPubs
-                            );
-
-                            console.log(
-                                "🔑 NUMBER:",
-                                row.NUMBER,
-                                "type:",
-                                typeof row.NUMBER
-                            );
-                        }
-
-                        // Validate BOTH key fields
-                        if (
-                            !Object.prototype.hasOwnProperty.call(row, "IdPubs") ||
-                            !Object.prototype.hasOwnProperty.call(row, "NUMBER")
-                        ) {
-
-                            console.error(
-                                "🚨 MISSING INDEXEDDB KEY",
-                                {
-                                    store: storeName,
-                                    rowIndex: index,
-                                    row: row,
-                                    keys: Object.keys(row)
-                                }
-                            );
-
-                            throw new Error(
-                                `RECORDS row ${index} is missing ` +
-                                `IdPubs or NUMBER`
-                            );
-                        }
-
-                        // Reject undefined/null specifically
-                        if (
-                            row.IdPubs === undefined ||
-                            row.IdPubs === null ||
-                            row.NUMBER === undefined ||
-                            row.NUMBER === null
-                        ) {
-
-                            console.error(
-                                "🚨 INVALID INDEXEDDB KEY VALUE",
-                                {
-                                    rowIndex: index,
-                                    IdPubs: row.IdPubs,
-                                    NUMBER: row.NUMBER,
-                                    row: row
-                                }
-                            );
-
-                            throw new Error(
-                                `RECORDS row ${index} has invalid ` +
-                                `IdPubs or NUMBER`
-                            );
-                        }
-                    }
-
-                    store.put(row);
-
-                }
-                catch (error) {
-
-                    console.error(
-                        `❌ FAILED: ${storeName}`,
-                        "Row:", index,
-                        row,
-                        "Error:", error
-                    );
-
-                    reject(
-                        new Error(
-                            `IndexedDB error in ${storeName}, row ${index}: ` +
-                            error.message
-                        )
-                    );
-                }
-            });
-
-
-
-
-        }
+        let failed = false;
 
         transaction.oncomplete = () => {
+
             db.close();
 
             console.log(
@@ -277,12 +159,222 @@ async function saveAllTablesToIndexedDB(allTablesData) {
         };
 
         transaction.onerror = () => {
+
+            console.error(
+                "❌ IndexedDB TRANSACTION ERROR:",
+                transaction.error
+            );
+
             db.close();
-            reject(transaction.error);
+
+            reject(
+                transaction.error ||
+                new Error("IndexedDB transaction failed.")
+            );
         };
+
+        transaction.onabort = () => {
+
+            console.error(
+                "❌ IndexedDB TRANSACTION ABORTED:",
+                transaction.error
+            );
+
+            db.close();
+
+            reject(
+                transaction.error ||
+                new Error("IndexedDB transaction aborted.")
+            );
+        };
+
+
+        for (const storeName of storeNames) {
+
+            const store =
+                transaction.objectStore(storeName);
+
+            const rows =
+                allTablesData[storeName];
+
+            console.log(
+                `📥 Importing ${storeName}:`,
+                Array.isArray(rows)
+                    ? rows.length
+                    : 0,
+                "records"
+            );
+
+
+            // ---------------------------------------------
+            // CLEAR EXISTING DATA
+            // ---------------------------------------------
+
+            store.clear();
+
+
+            if (!Array.isArray(rows)) {
+                continue;
+            }
+
+
+            // ---------------------------------------------
+            // INSERT RECORDS
+            // ---------------------------------------------
+
+            rows.forEach((row, index) => {
+
+                if (failed) return;
+
+
+                // =========================================
+                // SPECIAL CHECK FOR RECORDS
+                // =========================================
+
+                if (storeName === "RECORDS") {
+
+                    if (
+                        index >= 2720 &&
+                        index <= 2730
+                    ) {
+
+                        console.log(
+                            "🔍 RECORDS DEBUG:",
+                            {
+                                index: index,
+                                row: row,
+                                IdPubs: row.IdPubs,
+                                NUMBER: row.NUMBER,
+                                IdPubsType:
+                                    typeof row.IdPubs,
+                                NUMBERType:
+                                    typeof row.NUMBER,
+                                keys:
+                                    Object.keys(row)
+                            }
+                        );
+                    }
+
+
+                    // Check property existence
+
+                    const hasIdPubs =
+                        Object.prototype
+                            .hasOwnProperty
+                            .call(row, "IdPubs");
+
+                    const hasNUMBER =
+                        Object.prototype
+                            .hasOwnProperty
+                            .call(row, "NUMBER");
+
+
+                    if (!hasIdPubs || !hasNUMBER) {
+
+                        failed = true;
+
+                        console.error(
+                            "🚨 INVALID RECORD FOUND",
+                            {
+                                store: storeName,
+                                index: index,
+                                row: row,
+                                hasIdPubs: hasIdPubs,
+                                hasNUMBER: hasNUMBER,
+                                IdPubs: row.IdPubs,
+                                NUMBER: row.NUMBER,
+                                keys: Object.keys(row)
+                            }
+                        );
+
+                        transaction.abort();
+
+                        reject(
+                            new Error(
+                                `RECORDS row ${index} is missing ` +
+                                `${!hasIdPubs ? "IdPubs" : ""}` +
+                                `${!hasNUMBER ? " NUMBER" : ""}`
+                            )
+                        );
+
+                        return;
+                    }
+
+
+                    // Check undefined/null
+
+                    if (
+                        row.IdPubs === undefined ||
+                        row.IdPubs === null ||
+                        row.NUMBER === undefined ||
+                        row.NUMBER === null
+                    ) {
+
+                        failed = true;
+
+                        console.error(
+                            "🚨 INVALID RECORD KEY",
+                            {
+                                index: index,
+                                IdPubs: row.IdPubs,
+                                NUMBER: row.NUMBER,
+                                row: row
+                            }
+                        );
+
+                        transaction.abort();
+
+                        reject(
+                            new Error(
+                                `RECORDS row ${index} ` +
+                                `has invalid IdPubs or NUMBER`
+                            )
+                        );
+
+                        return;
+                    }
+                }
+
+
+                // =========================================
+                // PUT
+                // =========================================
+
+                try {
+
+                    store.put(row);
+
+                }
+                catch (error) {
+
+                    failed = true;
+
+                    console.error(
+                        "❌ PUT FAILED",
+                        {
+                            store: storeName,
+                            index: index,
+                            row: row,
+                            error: error,
+                            message: error.message
+                        }
+                    );
+
+                    transaction.abort();
+
+                    reject(
+                        new Error(
+                            `IndexedDB PUT failed in ` +
+                            `${storeName}, row ${index}: ` +
+                            error.message
+                        )
+                    );
+                }
+
+            });
+        }
     });
 }
-
 
 // ============================================================
 // RESTORE BACKUP FROM CLOUD
