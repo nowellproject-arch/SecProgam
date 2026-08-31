@@ -759,7 +759,7 @@ function syncGlobalsFromMonthNumber(targetNumber) {
 
     // 4. Load Data from IndexedDB
     function loadPublishersFromIndexedDB() {
-    const request = indexedDB.open("CongregationDB", 5);
+    const request = indexedDB.open("CongregationDB", 6);
 
     request.onerror = (event) => {
         console.error(
@@ -1168,7 +1168,7 @@ function savePublisherChanges() {
     currentSelectedPublisher.RP = document.getElementById('isRP')?.checked ? "1" : "0";
     currentSelectedPublisher.SF = document.getElementById('isSP')?.checked ? "1" : "0"; 
     
-    const request = indexedDB.open("CongregationDB", 5);
+    const request = indexedDB.open("CongregationDB", 6);
     request.onsuccess = (event) => {
         const db = event.target.result;
         const transaction = db.transaction(["PUBLISHERS"], "readwrite");
@@ -1466,7 +1466,7 @@ function loadS21RecordsForPublisher(selectedRecordNumber) {
         if (remSelEl) remSelEl.value = "";
     });
 
-    const request = indexedDB.open("CongregationDB", 5);
+    const request = indexedDB.open("CongregationDB", 6);
     request.onsuccess = (event) => {
         const db = event.target.result;
         const transaction = db.transaction(["RECORDS"], "readonly");
@@ -2353,7 +2353,7 @@ function onMonthOrYearChanged() {
 // 2. INDEXEDDB DATABASE OPERATIONS
 // ==========================================
 function openCongregationDB(callback) {
-    const request = indexedDB.open("CongregationDB", 5);
+    const request = indexedDB.open("CongregationDB", 6);
 
     request.onupgradeneeded = event => {
         const db = event.target.result;
@@ -3005,7 +3005,7 @@ window.checkAux = function() {
 
 
 function RecordLog(targetDateEntered = 198) {
-    const req = indexedDB.open("CongregationDB", 5);
+    const req = indexedDB.open("CongregationDB", 6);
 
     req.onsuccess = (e) => {
         const db = e.target.result;
@@ -3263,7 +3263,7 @@ async function syncMonthStatusUI() {
     // IMPORTANT:
     // Always open the database using the current application version.
     // This allows old databases to upgrade to the correct schema.
-    const request = indexedDB.open("CongregationDB", 5);
+    const request = indexedDB.open("CongregationDB", 6);
 
     request.onerror = (event) => {
         console.error(
