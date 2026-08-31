@@ -1,5 +1,5 @@
 const DB_NAME = "CongregationDB";
-const DB_VERSION = 2;
+const DB_VERSION = 5;
 
 const DB_STORES = {
     CongInfo: "passcode",
@@ -49,11 +49,18 @@ function openCongregationDB() {
             }
 
             // RECORDS
-            if (!db.objectStoreNames.contains("RECORDS")) {
-                db.createObjectStore("RECORDS", {
-                    keyPath: ["IdPubs", "NUMBER"]
-                });
+            // Recreate it if the old database has the wrong keyPath.
+            if (db.objectStoreNames.contains("RECORDS")) {
+                db.deleteObjectStore("RECORDS");
             }
+
+            db.createObjectStore("RECORDS", {
+                keyPath: ["IdPubs", "NUMBER"]
+            });
+
+            console.log(
+                "✅ IndexedDB upgraded: RECORDS keyPath is now ['IdPubs', 'NUMBER']"
+            );
         };
 
         request.onsuccess = () => {
