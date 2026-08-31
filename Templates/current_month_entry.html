@@ -1168,7 +1168,7 @@ function savePublisherChanges() {
     currentSelectedPublisher.RP = document.getElementById('isRP')?.checked ? "1" : "0";
     currentSelectedPublisher.SF = document.getElementById('isSP')?.checked ? "1" : "0"; 
     
-    const request = indexedDB.open("CongregationDB");
+    const request = indexedDB.open("CongregationDB", 5);
     request.onsuccess = (event) => {
         const db = event.target.result;
         const transaction = db.transaction(["PUBLISHERS"], "readwrite");
@@ -1466,7 +1466,7 @@ function loadS21RecordsForPublisher(selectedRecordNumber) {
         if (remSelEl) remSelEl.value = "";
     });
 
-    const request = indexedDB.open("CongregationDB");
+    const request = indexedDB.open("CongregationDB", 5);
     request.onsuccess = (event) => {
         const db = event.target.result;
         const transaction = db.transaction(["RECORDS"], "readonly");
@@ -1572,87 +1572,270 @@ function loadS21RecordsForPublisher(selectedRecordNumber) {
 // Automatically inserts a new record or updates an existing one 
 // when any input field in a row is modified.
 function saveS21MonthRecord(monthIndex, eventTarget) {
-    const targetPublisherId = eventTarget?.dataset?.publisherId;
-    
+    const targetPublisherId =
+        eventTarget?.dataset?.publisherId;
+
     if (!targetPublisherId) {
-        console.warn("⚠️ Cannot save record: No bound publisher ID found on element.");
+        console.warn(
+            "⚠️ Cannot save record: No bound publisher ID found on element."
+        );
         return;
     }
 
     const m = s21Months[monthIndex];
-    const targetNumber = getServiceMonthNumber(selectedYear, monthIndex);
+
+    const targetNumber =
+        getServiceMonthNumber(
+            selectedYear,
+            monthIndex
+        );
 
     const activeMonthIndex = Number(
-        window.currentActiveMonthIndex ?? 
-        (typeof getMonthIndex === 'function' ? getMonthIndex() : targetNumber)
+        window.currentActiveMonthIndex ??
+        (
+            typeof getMonthIndex === "function"
+                ? getMonthIndex()
+                : targetNumber
+        )
     );
 
-    const isMinistryChecked = document.getElementById(`${m.id}-ministry`)?.checked ?? false;
-    const ministryVal = isMinistryChecked ? 1 : 0;
-    const bsVal = document.getElementById(`${m.id}-studies`)?.value ? Number(document.getElementById(`${m.id}-studies`).value) : "";
-    const auxVal = document.getElementById(`${m.id}-aux`)?.checked ? 1 : 0;
-    const hrsVal = document.getElementById(`${m.id}-hours`)?.value ? Number(document.getElementById(`${m.id}-hours`).value) : "";
-    const noteVal = document.getElementById(`${m.id}-remark`)?.value || "";
-    const remarksVal = document.getElementById(`${m.id}-select`)?.value || "";
+    const isMinistryChecked =
+        document.getElementById(
+            `${m.id}-ministry`
+        )?.checked ?? false;
 
-    const isClosed = window.currentMonthClosed === true || Number(window.currentMonthClosed) === 1;
-    const dateEnteredValue = isMinistryChecked ? (isClosed ? activeMonthIndex + 1 : activeMonthIndex) : "";
+    const ministryVal =
+        isMinistryChecked ? 1 : 0;
 
-    const request = indexedDB.open("CongregationDB");
+    const bsVal =
+        document.getElementById(
+            `${m.id}-studies`
+        )?.value
+            ? Number(
+                document.getElementById(
+                    `${m.id}-studies`
+                ).value
+            )
+            : "";
+
+    const auxVal =
+        document.getElementById(
+            `${m.id}-aux`
+        )?.checked
+            ? 1
+            : 0;
+
+    const hrsVal =
+        document.getElementById(
+            `${m.id}-hours`
+        )?.value
+            ? Number(
+                document.getElementById(
+                    `${m.id}-hours`
+                ).value
+            )
+            : "";
+
+    const noteVal =
+        document.getElementById(
+            `${m.id}-remark`
+        )?.value || "";
+
+    const remarksVal =
+        document.getElementById(
+            `${m.id}-select`
+        )?.value || "";
+
+    const isClosed =
+        window.currentMonthClosed === true ||
+        Number(window.currentMonthClosed) === 1;
+
+    const dateEnteredValue =
+        isMinistryChecked
+            ? (
+                isClosed
+                    ? activeMonthIndex + 1
+                    : activeMonthIndex
+            )
+            : "";
+
+    // IMPORTANT:
+    // Always open CongregationDB using version 5.
+    const request =
+        indexedDB.open(
+            "CongregationDB",
+            5
+        );
+
+    request.onerror = (event) => {
+        console.error(
+            "❌ IndexedDB open error in saveS21MonthRecord:",
+            event.target.error
+        );
+    };
+
     request.onsuccess = (event) => {
-        const db = event.target.result;
-        const transaction = db.transaction(["RECORDS"], "readwrite");
-        const store = transaction.objectStore("RECORDS");
-        
-        const cursorRequest = store.openCursor();
+        const db =
+            event.target.result;
+
+        console.log(
+            "📦 S21 DB VERSION:",
+            db.version
+        );
+
+        if (
+            !db.objectStoreNames.contains(
+                "RECORDS"
+            )
+        ) {
+            console.error(
+                "❌ RECORDS store not found in CongregationDB."
+            );
+
+            db.close();
+            return;
+        }
+
+        const transaction =
+            db.transaction(
+                ["RECORDS"],
+                "readwrite"
+            );
+
+        const store =
+            transaction.objectStore(
+                "RECORDS"
+            );
+
+        const cursorRequest =
+            store.openCursor();
+
         let found = false;
 
         cursorRequest.onsuccess = (e) => {
-            const cursor = e.target.result;
-            if (cursor) {
-                const rec = cursor.value;
-                if (String(rec.IdPubs) === String(targetPublisherId) && Number(rec.NUMBER) === Number(targetNumber)) {
-                    found = true;
-                    
-                    rec.MINISTRY = ministryVal;
-                    rec.BS = bsVal;
-                    rec.AUX = auxVal;
-                    rec.HRS = hrsVal;
-                    rec.Note = noteVal;
-                    rec.REMARKS = remarksVal;
-                    rec.Date_entered = dateEnteredValue;
+            const cursor =
+                e.target.result;
 
-                    // 🎯 SYNC METADATA STAMPS
-                    rec.updated_at = Date.now();
+            if (cursor) {
+
+                const rec =
+                    cursor.value;
+
+                if (
+                    String(rec.IdPubs) ===
+                        String(targetPublisherId) &&
+                    Number(rec.NUMBER) ===
+                        Number(targetNumber)
+                ) {
+                    found = true;
+
+                    rec.MINISTRY =
+                        ministryVal;
+
+                    rec.BS =
+                        bsVal;
+
+                    rec.AUX =
+                        auxVal;
+
+                    rec.HRS =
+                        hrsVal;
+
+                    rec.Note =
+                        noteVal;
+
+                    rec.REMARKS =
+                        remarksVal;
+
+                    rec.Date_entered =
+                        dateEnteredValue;
+
+                    // Sync metadata
+                    rec.updated_at =
+                        Date.now();
+
                     rec.is_deleted = 0;
 
                     cursor.update(rec);
+
                     return;
                 }
-                cursor.continue();
-            } else {
-                if (!found) {
-                    const payload = {
-                        IdPubs: String(targetPublisherId),
-                        NUMBER: targetNumber,
-                        MINISTRY: ministryVal,
-                        BS: bsVal,
-                        AUX: auxVal,
-                        HRS: hrsVal,
-                        Note: noteVal,
-                        REMARKS: remarksVal,
-                        Date_entered: dateEnteredValue,
 
-                        // 🎯 SYNC METADATA STAMPS
-                        updated_at: Date.now(),
+                cursor.continue();
+
+            } else {
+
+                if (!found) {
+
+                    const payload = {
+                        IdPubs:
+                            String(
+                                targetPublisherId
+                            ),
+
+                        NUMBER:
+                            targetNumber,
+
+                        MINISTRY:
+                            ministryVal,
+
+                        BS:
+                            bsVal,
+
+                        AUX:
+                            auxVal,
+
+                        HRS:
+                            hrsVal,
+
+                        Note:
+                            noteVal,
+
+                        REMARKS:
+                            remarksVal,
+
+                        Date_entered:
+                            dateEnteredValue,
+
+                        // Sync metadata
+                        updated_at:
+                            Date.now(),
+
                         is_deleted: 0
                     };
-                    setSyncUnsaved();  
-                    const addReq = store.add(payload);
-                    addReq.onsuccess = () => console.log(`✨ Record saved with sync timestamps for publisher ${targetPublisherId}`);
-                    addReq.onerror = (err) => console.error("❌ Error adding record:", err.target.error);
+
+                    setSyncUnsaved();
+
+                    const addReq =
+                        store.add(payload);
+
+                    addReq.onsuccess = () => {
+                        console.log(
+                            `✨ Record saved with sync timestamps for publisher ${targetPublisherId}`
+                        );
+                    };
+
+                    addReq.onerror = (err) => {
+                        console.error(
+                            "❌ Error adding record:",
+                            err.target.error
+                        );
+                    };
                 }
             }
+        };
+
+        transaction.oncomplete = () => {
+            db.close();
+        };
+
+        transaction.onerror = (event) => {
+            console.error(
+                "❌ S21 transaction error:",
+                event.target.error
+            );
+
+            db.close();
         };
     };
 }
@@ -2172,11 +2355,54 @@ function onMonthOrYearChanged() {
 function openCongregationDB(callback) {
     const request = indexedDB.open("CongregationDB", 5);
 
-    request.onsuccess = (event) => {
+    request.onupgradeneeded = event => {
+        const db = event.target.result;
+
+        console.log(
+            `🔄 IndexedDB upgrade: ${event.oldVersion} → ${event.newVersion}`
+        );
+
+        if (!db.objectStoreNames.contains("CongInfo")) {
+            db.createObjectStore("CongInfo", {
+                keyPath: "passcode"
+            });
+        }
+
+        if (!db.objectStoreNames.contains("GROUPS")) {
+            db.createObjectStore("GROUPS", {
+                keyPath: "Group"
+            });
+        }
+
+        if (!db.objectStoreNames.contains("PUBLISHERS")) {
+            db.createObjectStore("PUBLISHERS", {
+                keyPath: "IDPub"
+            });
+        }
+
+        if (!db.objectStoreNames.contains("MonthlyRecords")) {
+            db.createObjectStore("MonthlyRecords", {
+                keyPath: "NUMBER"
+            });
+        }
+
+        if (!db.objectStoreNames.contains("RECORDS")) {
+            db.createObjectStore("RECORDS", {
+                keyPath: ["IdPubs", "NUMBER"]
+            });
+        }
+
+        console.log(
+            "✅ IndexedDB stores created:",
+            Array.from(db.objectStoreNames)
+        );
+    };
+
+    request.onsuccess = event => {
         callback(event.target.result);
     };
 
-    request.onerror = (event) => {
+    request.onerror = event => {
         console.error(
             "❌ IndexedDB open error:",
             event.target.error
@@ -2779,7 +3005,7 @@ window.checkAux = function() {
 
 
 function RecordLog(targetDateEntered = 198) {
-    const req = indexedDB.open("CongregationDB");
+    const req = indexedDB.open("CongregationDB", 5);
 
     req.onsuccess = (e) => {
         const db = e.target.result;
