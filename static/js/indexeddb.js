@@ -167,9 +167,55 @@ async function saveAllTablesToIndexedDB(allTablesData) {
 
                 try {
 
-                    // Special validation for RECORDS
                     if (storeName === "RECORDS") {
 
+                        // DEBUG: inspect the problem area
+                        if (index >= 2725 && index <= 2729) {
+
+                            console.log(
+                                "🔍 RECORDS DEBUG ROW",
+                                index,
+                                JSON.stringify(row, null, 2)
+                            );
+
+                            console.log(
+                                "🔑 IdPubs:",
+                                row.IdPubs,
+                                "type:",
+                                typeof row.IdPubs
+                            );
+
+                            console.log(
+                                "🔑 NUMBER:",
+                                row.NUMBER,
+                                "type:",
+                                typeof row.NUMBER
+                            );
+                        }
+
+                        // Validate BOTH key fields
+                        if (
+                            !Object.prototype.hasOwnProperty.call(row, "IdPubs") ||
+                            !Object.prototype.hasOwnProperty.call(row, "NUMBER")
+                        ) {
+
+                            console.error(
+                                "🚨 MISSING INDEXEDDB KEY",
+                                {
+                                    store: storeName,
+                                    rowIndex: index,
+                                    row: row,
+                                    keys: Object.keys(row)
+                                }
+                            );
+
+                            throw new Error(
+                                `RECORDS row ${index} is missing ` +
+                                `IdPubs or NUMBER`
+                            );
+                        }
+
+                        // Reject undefined/null specifically
                         if (
                             row.IdPubs === undefined ||
                             row.IdPubs === null ||
@@ -178,20 +224,18 @@ async function saveAllTablesToIndexedDB(allTablesData) {
                         ) {
 
                             console.error(
-                                "❌ INVALID RECORDS ROW",
+                                "🚨 INVALID INDEXEDDB KEY VALUE",
                                 {
-                                    index: index,
-                                    row: row,
+                                    rowIndex: index,
                                     IdPubs: row.IdPubs,
                                     NUMBER: row.NUMBER,
-                                    keys: Object.keys(row)
+                                    row: row
                                 }
                             );
 
                             throw new Error(
-                                `RECORDS row ${index} is missing ` +
-                                `${row.IdPubs === undefined || row.IdPubs === null ? "IdPubs" : ""}` +
-                                `${row.NUMBER === undefined || row.NUMBER === null ? " NUMBER" : ""}`
+                                `RECORDS row ${index} has invalid ` +
+                                `IdPubs or NUMBER`
                             );
                         }
                     }
