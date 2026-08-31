@@ -161,10 +161,43 @@ async function saveAllTablesToIndexedDB(allTablesData) {
                 continue;
             }
 
-            rows.forEach((row, index) => {
+            
+
+        rows.forEach((row, index) => {
 
                 try {
+
+                    // Special validation for RECORDS
+                    if (storeName === "RECORDS") {
+
+                        if (
+                            row.IdPubs === undefined ||
+                            row.IdPubs === null ||
+                            row.NUMBER === undefined ||
+                            row.NUMBER === null
+                        ) {
+
+                            console.error(
+                                "❌ INVALID RECORDS ROW",
+                                {
+                                    index: index,
+                                    row: row,
+                                    IdPubs: row.IdPubs,
+                                    NUMBER: row.NUMBER,
+                                    keys: Object.keys(row)
+                                }
+                            );
+
+                            throw new Error(
+                                `RECORDS row ${index} is missing ` +
+                                `${row.IdPubs === undefined || row.IdPubs === null ? "IdPubs" : ""}` +
+                                `${row.NUMBER === undefined || row.NUMBER === null ? " NUMBER" : ""}`
+                            );
+                        }
+                    }
+
                     store.put(row);
+
                 }
                 catch (error) {
 
@@ -183,6 +216,10 @@ async function saveAllTablesToIndexedDB(allTablesData) {
                     );
                 }
             });
+
+
+
+
         }
 
         transaction.oncomplete = () => {
