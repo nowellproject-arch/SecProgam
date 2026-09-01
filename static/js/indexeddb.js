@@ -95,7 +95,7 @@ function openCongregationDB() {
 // ========================================
 function openIndexedDB() {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open("CongregationDB", 2);
+        const request = indexedDB.open("CongregationDB", 7);
 
         request.onupgradeneeded = event => {
             const db = event.target.result;
