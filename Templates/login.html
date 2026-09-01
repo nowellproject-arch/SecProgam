@@ -59,30 +59,28 @@ if (localStorage.getItem('user_passcode') && localStorage.getItem('username')) {
   window.location.href = '/';
 }
 
-// 2. Primary key mappings to avoid key collisions
 const PRIMARY_KEYS = {
-  CongInfo: 'passcode',
-  GROUPS: 'id',
-  PUBLISHERS: 'IDPub',
-  MonthlyRecords: 'ID',
-  RECORDS: 'id'
+    CongInfo: 'passcode',
+    GROUPS: 'Group',
+    PUBLISHERS: 'IDPub',
+    MonthlyRecords: 'NUMBER',
+    RECORDS: ['IdPubs', 'NUMBER']
 };
 
-// 3. Store name mapping to preserve uppercase names for queries
 const STORE_MAP = {
-  publishers: 'PUBLISHERS',
-  records: 'RECORDS',
-  monthlyrecords: 'MonthlyRecords',
-  groups: 'GROUPS',
-  conginfo: 'CongInfo'
+    publishers: 'PUBLISHERS',
+    records: 'RECORDS',
+    monthlyrecords: 'MonthlyRecords',
+    groups: 'GROUPS',
+    conginfo: 'CongInfo'
 };
 
 const REQUIRED_STORES = {
-  CongInfo: 'passcode',
-  GROUPS: 'id',
-  PUBLISHERS: 'IDPub',
-  MonthlyRecords: 'ID',
-  RECORDS: 'id'
+    CongInfo: 'passcode',
+    GROUPS: 'Group',
+    PUBLISHERS: 'IDPub',
+    MonthlyRecords: 'NUMBER',
+    RECORDS: ['IdPubs', 'NUMBER']
 };
 
 function saveToIndexedDB(data) {

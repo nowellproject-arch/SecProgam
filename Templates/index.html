@@ -526,10 +526,25 @@
 
 // 1. TAB CONFIGURATION & ROUTER
 const TAB_CONFIG = {
-  'tab-1': { form: 'current_month_entry.html', callback: () => renderCurrentMonthData() },
-  'tab-2': { form: 'PublishersRecord.html', callback: () => window.renderPublisherData?.() },
-  'tab-3': { form: 'congregation_analysis.html', callback: () => window.renderAnalysisData?.() },
-  'tab-4': { form: 'congregation_report.html', callback: () => window.renderReportData?.() }
+    'tab-1': {
+        form: 'current_month_entry.html',
+        callback: () => window.renderCurrentMonthData?.()
+    },
+
+    'tab-2': {
+        form: 'PublishersRecord.html',
+        callback: () => window.renderPublisherData?.()
+    },
+
+    'tab-3': {
+        form: 'congregation_analysis.html',
+        callback: () => window.renderAnalysisData?.()
+    },
+
+    'tab-4': {
+        form: 'congregation_report.html',
+        callback: () => window.renderReportData?.()
+    }
 };
 
 

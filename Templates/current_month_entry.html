@@ -1664,7 +1664,7 @@ function saveS21MonthRecord(monthIndex, eventTarget) {
     const request =
         indexedDB.open(
             "CongregationDB",
-            5
+            7
         );
 
     request.onerror = (event) => {
@@ -3611,7 +3611,6 @@ function updateSidebarClosedState() {
             request.onsuccess = (e) => handleRecordResult(e.target.result);
             request.onerror = () => handleRecordResult(undefined);
         } else {
-            console.warn("⚠️ Index 'NUMBER' missing on MonthlyRecords. Using getAll fallback.");
             const getAllReq = store.getAll();
             getAllReq.onsuccess = (e) => {
                 const records = e.target.result || [];
