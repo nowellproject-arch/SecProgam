@@ -575,40 +575,49 @@
 <script>
 
 // ==========================================
-// 1. STATE & HELPERS (Must be at the very top)
+// 1. STATE & HELPERS
 // ==========================================
-let activeCalendarMonth = new Date().getMonth(); // 0 = Jan, 7 = Aug, etc.
-let activeCalendarYear = new Date().getFullYear();   // e.g., 2026
 
-// 🎯 DEDICATED SERVICE YEAR STATE (Separated from UI / Calendar Year)
-// Calculates the Service Year automatically based on current date:
-// Sept-Dec = Next Year (SY), Jan-Aug = Current Year (SY)
-let activeServiceYear = (activeCalendarMonth >= 8) ? activeCalendarYear + 1 : activeCalendarYear;
+const today = new Date();
+
+let activeCalendarMonth = today.getMonth() - 1;
+let activeCalendarYear = today.getFullYear();
+
+if (activeCalendarMonth < 0) {
+    activeCalendarMonth = 11;
+    activeCalendarYear--;
+}
+
+function calculateServiceYear(month, year) {
+    return month >= 8
+        ? year + 1
+        : year;
+}
+
+let activeServiceYear = calculateServiceYear(
+    activeCalendarMonth,
+    activeCalendarYear
+);
+
 
 const calendarMonthNames = [
-    "January", "February", "March", "April", "May", "June", 
-    "July", "August", "September", "October", "November", "December"
+    "January", "February", "March", "April",
+    "May", "June", "July", "August",
+    "September", "October", "November", "December"
 ];
 
-
-
 function setServiceYear(year) {
-    // 🎯 If year is omitted, calculate dynamically based on current date
-    // (September = month index 8 or later advances to next Service Year)
     if (year === undefined || year === null) {
-        const now = new Date();
-        const currentMonth = now.getMonth();
-        const currentYear = now.getFullYear();
-        activeServiceYear = currentMonth >= 8 ? currentYear + 1 : currentYear;
+        activeServiceYear = calculateServiceYear(
+            activeCalendarMonth,
+            activeCalendarYear
+        );
     } else {
         activeServiceYear = Number(year);
     }
-
-    // Keep global legacy reference synced
-    window.selectedYear = activeServiceYear; 
-
-    // 🎯 Dynamically update the header element if present in DOM
-    const yearEl = document.getElementById('serviceYearDisplay');
+    window.selectedYear = activeServiceYear;
+    const yearEl =
+        document.getElementById('serviceYearDisplay');
     if (yearEl) {
         yearEl.textContent = activeServiceYear;
     }
@@ -1345,13 +1354,38 @@ function updateKeyboardSelection(items) {
     });
 }
 
-// 🎯 Calculate initial Service Year (Sept-Dec belongs to next Service Year)
-// 🎯 Calculate current Service Year base
-const now = new Date();
-const currentRealMonth = now.getMonth();
-const currentRealYear = now.getFullYear();
-const currentServiceYear = currentRealMonth >= 8 ? currentRealYear + 1 : currentRealYear;
+// ==========================================
+// CURRENT ACTIVE SERVICE YEAR
+// Reporting month changes every 21st
+// ==========================================
+
+const serviceYearNow = new Date();
+
+let effectiveMonth = serviceYearNow.getMonth();
+let effectiveYear = serviceYearNow.getFullYear();
+
+// Before the 21st, we are still working on previous month's report
+if (serviceYearNow.getDate() < 21) {
+    effectiveMonth--;
+
+    if (effectiveMonth < 0) {
+        effectiveMonth = 11;
+        effectiveYear--;
+    }
+}
+
+// Calculate Service Year from EFFECTIVE report month
+const currentServiceYear =
+    effectiveMonth >= 8
+        ? effectiveYear + 1
+        : effectiveYear;
+
 const previousServiceYear = currentServiceYear - 1;
+
+console.log("📅 Real Date:", serviceYearNow.toDateString());
+console.log("📅 Effective Report Month:", effectiveMonth);
+console.log("📅 Current Service Year:", currentServiceYear);
+console.log("📅 Previous Service Year:", previousServiceYear);
 
 // Default active selection to current Service Year
 let selectedYear = typeof activeServiceYear !== 'undefined' 
@@ -1437,7 +1471,7 @@ function getServiceMonthNumber(serviceYear, monthIndex) {
 // Optimized and compatible replacement for your loadS21RecordsForPublisher function
 function loadS21RecordsForPublisher(selectedRecordNumber) {
     if (!currentSelectedPublisher || !currentSelectedPublisher.IDPub) return;
-    cleanS21Records();
+   
     
     const activePublisherId = currentSelectedPublisher.IDPub;
 
@@ -1825,6 +1859,7 @@ function saveS21MonthRecord(monthIndex, eventTarget) {
             }
         };
 
+        updateCurrentMonthDebugStorage();
         transaction.oncomplete = () => {
             db.close();
         };
@@ -1997,84 +2032,71 @@ document.addEventListener('input', (e) => {
     }
 });
 
-async function cleanS21Records() {
-    if (!window.recordsData || !Array.isArray(window.recordsData)) {
-        console.warn("⚠️ [cleanS21Records]: window.recordsData is not initialized or not an array.");
-        return [];
-    }
 
-    const initialCount = window.recordsData.length;
+// storage show all date_Entered
+function updateCurrentMonthDebugStorage() {
 
-    const isTrueMarker = (val) => {
-        if (val === null || val === undefined) return false;
-        if (typeof val === "boolean") return val;
-        if (typeof val === "number") return val === 1 || val === -1;
-        const str = String(val).trim().toUpperCase();
-        return ["1", "Y", "YES", "TRUE", "-1"].includes(str);
+    const currentMonthID = Number(
+        window.currentActiveMonthIndex
+    );
+
+    const request = indexedDB.open(
+        "CongregationDB",
+        7
+    );
+
+    request.onsuccess = (event) => {
+
+        const db = event.target.result;
+
+        const tx = db.transaction(
+            ["RECORDS"],
+            "readonly"
+        );
+
+        const store = tx.objectStore("RECORDS");
+
+        const getAllRequest = store.getAll();
+
+        getAllRequest.onsuccess = () => {
+
+            const currentMonthRecords =
+                getAllRequest.result.filter(record =>
+                    Number(record.Date_entered) === currentMonthID
+                );
+
+            const storageData = {
+                CurrentMonthID: currentMonthID,
+                UpdatedAt: new Date().toISOString(),
+                TotalRecords: currentMonthRecords.length,
+                Records: currentMonthRecords
+            };
+
+            // 💾 ACTUALLY SAVE INTO LOCAL STORAGE
+            localStorage.setItem(
+                "CurrentMonthReportedPublishers",
+                JSON.stringify(storageData)
+            );
+
+            db.close();
+        };
+
+        getAllRequest.onerror = () => {
+            console.error(
+                "❌ Failed to read RECORDS."
+            );
+
+            db.close();
+        };
     };
 
-    const recordsToKeep = [];
-    const garbageRecords = [];
-
-    window.recordsData.forEach((rec, index) => {
-        // 1. Check for missing Publisher ID
-        const pubId = rec.IdPubs ?? rec.IDPub ?? rec.idpubs;
-        const hasPubId = pubId !== null && pubId !== undefined && String(pubId).trim() !== "";
-
-        // 2. Check for missing NUMBER
-        const hasNumber = rec.NUMBER !== null && rec.NUMBER !== undefined && !isNaN(Number(rec.NUMBER));
-
-        // Rule 1 & 2: Missing PubID OR NUMBER -> Garbage
-        if (!hasPubId || !hasNumber) {
-            console.log(`🗑️ [Garbage - Missing ID/NUMBER] Index ${index}:`, rec);
-            garbageRecords.push(rec);
-            return;
-        }
-
-        // 3. Check for actual service activity (Date_entered is intentionally ignored)
-        const hasMinistry = isTrueMarker(rec.MINISTRY);
-        const hasHours = Number(rec.HRS || 0) > 0;
-        const hasStudies = Number(rec.BS || 0) > 0;
-        const hasServiceActivity = hasMinistry || hasHours || hasStudies;
-
-        // Check for remarks or AUX flag
-        const remVal = rec.REMARKS ?? rec.remarks ?? rec.Remark ?? rec.Note ?? rec.note;
-        const hasRemarks = remVal !== null && remVal !== undefined && String(remVal).trim() !== "";
-        const isAux = isTrueMarker(rec.AUX ?? rec.aux ?? rec.Aux);
-
-        // Rule 3: Valid ID & NUMBER, but MINISTRY = 0 (and no hours/studies/remarks/AUX)
-        // Even if Date_entered is filled (e.g. 205), this evaluates to true
-        const isGarbage = !hasServiceActivity && !hasRemarks && !isAux;
-
-        if (isGarbage) {
-            console.log(`🗑️ [Garbage - No Activity/Ministry=0] Index ${index}:`, rec);
-            garbageRecords.push(rec);
-        } else {
-            recordsToKeep.push(rec);
-        }
-    });
-
-    // Update in-memory array
-    window.recordsData = recordsToKeep;
-    const removedCount = initialCount - window.recordsData.length;
-    console.log(`🧹 [Clean In-Memory]: Filtered out ${removedCount} garbage records. Remaining: ${window.recordsData.length}`);
-
-    // Permanently purge from IndexedDB
-    if (garbageRecords.length > 0) {
-        try {
-            await removeRecordsFromIndexedDB(garbageRecords);
-            console.log(`✅ [IndexedDB Sync]: Purged ${garbageRecords.length} garbage records from IndexedDB.`);
-        } catch (err) {
-            console.error("❌ [IndexedDB Purge Failed]:", err);
-        }
-    }
-
-    if (typeof calculateMonthlySummaryMetrics === 'function') {
-        calculateMonthlySummaryMetrics();
-    }
-
-    return window.recordsData;
+    request.onerror = () => {
+        console.error(
+            "❌ Failed to open IndexedDB."
+        );
+    };
 }
+
 
 function removeRecordsFromIndexedDB(garbageRecords) {
     return new Promise((resolve, reject) => {
@@ -2169,9 +2191,7 @@ function selectPublisher(p, itemElement) {
     setTimeout(() => {
         loadS21RecordsForPublisher();
         
-        if (typeof cleanS21Records === 'function') {
-            cleanS21Records();
-        }
+ 
 
         // 🔓 Unlock saves after the DOM and inputs have fully settled
         isSwitchingPublisher = false;
@@ -3243,6 +3263,7 @@ function updateMonthDisplay() {
     const monthName = calendarMonthNames[activeCalendarMonth] || "";
     displayEl.textContent = `${monthName} ${activeCalendarYear}`;
 }
+
 async function syncMonthStatusUI() {
     const btn = document.getElementById("monthStatusBtn");
     if (!btn) return;

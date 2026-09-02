@@ -147,9 +147,7 @@ function openIndexedDB() {
 // CLEAR ALL 5 STORES AND IMPORT CRB DATA
 // ============================================================
 async function saveAllTablesToIndexedDB(allTablesData) {
-
     const db = await openIndexedDB();
-
     const storeNames = [
         "CongInfo",
         "GROUPS",
@@ -159,62 +157,44 @@ async function saveAllTablesToIndexedDB(allTablesData) {
     ];
 
     return new Promise((resolve, reject) => {
-
         const transaction =
             db.transaction(storeNames, "readwrite");
-
         let failed = false;
-
         transaction.oncomplete = () => {
-
             db.close();
-
             console.log(
                 "✅ All 5 IndexedDB stores imported successfully."
             );
-
             resolve(true);
         };
-
         transaction.onerror = () => {
-
             console.error(
                 "❌ IndexedDB TRANSACTION ERROR:",
                 transaction.error
             );
-
             db.close();
-
             reject(
                 transaction.error ||
                 new Error("IndexedDB transaction failed.")
             );
         };
-
         transaction.onabort = () => {
-
             console.error(
                 "❌ IndexedDB TRANSACTION ABORTED:",
                 transaction.error
             );
-
             db.close();
-
             reject(
                 transaction.error ||
                 new Error("IndexedDB transaction aborted.")
             );
         };
-
-
         for (const storeName of storeNames) {
 
             const store =
                 transaction.objectStore(storeName);
-
             const rows =
                 allTablesData[storeName];
-
             console.log(
                 `📥 Importing ${storeName}:`,
                 Array.isArray(rows)
@@ -222,40 +202,26 @@ async function saveAllTablesToIndexedDB(allTablesData) {
                     : 0,
                 "records"
             );
-
-
             // ---------------------------------------------
             // CLEAR EXISTING DATA
             // ---------------------------------------------
-
             store.clear();
-
-
             if (!Array.isArray(rows)) {
                 continue;
             }
-
-
             // ---------------------------------------------
             // INSERT RECORDS
             // ---------------------------------------------
-
             rows.forEach((row, index) => {
-
                 if (failed) return;
-
-
                 // =========================================
                 // SPECIAL CHECK FOR RECORDS
                 // =========================================
-
                 if (storeName === "RECORDS") {
-
                     if (
                         index >= 2720 &&
                         index <= 2730
                     ) {
-
                         console.log(
                             "🔍 RECORDS DEBUG:",
                             {
@@ -272,25 +238,17 @@ async function saveAllTablesToIndexedDB(allTablesData) {
                             }
                         );
                     }
-
-
                     // Check property existence
-
                     const hasIdPubs =
                         Object.prototype
                             .hasOwnProperty
                             .call(row, "IdPubs");
-
                     const hasNUMBER =
                         Object.prototype
                             .hasOwnProperty
                             .call(row, "NUMBER");
-
-
                     if (!hasIdPubs || !hasNUMBER) {
-
                         failed = true;
-
                         console.error(
                             "🚨 INVALID RECORD FOUND",
                             {
@@ -304,9 +262,7 @@ async function saveAllTablesToIndexedDB(allTablesData) {
                                 keys: Object.keys(row)
                             }
                         );
-
                         transaction.abort();
-
                         reject(
                             new Error(
                                 `RECORDS row ${index} is missing ` +
@@ -314,13 +270,9 @@ async function saveAllTablesToIndexedDB(allTablesData) {
                                 `${!hasNUMBER ? " NUMBER" : ""}`
                             )
                         );
-
                         return;
                     }
-
-
                     // Check undefined/null
-
                     if (
                         row.IdPubs === undefined ||
                         row.IdPubs === null ||
@@ -352,7 +304,6 @@ async function saveAllTablesToIndexedDB(allTablesData) {
                         return;
                     }
                 }
-
 
                 // =========================================
                 // PUT
@@ -744,7 +695,6 @@ async function handleExportBackup(event) {
       // ----------------------------------------------------
         // 4. import from downloaded backup
         // ----------------------------------------------------
-
 async function handleImportBackup(event) {
     event?.stopPropagation();
 
@@ -758,16 +708,29 @@ async function handleImportBackup(event) {
 
         if (!file) return;
 
-        console.log(
-            "📂 Selected CRB:",
-            file.name
-        );
+        console.log("📂 Selected CRB:", file.name);
+
+        const syncStatus =
+            window.parent.document.getElementById("sync-status");
 
         try {
-            // Read CRB file
+
+            // ====================================================
+            // 1. SHOW IMPORTING STATUS
+            // ====================================================
+
+            if (syncStatus) {
+                syncStatus.style.display = "inline";
+                syncStatus.textContent = "● Importing...";
+                syncStatus.style.color = "#ffc107";
+            }
+
+            // ====================================================
+            // 2. READ CRB FILE
+            // ====================================================
+
             const text = await file.text();
 
-            // Convert JSON text to object
             let backupData;
 
             try {
@@ -779,7 +742,10 @@ async function handleImportBackup(event) {
                 );
             }
 
-            // Required IndexedDB stores
+            // ====================================================
+            // 3. REQUIRED INDEXEDDB STORES
+            // ====================================================
+
             const storeNames = [
                 "CongInfo",
                 "GROUPS",
@@ -788,32 +754,36 @@ async function handleImportBackup(event) {
                 "RECORDS"
             ];
 
-            // Validate backup structure
+            // ====================================================
+            // 4. VALIDATE BACKUP STRUCTURE
+            // ====================================================
+
             for (const storeName of storeNames) {
 
-                if (!Object.prototype.hasOwnProperty.call(
-                    backupData,
-                    storeName
-                )) {
+                if (
+                    !Object.prototype.hasOwnProperty.call(
+                        backupData,
+                        storeName
+                    )
+                ) {
                     throw new Error(
                         `Missing table: ${storeName}`
                     );
                 }
 
-                if (!Array.isArray(
-                    backupData[storeName]
-                )) {
+                if (!Array.isArray(backupData[storeName])) {
                     throw new Error(
                         `${storeName} is not an array.`
                     );
                 }
             }
 
-            console.log(
-                "✅ CRB structure validated."
-            );
+            console.log("✅ CRB structure validated.");
 
-            // Show what will be imported
+            // ====================================================
+            // 5. CONFIRM IMPORT
+            // ====================================================
+
             const summary = storeNames.map(
                 storeName =>
                     `${storeName}: ` +
@@ -821,21 +791,25 @@ async function handleImportBackup(event) {
             );
 
             const confirmed = confirm(
-                "IMPORT BACKUP\n\n" +
-                "This will replace the existing " +
-                "IndexedDB data.\n\n" +
-                summary.join("\n") +
-                "\n\nContinue?"
+                "Import this backup?\n\n" +
+                "This will replace the current local data."
             );
 
             if (!confirmed) {
-                console.log(
-                    "⚠️ CRB import cancelled."
-                );
+
+                console.log("⚠️ CRB import cancelled.");
+
+                if (syncStatus) {
+                    syncStatus.style.display = "none";
+                }
+
                 return;
             }
 
-            // Replace all 5 IndexedDB stores
+            // ====================================================
+            // 6. IMPORT INTO INDEXEDDB
+            // ====================================================
+
             console.log(
                 "📥 Importing CRB into IndexedDB..."
             );
@@ -848,13 +822,20 @@ async function handleImportBackup(event) {
                 "✅ CRB imported successfully."
             );
 
-            alert(
-                "Backup imported successfully!\n\n" +
-                "The 5 IndexedDB tables have been " +
-                "replaced with the backup."
-            );
+            // ====================================================
+            // 7. SHOW RESTORED STATUS
+            // ====================================================
 
-            // Reload application
+            if (syncStatus) {
+                syncStatus.style.display = "inline";
+                syncStatus.textContent = "● Restored";
+                syncStatus.style.color = "#28a745";
+            }
+
+            // ====================================================
+            // 8. RELOAD APPLICATION
+            // ====================================================
+
             location.reload();
 
         }
@@ -865,10 +846,17 @@ async function handleImportBackup(event) {
                 error
             );
 
-            alert(
-                "Backup import failed.\n\n" +
-                error.message
-            );
+            // ====================================================
+            // SHOW ERROR WITHOUT ALERT
+            // ====================================================
+
+            if (syncStatus) {
+                syncStatus.style.display = "inline";
+                syncStatus.textContent =
+                    "● Import failed";
+                syncStatus.style.color = "#dc3545";
+                syncStatus.title = error.message;
+            }
         }
     };
 

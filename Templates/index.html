@@ -34,11 +34,19 @@
       height: 100%;
       background-color: #d96b00; /* Official orange accent */
       display: flex;
-      align-items: center;
+      align-items: baseline;     /* Aligns text along the bottom reading line */
+      gap: 6px;                  /* Space between title and version */
       padding: 0 15px;
       font-weight: bold;
       font-size: 18px;
       letter-spacing: 0.5px;
+    }
+
+    /* Super small version styling */
+    .logo-section .version {
+      font-size: 10px;
+      font-weight: normal;
+      opacity: 0.85;
     }
 
     .top-nav {
@@ -209,7 +217,7 @@
 <div class="top-bar">
 
   <div class="logo-section">
-    SecProgram Version 1.5
+    SecProgram <span class="version">Version 10.8</span>
   </div>
 
   <nav class="top-nav">
@@ -269,8 +277,8 @@
     "
   >
     <svg
-      width="32"
-      height="32"
+      width="38"
+      height="38"
       viewBox="0 0 86 52"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
@@ -288,8 +296,8 @@
           C69 36 64 40 57 40
           H25
         "
-        stroke="#FFB347"
-        stroke-width="3"
+        stroke="#8F00FF"
+        stroke-width="5"
         stroke-linecap="round"
         stroke-linejoin="round"
       />
@@ -305,7 +313,7 @@
           M42 14
           L52 24
         "
-        stroke="#FFB347"
+        stroke="#8F00FF"
         stroke-width="3"
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -578,15 +586,24 @@ async function logout() {
 
 // 2. TAB SWITCHING LOGIC
 async function switchTab(event, tabId) {
-  document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
-  document.querySelectorAll('.top-nav button, .tab-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelectorAll('.tab-panel')
+    .forEach(panel => panel.classList.remove('active'));
+
+  document.querySelectorAll('.top-nav button, .tab-btn')
+    .forEach(btn => btn.classList.remove('active'));
 
   const activePanel = document.getElementById(tabId);
   if (!activePanel) return;
 
   activePanel.classList.add('active');
+
+  // Activate clicked button, or the button matching tabId
   if (event && event.currentTarget) {
     event.currentTarget.classList.add('active');
+  } else {
+    document.querySelector(
+      `.top-nav button[onclick*="'${tabId}'"]`
+    )?.classList.add('active');
   }
 
   const config = TAB_CONFIG[tabId];
@@ -596,7 +613,9 @@ async function switchTab(event, tabId) {
     await loadSubForm(tabId, config.form, config.callback);
   } else {
     // If already loaded, just run the render callback directly
-    if (typeof config.callback === 'function') config.callback();
+    if (typeof config.callback === 'function') {
+      config.callback();
+    }
   }
 }
 
@@ -624,37 +643,9 @@ async function loadSubForm(tabId, filename, callback) {
 
 
 
-// 5. FETCH FROM BACKEND AND CACHE LOCALLY
-async function loadAllTablesAndCache() {
-  try {
-    // Retrieve the passcode saved during login
-    const passcode = localStorage.getItem("user_passcode");
-    
-    if (!passcode) {
-      console.warn("⚠️ No passcode found in storage. Please log in first.");
-      return;
-    }
-
-    const response = await fetch(`http://127.0.0.1:8000/api/reports?passcode=${encodeURIComponent(passcode)}`);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: Failed to fetch reports`);
-    }
-
-    const result = await response.json();
-    
-    // Your backend returns data wrapped in a "data" object
-    if (result.status === "success" && result.data) {
-      await saveAllTablesToIndexedDB(result.data);
-      console.log("✅ Tables successfully cached into IndexedDB.");
-    }
-  } catch (error) {
-    console.error('❌ Error loading tables from backend:', error);
-  }
-}
 
 
-
+// ============================================================ Refresh onload
 document.addEventListener("DOMContentLoaded", async () => {
 
     // 1. AUTHENTICATION GUARD
@@ -671,8 +662,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     console.log("🚀 Initializing application...");
 
-    // 2. Fetch backend data and cache into IndexedDB
-    await loadAllTablesAndCache();
+    // 2. Load existing data from IndexedDB
+    const allTablesData =
+        await loadTablesFromIndexedDB();
 
     // 3. Restore sync-status visibility
     const syncStatus =
@@ -684,7 +676,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (syncStatus) {
 
         if (syncUnsaved) {
-            // Local changes exist → keep Saved hidden
             syncStatus.style.display = "none";
 
             console.log(
@@ -692,7 +683,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             );
 
         } else {
-            // No unsaved changes → show Saved
             syncStatus.style.display = "inline";
             syncStatus.textContent = "● Saved";
             syncStatus.style.color = "#28a745";
@@ -706,37 +696,53 @@ document.addEventListener("DOMContentLoaded", async () => {
     // 4. Load the active tab interface
     await switchTab(null, "tab-1");
 });
-/**
- * Filters out invalid or inactive records ("garbage") from raw database arrays.
- * 
- * @param {Array<Object>} records - Array of IndexedDB store items
- * @returns {Array<Object>} Sanitized array containing valid records only
- */
-function sanitizeStoreRecords(records) {
-  if (!Array.isArray(records)) return [];
 
-  return records.filter((item) => {
-    // 1. Filter out entries missing essential identification properties
-    const hasValidIdentifier = Boolean(
-      item.id || 
-      item.ID || 
-      item.number || 
-      item.NUMBER || 
-      item.publisher_id
-    );
-    if (!hasValidIdentifier) return false;
+// ============================================================
+async function loadTablesFromIndexedDB() {
+    const db = await openIndexedDB();
 
-    // 2. Filter out entries with zero activity / ministry metrics
-    const hasActivity = 
-      (item.ministry && item.ministry !== 0) ||
-      (item.hours && item.hours > 0) ||
-      (item.shared_in_ministry === true) ||
-      (item.active === true);
+    const storeNames = [
+        "CongInfo",
+        "GROUPS",
+        "PUBLISHERS",
+        "MonthlyRecords",
+        "RECORDS"
+    ];
 
-    // Keep records that have a valid ID AND active data
-    return hasValidIdentifier && hasActivity;
-  });
+    const data = {};
+
+    return new Promise((resolve, reject) => {
+        const transaction =
+            db.transaction(storeNames, "readonly");
+
+        transaction.oncomplete = () => {
+            db.close();
+            console.log("✅ Loaded application data from IndexedDB.");
+            resolve(data);
+        };
+
+        transaction.onerror = () => {
+            db.close();
+            reject(transaction.error);
+        };
+
+        for (const storeName of storeNames) {
+            const request =
+                transaction.objectStore(storeName).getAll();
+
+            request.onsuccess = () => {
+                data[storeName] = request.result;
+
+                console.log(
+                    `📖 ${storeName}:`,
+                    request.result.length,
+                    "records"
+                );
+            };
+        }
+    });
 }
+
 
 // ============================================================
 // EXPORT ALL 5 INDEXEDDB STORES
