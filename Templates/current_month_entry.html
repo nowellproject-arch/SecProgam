@@ -879,7 +879,10 @@ function renderListbox(filter = "", category = "ACTIVE PUBLISHERS") {
     }
 
     // Get target MonthIndex
-    const targetMonthIndex = Number(typeof getMonthIndex === 'function' ? getMonthIndex() : 0);
+    const targetMonthIndex = Number(
+    window.currentActiveMonthIndex ??
+    (typeof getMonthIndex === 'function' ? getMonthIndex() : 0)
+    );
 
     // Helper: Robust Legacy Marker Normalization
     const isTrueMarker = (val) => {
@@ -897,64 +900,104 @@ function renderListbox(filter = "", category = "ACTIVE PUBLISHERS") {
     let reportedAuxs = [];
     let reportedRps = [];
 
-    const summary = window.currentMonthSummary || null;
+    const isReportCategory = [
+        "ALL PUBLISHERS REPORTED",
+        "ALL AUX REPORTED",
+        "ALL RP REPORTED"
+        ].includes(
+            String(category || "").toUpperCase().trim()
+        );
 
-    if (summary) {
-        // Map details and explicitly attach NUMBER / MonthIndex as reportNumber
-        if (summary.pub && summary.pub.details) {
-            reportedPubs = summary.pub.details.map(d => {
-                const profile = d.publisherProfile || d;
-                return { ...profile, reportNumber: Number(d.NUMBER ?? d.NUMBER_ ?? d.MonthIndex ?? targetMonthIndex) };
-            });
-        }
-        if (summary.aux && summary.aux.details) {
-            reportedAuxs = summary.aux.details.map(d => {
-                const profile = d.publisherProfile || d;
-                return { ...profile, reportNumber: Number(d.NUMBER ?? d.NUMBER_ ?? d.MonthIndex ?? targetMonthIndex) };
-            });
-        }
-        if (summary.rp && summary.rp.details) {
-            reportedRps = summary.rp.details.map(d => {
-                const profile = d.publisherProfile || d;
-                return { ...profile, reportNumber: Number(d.NUMBER ?? d.NUMBER_ ?? d.MonthIndex ?? targetMonthIndex) };
-            });
-        }
-    } else {
-        // Fallback if summary hasn't run yet
         const activeMonthRecords = recData.filter(r => {
-            const recordMonthNum = Number(r.NUMBER ?? r.Date_entered);
-            return recordMonthNum === targetMonthIndex;
+            if (isReportCategory) {
+                // Reported categories use ONLY Date_entered.
+                return Number(r.Date_entered) === targetMonthIndex;
+            }
+
+            // Other categories continue using NUMBER.
+            return Number(r.NUMBER) === targetMonthIndex;
         });
-        
-        activeMonthRecords.forEach(r => {
-            const rawPubId = r.IdPubs ?? r.IDPub ?? r.idpubs;
-            if (rawPubId === undefined || rawPubId === null) return;
-            
-            const pubIdStr = String(rawPubId).trim();
-            const foundPub = pubData.find(p => String(p.IDPub ?? p.IdPubs).trim() === pubIdStr) 
-                             || { LName: "Unknown", FNAME: "", IDPub: pubIdStr };
-            
-            // Attach specific record NUMBER
-            const recordNum = Number(r.NUMBER ?? r.Date_entered ?? targetMonthIndex);
-            const publisher = { ...foundPub, reportNumber: recordNum };
-            
-            const hours = Number(r.HRS || r.Hours || 0);
-            const studies = Number(r.BS || r.Studies || 0);
 
-            const remarkStr = String(r.REMARKS || r.Remarks || "").trim().toUpperCase();
-            const isRP = remarkStr.includes("RP");
-            const isAux = isTrueMarker(r.AUX ?? r.aux ?? r.AuxPioneer ?? r.Aux);
-            const hasMinistryFlag = isTrueMarker(r.MINISTRY || r.Ministry);
-            
-            const isReporting = hasMinistryFlag || hours > 0 || studies > 0;
+    activeMonthRecords.forEach(r => {
+        const rawPubId =
+            r.IdPubs ??
+            r.IDPub ??
+            r.idpubs;
 
-            if (!isReporting) return;
+        if (rawPubId === undefined || rawPubId === null) {
+            return;
+        }
 
-            if (isRP) reportedRps.push(publisher);
-            else if (isAux) reportedAuxs.push(publisher);
-            else reportedPubs.push(publisher);
-        });
-    }
+        const pubIdStr = String(rawPubId).trim();
+
+        const foundPub = pubData.find(p =>
+            String(p.IDPub ?? p.IdPubs).trim() === pubIdStr
+        ) || {
+            LName: "Unknown",
+            FNAME: "",
+            IDPub: pubIdStr
+        };
+
+        const recordNum = Number(
+            r.NUMBER ??
+            r.Date_entered ??
+            targetMonthIndex
+        );
+
+        const publisher = {
+            ...foundPub,
+            reportNumber: recordNum
+        };
+
+        const hours = Number(
+            r.HRS ||
+            r.Hours ||
+            0
+        );
+
+        const studies = Number(
+            r.BS ||
+            r.Studies ||
+            0
+        );
+
+        const remarkStr = String(
+            r.REMARKS ||
+            r.Remarks ||
+            ""
+        ).trim().toUpperCase();
+
+        const isRP = remarkStr.includes("RP");
+
+        const isAux = isTrueMarker(
+            r.AUX ??
+            r.aux ??
+            r.AuxPioneer ??
+            r.Aux
+        );
+
+        const hasMinistryFlag = isTrueMarker(
+            r.MINISTRY ||
+            r.Ministry
+        );
+
+        const isReporting =
+            hasMinistryFlag ||
+            hours > 0 ||
+            studies > 0;
+
+        if (!isReporting) {
+            return;
+        }
+
+        if (isRP) {
+            reportedRps.push(publisher);
+        } else if (isAux) {
+            reportedAuxs.push(publisher);
+        } else {
+            reportedPubs.push(publisher);
+        }
+    });
 
     // =============================================================
     // STEP 2: FILTER PUBLISHERS DATA BY CATEGORY & SEARCH TEXT
@@ -1358,29 +1401,110 @@ function updateKeyboardSelection(items) {
 // CURRENT ACTIVE SERVICE YEAR
 // Reporting month changes every 21st
 // ==========================================
+    const serviceYearNow = new Date();
 
-const serviceYearNow = new Date();
+        let effectiveMonth = serviceYearNow.getMonth();
+        let effectiveYear = serviceYearNow.getFullYear();
 
-let effectiveMonth = serviceYearNow.getMonth();
-let effectiveYear = serviceYearNow.getFullYear();
+        if (serviceYearNow.getDate() < 21) {
+            effectiveMonth--;
 
-// Before the 21st, we are still working on previous month's report
-if (serviceYearNow.getDate() < 21) {
-    effectiveMonth--;
+            if (effectiveMonth < 0) {
+                effectiveMonth = 11;
+                effectiveYear--;
+            }
+        }
 
-    if (effectiveMonth < 0) {
-        effectiveMonth = 11;
-        effectiveYear--;
-    }
-}
+        // Normal 21st-day Service Year
+        let currentServiceYear =
+            effectiveMonth >= 8
+                ? effectiveYear + 1
+                : effectiveYear;
 
-// Calculate Service Year from EFFECTIVE report month
-const currentServiceYear =
-    effectiveMonth >= 8
-        ? effectiveYear + 1
-        : effectiveYear;
+        // If active month was already advanced because
+        // the previous report was CLOSED, use active month.
+        if (typeof window.currentActiveMonthIndex !== "undefined") {
 
-const previousServiceYear = currentServiceYear - 1;
+            const activeNumber =
+                Number(window.currentActiveMonthIndex);
+
+            const activeMonthDiff =
+                activeNumber - 194;
+
+            if (activeMonthDiff >= 0) {
+
+                const activeYearShift =
+                    Math.floor(activeMonthDiff / 12);
+
+                let activeMonthOffset =
+                    activeMonthDiff % 12;
+
+                if (activeMonthOffset < 0) {
+                    activeMonthOffset += 12;
+                }
+
+                let activeMonthYear;
+                let activeMonth;
+
+                if (activeMonthOffset >= 4) {
+                    activeMonth =
+                        activeMonthOffset - 4;
+
+                    activeMonthYear =
+                        2026 + activeYearShift;
+
+                } else {
+                    activeMonth =
+                        activeMonthOffset + 8;
+
+                    activeMonthYear =
+                        2025 + activeYearShift;
+                }
+
+                const activeMonthServiceYear =
+                    activeMonth >= 8
+                        ? activeMonthYear + 1
+                        : activeMonthYear;
+
+                // Only use the active month when it is
+                // ahead of the normal effective report month.
+                if (
+                    activeMonthYear > effectiveYear ||
+                    (
+                        activeMonthYear === effectiveYear &&
+                        activeMonth > effectiveMonth
+                    )
+                ) {
+                    currentServiceYear =
+                        activeMonthServiceYear;
+                }
+            }
+        }
+
+        const previousServiceYear =
+            currentServiceYear - 1;
+
+        console.log(
+            "📅 Real Date:",
+            serviceYearNow.toDateString()
+        );
+
+        console.log(
+            "📅 Effective Report Month:",
+            effectiveMonth,
+            effectiveYear
+        );
+
+        console.log(
+            "📅 Current Service Year:",
+            currentServiceYear
+        );
+
+        console.log(
+            "📅 Previous Service Year:",
+            previousServiceYear
+        );
+
 
 console.log("📅 Real Date:", serviceYearNow.toDateString());
 console.log("📅 Effective Report Month:", effectiveMonth);
@@ -1392,50 +1516,84 @@ let selectedYear = typeof activeServiceYear !== 'undefined'
     ? activeServiceYear 
     : currentServiceYear;
 
+//===============================
+
 function updateYearDisplay() {
-    const yearDisplay = document.getElementById('yearDisplayText');
-    const prevBtn = document.getElementById('prevYearBtn');
-    const nextBtn = document.getElementById('nextYearBtn');
+    const yearDisplay =
+        document.getElementById('yearDisplayText');
+
+    const prevBtn =
+        document.getElementById('prevYearBtn');
+
+    const nextBtn =
+        document.getElementById('nextYearBtn');
 
     if (!yearDisplay) return;
 
-    // 🎯 Formatting text & arrow visibility based on current selection
-    if (selectedYear >= currentServiceYear) {
-        selectedYear = currentServiceYear; // Cap at Current Service Year
-        yearDisplay.textContent = `${selectedYear} - Current Service Year`;
-        
-        if (prevBtn) prevBtn.style.visibility = "visible"; // Show '<'
-        if (nextBtn) nextBtn.style.visibility = "hidden";  // Hide '>'
-    } else {
-        selectedYear = previousServiceYear; // Floor at Previous Service Year
-        yearDisplay.textContent = `${selectedYear} - Service Year`;
-        
-        if (prevBtn) prevBtn.style.visibility = "hidden";  // Hide '<'
-        if (nextBtn) nextBtn.style.visibility = "visible"; // Show '>'
+    const activeSY =
+        Number(activeServiceYear);
+
+    if (!Number.isFinite(Number(selectedYear))) {
+        selectedYear = activeSY;
     }
 
-    // Keep global state synced
-    if (typeof setServiceYear === 'function') {
-        setServiceYear(selectedYear);
+    if (Number(selectedYear) >= activeSY) {
+
+        selectedYear = activeSY;
+
+        yearDisplay.textContent =
+            `${selectedYear} - Current Service Year`;
+
+        if (prevBtn)
+            prevBtn.style.visibility = "visible";
+
+        if (nextBtn)
+            nextBtn.style.visibility = "hidden";
+
     } else {
-        window.selectedYear = selectedYear;
+
+        yearDisplay.textContent =
+            `${selectedYear} - Service Year`;
+
+        if (prevBtn)
+            prevBtn.style.visibility = "hidden";
+
+        if (nextBtn)
+            nextBtn.style.visibility = "visible";
     }
 
-    // Refresh the S-21 records
+    // IMPORTANT:
+    // Do NOT call setServiceYear() here.
+    // It would change activeServiceYear when
+    // the user is only viewing the previous year.
+
+    window.selectedYear = selectedYear;
+
     if (typeof loadS21RecordsForPublisher === 'function') {
         loadS21RecordsForPublisher();
     }
-}   
+}
+//-------------------------------------------------
+    document.addEventListener('DOMContentLoaded', () => {
 
-// Hook up event listeners for the navigation arrows
-document.addEventListener('DOMContentLoaded', () => {
-    const prevBtn = document.getElementById('prevYearBtn');
-    const nextBtn = document.getElementById('nextYearBtn');
+    const prevBtn =
+        document.getElementById('prevYearBtn');
+
+    const nextBtn =
+        document.getElementById('nextYearBtn');
 
     if (prevBtn) {
         prevBtn.addEventListener('click', () => {
-            if (selectedYear > previousServiceYear) {
-                selectedYear = previousServiceYear;
+
+            const activeSY =
+                Number(activeServiceYear);
+
+            console.log("⬅️ Previous Year clicked");
+            console.log("activeServiceYear:", activeSY);
+            console.log("selectedYear:", selectedYear);
+
+            if (selectedYear >= activeSY) {
+                selectedYear = activeSY - 1;
                 updateYearDisplay();
             }
         });
@@ -1443,14 +1601,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (nextBtn) {
         nextBtn.addEventListener('click', () => {
-            if (selectedYear < currentServiceYear) {
-                selectedYear = currentServiceYear;
+
+            const activeSY =
+                Number(activeServiceYear);
+
+            console.log("➡️ Next Year clicked");
+            console.log("activeServiceYear:", activeSY);
+            console.log("selectedYear:", selectedYear);
+
+            if (selectedYear < activeSY) {
+                selectedYear = activeSY;
                 updateYearDisplay();
             }
         });
     }
 
-    // Initialize display on load
     updateYearDisplay();
 });
 
@@ -2670,11 +2835,7 @@ function calculateWeekendAverage() {
 async function initAppSystem() {
     console.log("🚀 Initializing Application System...");
 
-    // 1. Setup Active Month State & Status Button
-    if (typeof updateMonthReportingState === 'function') {
-        await updateMonthReportingState();
-    }
-
+ 
     const monthStatusBtn = document.getElementById('monthStatusBtn');
     if (monthStatusBtn) {
         monthStatusBtn.onclick = () => {
@@ -2809,171 +2970,187 @@ if (document.readyState === 'loading') {
  * @param {number|string} [overrideMonthIndex] - Optional MonthIndex override
  */
 function calculateMonthlySummaryMetrics(overrideMonthIndex) {
-    const targetMonthIndex = Number(overrideMonthIndex ?? getMonthIndex());
-
+    const targetMonthIndex = Number(
+        overrideMonthIndex ?? window.currentActiveMonthIndex
+    );
+    console.log("📊 SUMMARY → IndexedDB month:", targetMonthIndex);
+    console.log("📌 Active NUMBER:", window.currentActiveMonthIndex);
     if (isNaN(targetMonthIndex)) {
-        console.warn("⚠️ Aborted summary calculation: Invalid month index.");
+        console.warn("⚠️ Invalid report month:", targetMonthIndex);
         return;
     }
 
+    
     openCongregationDB((db) => {
         const storeNames = Array.from(db.objectStoreNames);
-        const targetStore = storeNames.find(name => 
-            name.toUpperCase() === "RECORDS" || name.toUpperCase() === "S21RECORDS"
+        const targetStore = storeNames.find(name =>
+            ["RECORDS", "S21RECORDS"].includes(name.toUpperCase())
         ) || "RECORDS";
-
-        const pubStore = storeNames.find(name => 
+        const pubStore = storeNames.find(name =>
             name.toUpperCase() === "PUBLISHERS"
         ) || "PUBLISHERS";
-
         if (!db.objectStoreNames.contains(targetStore)) {
-            console.error(`❌ Store '${targetStore}' not found in CongregationDB.`);
+            console.error(`❌ Store '${targetStore}' not found.`);
             return;
         }
-
         const storesToOpen = [targetStore];
         const hasPubStore = db.objectStoreNames.contains(pubStore);
         if (hasPubStore) storesToOpen.push(pubStore);
-
-        const transaction = db.transaction(storesToOpen, "readonly");
-        const recordsReq = transaction.objectStore(targetStore).getAll();
-        const pubsReq = hasPubStore ? transaction.objectStore(pubStore).getAll() : null;
-
+        const tx = db.transaction(storesToOpen, "readonly");
+        const recordsReq = tx.objectStore(targetStore).getAll();
+        const pubsReq = hasPubStore
+            ? tx.objectStore(pubStore).getAll()
+            : null;
         let recordsData = null;
         let publishersDataLocal = window.publishersData || [];
-
         const processJoinAndSummary = () => {
             if (recordsData === null) return;
-
-            // 1. Map publishers by IDPub / IdPubs
             const publisherMap = new Map();
             publishersDataLocal.forEach(p => {
-                const pubId = String(p.IDPub ?? p.IdPubs ?? "").trim();
+                const pubId = String(
+                    p.IDPub ?? p.IdPubs ?? ""
+                ).trim();
                 if (pubId) {
                     publisherMap.set(pubId, {
                         ...p,
-                        fullName: `${p.LName || ''}, ${p.FNAME || ''}`.trim()
+                        fullName: `${p.LName || ""}, ${p.FNAME || ""}`.trim()
                     });
                 }
             });
-
-            // Robust helper for legacy database boolean flags
             const isTrueMarker = (val) => {
                 if (val === null || val === undefined) return false;
                 if (typeof val === "boolean") return val;
                 if (typeof val === "number") return val !== 0;
-                const str = String(val).trim().toUpperCase();
-                return ["?", "1", "Y", "YES", "TRUE", "-1"].includes(str);
+                return ["?", "1", "Y", "YES", "TRUE", "-1"].includes(
+                    String(val).trim().toUpperCase()
+                );
             };
-
             const summary = {
-                pub:   { reports: 0, hours: 0, studies: 0, details: [] },
-                aux:   { reports: 0, hours: 0, studies: 0, details: [] },
-                rp:    { reports: 0, hours: 0, studies: 0, details: [] },
+                pub: { reports: 0, hours: 0, studies: 0, details: [] },
+                aux: { reports: 0, hours: 0, studies: 0, details: [] },
+                rp: { reports: 0, hours: 0, studies: 0, details: [] },
                 total: { reports: 0, hours: 0, studies: 0 }
             };
-
-  
-
-            recordsData.forEach((rec, idx) => {
-                const recordMonth = Number(rec.Date_entered ?? rec.NUMBER);
-                const monthMatch = recordMonth === targetMonthIndex;
-
-                const pubIdRaw = String(rec.IdPubs ?? rec.IDPub ?? rec.idpubs ?? "").trim();
-                const publisher = publisherMap.get(pubIdRaw) || { fullName: "Unknown / Unlinked Publisher", IDPub: pubIdRaw };
-
-                const hours = Number(rec.HRS || rec.Hours || 0);
-                const studies = Number(rec.BS || rec.Studies || 0);
-
-                const remarkStr = String(rec.REMARKS || rec.Remarks || "").trim().toUpperCase();
-                const isRP = remarkStr.includes("RP");
-                const isAux = isTrueMarker(rec.AUX ?? rec.aux ?? rec.AuxPioneer ?? rec.Aux);
-
-                const hasMinistryFlag = isTrueMarker(rec.MINISTRY || rec.Ministry);
-                const hasActivity = hasMinistryFlag || hours > 0 || studies > 0;
-
-                const isIncluded = monthMatch && hasActivity;
-
-                let category = "SKIPPED";
-                if (isIncluded) {
-                    if (isRP) category = "RP";
-                    else if (isAux) category = "AUX";
-                    else category = "PUBLISHER";
+            recordsData.forEach(rec => {
+                // Date_entered determines the report month.
+                // NUMBER is NOT used for monthly report filtering.
+                const reportMonth = Number(rec.Date_entered);
+                if (!Number.isFinite(reportMonth) ||
+                    reportMonth !== targetMonthIndex) {
+                    return;
                 }
-
-  
-                if (!isIncluded) return;
-
+                const pubIdRaw = String(
+                    rec.IdPubs ??
+                    rec.IDPub ??
+                    rec.idpubs ??
+                    ""
+                ).trim();
+                const publisher = publisherMap.get(pubIdRaw) || {
+                    fullName: "Unknown / Unlinked Publisher",
+                    IDPub: pubIdRaw
+                };
+                const hours = Number(
+                    rec.HRS ??
+                    rec.Hours ??
+                    0
+                ) || 0;
+                const studies = Number(
+                    rec.BS ??
+                    rec.Studies ??
+                    0
+                ) || 0;
+                const remarkStr = String(
+                    rec.REMARKS ??
+                    rec.Remarks ??
+                    ""
+                ).trim().toUpperCase();
+                const isRP = remarkStr.includes("RP");
+                const isAux = isTrueMarker(
+                    rec.AUX ??
+                    rec.aux ??
+                    rec.AuxPioneer
+                );
+                const hasMinistryFlag = isTrueMarker(
+                    rec.MINISTRY ??
+                    rec.Ministry
+                );
+                const hasActivity =
+                    hasMinistryFlag ||
+                    hours > 0 ||
+                    studies > 0;
+                if (!hasActivity) return;
                 const joinedRecord = {
                     ...rec,
                     publisherName: publisher.fullName,
                     publisherProfile: publisher
                 };
-
                 if (isRP) {
-                    summary.rp.reports += 1;
+                    summary.rp.reports++;
                     summary.rp.hours += hours;
                     summary.rp.studies += studies;
                     summary.rp.details.push(joinedRecord);
                 } else if (isAux) {
-                    summary.aux.reports += 1;
+                    summary.aux.reports++;
                     summary.aux.hours += hours;
                     summary.aux.studies += studies;
                     summary.aux.details.push(joinedRecord);
                 } else {
-                    summary.pub.reports += 1;
+                    summary.pub.reports++;
                     summary.pub.hours += hours;
                     summary.pub.studies += studies;
                     summary.pub.details.push(joinedRecord);
                 }
             });
-
-
-
-            // Grand Totals
-            summary.total.reports = summary.pub.reports + summary.aux.reports + summary.rp.reports;
-            summary.total.hours   = summary.pub.hours   + summary.aux.hours   + summary.rp.hours;
-            summary.total.studies = summary.pub.studies + summary.aux.studies + summary.rp.studies;
+            summary.total.reports =
+                summary.pub.reports +
+                summary.aux.reports +
+                summary.rp.reports;
+            summary.total.hours =
+                summary.pub.hours +
+                summary.aux.hours +
+                summary.rp.hours;
+            summary.total.studies =
+                summary.pub.studies +
+                summary.aux.studies +
+                summary.rp.studies;
             window.currentMonthSummary = summary;
-
-            // Update UI Fields (if setVal helper exists)
+            console.log(
+                `📊 Summary rebuilt for Date_entered ${targetMonthIndex}:`,
+                summary
+            );
             if (typeof setVal === "function") {
-                setVal('pub-reports', summary.pub.reports);
-                setVal('pub-hours',   summary.pub.hours);
-                setVal('pub-studies', summary.pub.studies);
-
-                setVal('aux-reports', summary.aux.reports);
-                setVal('aux-hours',   summary.aux.hours);
-                setVal('aux-studies', summary.aux.studies);
-
-                setVal('rp-reports',  summary.rp.reports);
-                setVal('rp-hours',    summary.rp.hours);
-                setVal('rp-studies',  summary.rp.studies);
-
-                setVal('total-reports', summary.total.reports);
-                setVal('total-hours',   summary.total.hours);
-                setVal('total-studies', summary.total.studies);
+                setVal("pub-reports", summary.pub.reports);
+                setVal("pub-hours", summary.pub.hours);
+                setVal("pub-studies", summary.pub.studies);
+                setVal("aux-reports", summary.aux.reports);
+                setVal("aux-hours", summary.aux.hours);
+                setVal("aux-studies", summary.aux.studies);
+                setVal("rp-reports", summary.rp.reports);
+                setVal("rp-hours", summary.rp.hours);
+                setVal("rp-studies", summary.rp.studies);
+                setVal("total-reports", summary.total.reports);
+                setVal("total-hours", summary.total.hours);
+                setVal("total-studies", summary.total.studies);
             }
         };
-
-        recordsReq.onsuccess = (e) => {
+        recordsReq.onsuccess = e => {
             recordsData = e.target.result || [];
             if (!pubsReq) processJoinAndSummary();
         };
-
         if (pubsReq) {
-            pubsReq.onsuccess = (e) => {
+            pubsReq.onsuccess = e => {
                 publishersDataLocal = e.target.result || [];
                 processJoinAndSummary();
             };
         }
-
-        transaction.onerror = (err) => {
-            console.error("❌ Error running summary query:", err.target.error);
+        tx.onerror = e => {
+            console.error(
+                "❌ Summary query error:",
+                e.target.error
+            );
         };
     });
 }
-
 
 // Helper utility to safely update input value
 function setVal(id, value) {
@@ -3264,6 +3441,7 @@ function updateMonthDisplay() {
     displayEl.textContent = `${monthName} ${activeCalendarYear}`;
 }
 
+// ==========================================
 async function syncMonthStatusUI() {
     const btn = document.getElementById("monthStatusBtn");
     if (!btn) return;
@@ -3331,7 +3509,7 @@ async function syncMonthStatusUI() {
 
         const cursorReq = store.openCursor();
 
-        cursorReq.onsuccess = (evt) => {
+             cursorReq.onsuccess = (evt) => {
             const cursor = evt.target.result;
 
             if (cursor) {
@@ -3352,19 +3530,47 @@ async function syncMonthStatusUI() {
                         `Closed Status: ${isClosed} (${rec.Closed})`
                     );
 
-                    setButtonUIState(
-                        btn,
-                        isClosed
-                    );
+                    const today = new Date();
+
+                    if (isClosed && today.getDate() < 21) {
+                        const nextNumber = activeMonthIndex + 1;
+
+                        console.log(
+                            `🔒 NUMBER ${activeMonthIndex} is CLOSED → ` +
+                            `Bypassing 21st-day rule → NUMBER ${nextNumber}`
+                        );
+
+                        db.close();
+                        console.groupEnd();
+
+                        syncGlobalsFromMonthNumber(nextNumber);
+
+                        // Rebuild summary for the NEW reporting month.
+                        calculateMonthlySummaryMetrics(nextNumber);
+
+                        selectedYear = activeServiceYear;
+
+                        if (typeof setServiceYear === "function") {
+                            setServiceYear(activeServiceYear);
+                        }
+
+                        if (typeof updateMonthDisplay === "function") {
+                            updateMonthDisplay();
+                        }
+
+                        updateYearDisplay();
+
+                        syncMonthStatusUI();
+
+                        return;
+                    }
+
+                    setButtonUIState(btn, isClosed);
 
                     db.close();
                     console.groupEnd();
-
                     return;
                 }
-
-                cursor.continue();
-                return;
             }
 
             if (!found) {
@@ -3428,103 +3634,247 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 // 2. Close report function integrated with UI sync
-
 async function closeCurrentMonthReport() {
     const btn = document.getElementById("monthStatusBtn");
     if (btn && btn.disabled) return;
 
-    const displayEl = document.getElementById("monthDisplayText");
-    const targetMonthName = displayEl ? displayEl.textContent : "this month";
+    const displayEl =
+        document.getElementById("monthDisplayText");
 
-    const userConfirmed = await showCustomConfirm(`Do you want to close the Report for ${targetMonthName}?`);
+    const targetMonthName =
+        displayEl
+            ? displayEl.textContent
+            : "this month";
+
+    const userConfirmed =
+        await showCustomConfirm(
+            `Do you want to close the Report for ${targetMonthName}?`
+        );
+
     if (!userConfirmed) return;
 
-    if (typeof saveDebounceTimer !== 'undefined' && saveDebounceTimer) {
+    if (
+        typeof saveDebounceTimer !== "undefined" &&
+        saveDebounceTimer
+    ) {
         clearTimeout(saveDebounceTimer);
     }
 
-    const targetNumber = Number(window.currentActiveMonthIndex);
-    const parts = targetMonthName.trim().split(/\s+/);
+    const targetNumber =
+        Number(window.currentActiveMonthIndex);
+
+    const parts =
+        targetMonthName.trim().split(/\s+/);
+
     const monthStr = parts[0] || "";
-    const yearNum = Number(parts[1]) || new Date().getFullYear();
 
-    const activePubs = Number(document.getElementById("activePublishersInput")?.value) || 0;
-    const midMeetings = Number(document.getElementById("noMtgs1")?.value) || 0;
-    const midAttendance = Number(document.getElementById("attendcMidweekTotal")?.value) || 0;
-    const endMeetings = Number(document.getElementById("noMtgs2")?.value) || 0;
-    const endAttendance = Number(document.getElementById("attendcPublickTotal")?.value) || 0;
+    const yearNum =
+        Number(parts[1]) ||
+        new Date().getFullYear();
 
-    console.group(`🔒 [closeCurrentMonthReport] Processing NUMBER: ${targetNumber}`);
+    const activePubs =
+        Number(
+            document.getElementById(
+                "activePublishersInput"
+            )?.value
+        ) || 0;
+
+    const midMeetings =
+        Number(
+            document.getElementById("noMtgs1")?.value
+        ) || 0;
+
+    const midAttendance =
+        Number(
+            document.getElementById(
+                "attendcMidweekTotal"
+            )?.value
+        ) || 0;
+
+    const endMeetings =
+        Number(
+            document.getElementById("noMtgs2")?.value
+        ) || 0;
+
+    const endAttendance =
+        Number(
+            document.getElementById(
+                "attendcPublickTotal"
+            )?.value
+        ) || 0;
+
+    console.group(
+        `🔒 [closeCurrentMonthReport] Processing NUMBER: ${targetNumber}`
+    );
 
     openCongregationDB((db) => {
-        if (!db.objectStoreNames.contains("MonthlyRecords")) {
-            console.error("❌ MonthlyRecords object store not found.");
+
+        if (
+            !db.objectStoreNames.contains(
+                "MonthlyRecords"
+            )
+        ) {
+            console.error(
+                "❌ MonthlyRecords object store not found."
+            );
             console.groupEnd();
             return;
         }
 
-        const tx = db.transaction(["MonthlyRecords"], "readwrite");
-        const store = tx.objectStore("MonthlyRecords");
+        const tx =
+            db.transaction(
+                ["MonthlyRecords"],
+                "readwrite"
+            );
+
+        const store =
+            tx.objectStore("MonthlyRecords");
 
         window.currentMonthClosed = 1;
 
         let found = false;
-        const cursorReq = store.openCursor();
+
+        const cursorReq =
+            store.openCursor();
 
         cursorReq.onsuccess = (e) => {
+
             const cursor = e.target.result;
 
             if (cursor) {
-                if (Number(cursor.value.NUMBER) === targetNumber) {
+
+                if (
+                    Number(cursor.value.NUMBER) ===
+                    targetNumber
+                ) {
+
                     found = true;
-                    const record = cursor.value;
 
-                    console.log(`🟡 Action: UPDATE | Reason: Found existing record for NUMBER ${targetNumber}`);
+                    const record =
+                        cursor.value;
 
-                    record.AttendcMidweekTotal = midAttendance;
-                    record.AttendcPublickTotal = endAttendance;
-                    record.NoMtgs1 = midMeetings;
-                    record.NoMtgs2 = endMeetings;
-                    record.ActivePublishers = activePubs;
+                    console.log(
+                        `🟡 Action: UPDATE | Reason: Found existing record for NUMBER ${targetNumber}`
+                    );
+
+                    record.AttendcMidweekTotal =
+                        midAttendance;
+
+                    record.AttendcPublickTotal =
+                        endAttendance;
+
+                    record.NoMtgs1 =
+                        midMeetings;
+
+                    record.NoMtgs2 =
+                        endMeetings;
+
+                    record.ActivePublishers =
+                        activePubs;
+
                     record.Closed = 1;
 
                     cursor.update(record);
-                    console.log(`✅ [UPDATE SUCCESS] Record for NUMBER ${targetNumber} updated with Closed = 1.`);
-                    console.groupEnd();
+
+                    console.log(
+                        `✅ UPDATE queued for NUMBER ${targetNumber}`
+                    );
+
                     return;
                 }
+
                 cursor.continue();
                 return;
             }
 
             if (!found) {
-                console.log(`🟢 Action: CREATE | Reason: No existing record found matching NUMBER ${targetNumber}`);
+
+                console.log(
+                    `🟢 Action: CREATE | Reason: No existing record found matching NUMBER ${targetNumber}`
+                );
 
                 const newRecord = {
                     NUMBER: targetNumber,
                     MONTH_: monthStr,
                     Year: yearNum,
-                    ServiceYear: (typeof selectedYear !== 'undefined') ? selectedYear : yearNum,
-                    AttendcMidweekTotal: midAttendance,
-                    AttendcPublickTotal: endAttendance,
-                    NoMtgs1: midMeetings,
-                    NoMtgs2: endMeetings,
-                    ActivePublishers: activePubs,
+                    ServiceYear:
+                        typeof selectedYear !==
+                        "undefined"
+                            ? selectedYear
+                            : yearNum,
+                    AttendcMidweekTotal:
+                        midAttendance,
+                    AttendcPublickTotal:
+                        endAttendance,
+                    NoMtgs1:
+                        midMeetings,
+                    NoMtgs2:
+                        endMeetings,
+                    ActivePublishers:
+                        activePubs,
                     Closed: 1
                 };
 
                 store.add(newRecord);
-                console.log(`✅ [CREATE SUCCESS] Created new record for NUMBER ${targetNumber} with Closed = 1.`);
-                console.groupEnd();
+
+                console.log(
+                    `✅ CREATE queued for NUMBER ${targetNumber}`
+                );
             }
         };
 
-        cursorReq.onerror = (err) => {
-            console.error(`❌ [IDB ERROR] Failed to scan/save record for NUMBER ${targetNumber}:`, err.target.error);
-            console.groupEnd();
-        };
+        // ============================================
+        // TRANSACTION COMPLETED SUCCESSFULLY
+        // ============================================
+        tx.oncomplete = () => {
+                console.log(
+                    `✅ IndexedDB transaction completed for NUMBER ${targetNumber}`
+                );
+
+                window.currentMonthClosed = 1;
+
+                const nextNumber = targetNumber + 1;
+
+                // Move active month first.
+                syncGlobalsFromMonthNumber(nextNumber);
+
+                // Rebuild summary using Date_entered for the NEW month.
+                calculateMonthlySummaryMetrics(nextNumber);
+
+                // Keep active Service Year synchronized.
+                currentServiceYear = activeServiceYear;
+                selectedYear = activeServiceYear;
+
+                if (typeof setServiceYear === "function") {
+                    setServiceYear(activeServiceYear);
+                }
+
+                // Refresh UI.
+                updateMonthDisplay();
+                updateMonthSidebarDisplay();
+
+                if (typeof syncMonthStatusUI === "function") {
+                    syncMonthStatusUI();
+                }
+
+                if (typeof renderListbox === "function") {
+                    renderListbox("", "ACTIVE PUBLISHERS");
+                }
+
+                console.log(
+                    `➡️ Advanced from NUMBER ${targetNumber} to NUMBER ${nextNumber}`
+                );
+
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = "Close Report";
+                }
+
+                console.groupEnd();
+                db.close();
+            };
     });
-}-
+}
 
 async function onReportCloseSuccess() {
     await syncMonthStatusUI();
