@@ -334,42 +334,10 @@
     }
     .mt-1 { margin-top: 2px; }
 
-    .confirm-modal {
-        position: fixed;
-        top: 0; left: 0; width: 100vw; height: 100vh;
-        background: rgba(0, 0, 0, 0.4);
-        display: flex; align-items: center; justify-content: center;
-        z-index: 9999;
-    }
-    .confirm-modal.hidden { display: none; }
-    .confirm-bubble {
-        background: #fff;
-        padding: 20px 24px;
-        border-radius: 16px;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-        max-width: 320px;
-        text-align: center;
-        animation: popIn 0.2s ease-out;
-    }
-    @keyframes popIn {
-        from { transform: scale(0.8); opacity: 0; }
-        to { transform: scale(1); opacity: 1; }
-    }
-
-
 
 
 </style>
 
-<div id="customConfirmModal" class="confirm-modal hidden">
-    <div class="confirm-bubble">
-        <p id="confirmMessage"></p>
-        <div class="confirm-actions">
-            <button id="confirmCancelBtn" class="btn-secondary">Cancel</button>
-            <button id="confirmOkBtn" class="btn-primary">Confirm</button>
-        </div>
-    </div>
-</div>
 
 
 <div class="s21-app-container">
@@ -1160,25 +1128,31 @@ function renderListbox(filter = "", category = "ACTIVE PUBLISHERS") {
     }
 }
 
- // 7. Populate Form Fields
+// 7. Populate Form Fields
 function populateForm(p) {
     currentSelectedPublisher = p;
     
     const fullName = `${p.FNAME || ''} ${p.LName || ''}`.trim();
     const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
     
-    // 💡 Fix: Explicitly evaluate truthy states so string "0" evaluates to false
-    const setCheck = (id, val) => { 
-        const el = document.getElementById(id); 
+    // Accept IndexedDB "1"/"0" and CSV/PostgreSQL "True"/"False"
+    const setCheck = (id, val) => {
+        const el = document.getElementById(id);
         if (el) {
-            el.checked = (val === '1' || val === 1 || val === true || val === 'Y');
+            el.checked = (
+                val === '1' ||
+                val === 1 ||
+                val === true ||
+                val === 'Y' ||
+                String(val).trim().toUpperCase() === 'TRUE'
+            );
         }
     };
 
     setVal('pubName', fullName);
     setVal('pubDob', formatDateForInput(p.Birthdate));
     setVal('pubBaptism', formatDateForInput(p.Baptism));
-    setVal('pubGroup', p.GROUP_ || '');
+    setVal('pubGroup', p.GROUP || '');
     setVal('pubStatus', p.Status ? p.Status.trim() : "");
     
     setCheck('isMale', p.Male);
@@ -1188,6 +1162,7 @@ function populateForm(p) {
     setCheck('isRP', p.RP);
     setCheck('isSP', p.SF); // Maps database property 'SF' to HTML ID 'isSP'
 }
+
 
 // 8. Direct Edit / Auto-Save to IndexedDB
 function savePublisherChanges() {
@@ -3646,12 +3621,15 @@ async function closeCurrentMonthReport() {
             ? displayEl.textContent
             : "this month";
 
-    const userConfirmed =
-        await showCustomConfirm(
-            `Do you want to close the Report for ${targetMonthName}?`
-        );
+    const confirmed = await window.parent.showCustomConfirm(
+        "Are you sure you want to close this monthly report?",
+        {
+            okText: "Yes, Close",
+            cancelText: "Cancel"
+        }
+    );
 
-    if (!userConfirmed) return;
+if (!confirmed) return;
 
     if (
         typeof saveDebounceTimer !== "undefined" &&
@@ -3990,31 +3968,6 @@ function updateSidebarClosedState() {
             };
             getAllReq.onerror = () => handleRecordResult(undefined);
         }
-    });
-}
-
-function showCustomConfirm(message) {
-    return new Promise((resolve) => {
-        const modal = document.getElementById('customConfirmModal');
-        const msgEl = document.getElementById('confirmMessage');
-        const okBtn = document.getElementById('confirmOkBtn');
-        const cancelBtn = document.getElementById('confirmCancelBtn');
-
-        msgEl.textContent = message;
-        modal.classList.remove('hidden');
-
-        const cleanup = (value) => {
-            modal.classList.add('hidden');
-            okBtn.removeEventListener('click', onOk);
-            cancelBtn.removeEventListener('click', onCancel);
-            resolve(value);
-        };
-
-        const onOk = () => cleanup(true);
-        const onCancel = () => cleanup(false);
-
-        okBtn.addEventListener('click', onOk);
-        cancelBtn.addEventListener('click', onCancel);
     });
 }
 

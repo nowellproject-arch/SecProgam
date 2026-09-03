@@ -1,5 +1,144 @@
+// ==========================================
+// GLOBAL CUSTOM POPUPS
+// ==========================================
+(function() {
+    if (!document.getElementById("customPopupStyles")) {
+        const style = document.createElement("style");
+        style.id = "customPopupStyles";
+        style.textContent = `
+            .confirm-modal{
+                position:fixed;
+                inset:0;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                background:rgba(0,0,0,.45);
+                z-index:999999;
+            }
+            .confirm-modal.hidden{
+                display:none;
+            }
+            .confirm-bubble{
+                width:min(400px,90vw);
+                background:#fff;
+                border-radius:12px;
+                padding:24px;
+                box-shadow:0 10px 35px rgba(0,0,0,.3);
+                text-align:center;
+            }
+            .confirm-bubble p{
+                margin:0 0 22px;
+                font-size:15px;
+                line-height:1.5;
+                color:#333;
+            }
+            .confirm-actions{
+                display:flex;
+                justify-content:center;
+                gap:10px;
+            }
+            .confirm-actions button{
+                border:none;
+                padding:9px 22px;
+                border-radius:6px;
+                cursor:pointer;
+                font-weight:bold;
+            }
+            .confirm-actions .btn-secondary{
+                background:#e5e7eb;
+                color:#333;
+            }
+            .confirm-actions .btn-primary{
+                background:#d96b00;
+                color:#fff;
+            }
+            .confirm-actions .btn-primary:hover{
+                background:#b95700;
+            }
+            .confirm-actions .btn-secondary:hover{
+                background:#d1d5db;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+})();
+
+// ==========================================
+// CUSTOM CONFIRM
+// ==========================================
+function showCustomConfirm(message) {
+    return new Promise((resolve) => {
+        let modal = document.getElementById("customConfirmModal");
+
+        if (!modal) {
+            modal = document.createElement("div");
+            modal.id = "customConfirmModal";
+            modal.className = "confirm-modal hidden";
+
+            modal.innerHTML = `
+                <div class="confirm-bubble">
+                    <p id="confirmMessage"></p>
+                    <div class="confirm-actions">
+                        <button id="confirmCancelBtn" class="btn-secondary">Cancel</button>
+                        <button id="confirmOkBtn" class="btn-primary">Confirm</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+        }
+
+        const messageEl = modal.querySelector("#confirmMessage");
+        const cancelBtn = modal.querySelector("#confirmCancelBtn");
+        const okBtn = modal.querySelector("#confirmOkBtn");
+
+        messageEl.innerHTML = message.replace(/\n/g, "<br>");
+
+        modal.classList.remove("hidden");
+
+        const cleanup = (result) => {
+            modal.classList.add("hidden");
+            cancelBtn.onclick = null;
+            okBtn.onclick = null;
+            resolve(result);
+        };
+
+        cancelBtn.onclick = () => cleanup(false);
+        okBtn.onclick = () => cleanup(true);
+    });
+}
+
+// ==========================================
+// CUSTOM ALERT
+// ==========================================
+function showCustomAlert(message) {
+    return new Promise((resolve) => {
+        const modal = document.createElement("div");
+        modal.className = "confirm-modal";
+
+        modal.innerHTML = `
+            <div class="confirm-bubble">
+                <p>${message.replace(/\n/g, "<br>")}</p>
+                <div class="confirm-actions">
+                    <button class="btn-primary">OK</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        const okBtn = modal.querySelector(".btn-primary");
+
+        okBtn.onclick = () => {
+            modal.remove();
+            resolve();
+        };
+    });
+}
+
 const DB_NAME = "CongregationDB";
 const DB_VERSION = 7;
+
 
 const DB_STORES = {
     CongInfo: "passcode",
@@ -349,19 +488,21 @@ async function saveAllTablesToIndexedDB(allTablesData) {
 // RESTORE BACKUP FROM CLOUD
 // ============================================================
 async function handleRestoreFromCloud() {
-
-    const passcode =
-        localStorage.getItem("user_passcode");
+    const passcode = localStorage.getItem("user_passcode");
 
     if (!passcode) {
-        alert("Passcode missing. Please log in again.");
+        await showCustomAlert(
+            "⚠️ PASSCODE MISSING\n\n" +
+            "Please log in again."
+        );
         return;
     }
 
-    const confirmed = confirm(
-        "Restore from Cloud?\n\n" +
+    const confirmed = await showCustomConfirm(
+        "☁️ RESTORE FROM CLOUD?\n\n" +
         "Your current local data will be replaced " +
-        "with the cloud backup."
+        "with the cloud backup.\n\n" +
+        "Do you want to continue?"
     );
 
     if (!confirmed) return;
@@ -527,7 +668,7 @@ async function handleRestoreFromCloud() {
                 "#dc3545";
         }
 
-        alert(
+        await showCustomAlert(
             "Restore failed:\n\n" +
             error.message
         );
@@ -634,10 +775,10 @@ async function handleExportBackup(event) {
                 fileHandle.name
             );
 
-            alert(
-                "Backup successfully saved!\n\n" +
-                "File: " + fileHandle.name
-            );
+        await showCustomAlert(
+            "✅ BACKUP SUCCESSFULLY SAVED!\n\n" +
+            "File: " + fileHandle.name
+        );
 
         } else {
 
@@ -664,7 +805,7 @@ async function handleExportBackup(event) {
 
             URL.revokeObjectURL(url);
 
-            alert(
+        await showCustomAlert(
                 "Backup downloaded successfully.\n\n" +
                 "File: " + fileName
             );
@@ -684,7 +825,7 @@ async function handleExportBackup(event) {
             error
         );
 
-        alert(
+        await showCustomAlert(
             "Failed to export backup.\n\n" +
             error.message
         );
@@ -790,13 +931,13 @@ async function handleImportBackup(event) {
                     `${backupData[storeName].length} records`
             );
 
-            const confirmed = confirm(
-                "Import this backup?\n\n" +
-                "This will replace the current local data."
+       const confirmed = await showCustomConfirm(
+                "📥 IMPORT BACKUP?\n\n" +
+                "This will replace the current data saved on this device.\n\n" +
+                "Do you want to continue?"
             );
 
             if (!confirmed) {
-
                 console.log("⚠️ CRB import cancelled.");
 
                 if (syncStatus) {
@@ -865,37 +1006,127 @@ async function handleImportBackup(event) {
 }
 
 function setSyncUnsaved() {
+    const syncStatus = window.parent.document.getElementById("sync-status");
 
-    const syncStatus =
-        window.parent.document.getElementById("sync-status");
-
-    localStorage.setItem(
-        "sync_unsaved",
-        "true"
-    );
+    localStorage.setItem("sync_unsaved", "true");
+    localStorage.removeItem("last_sync_timestamp");
 
     if (syncStatus) {
-        syncStatus.textContent = "";
-        syncStatus.style.display = "none";
+        syncStatus.textContent = "● Unsaved";
+        syncStatus.style.display = "";
     }
-
-    localStorage.removeItem(
-        "last_sync_timestamp"
-    );
 }
-
 
 function setSyncSaved(timestamp = Date.now()) {
-    const syncStatus =
-        window.parent.document.getElementById("sync-status");
+    const syncStatus = window.parent.document.getElementById("sync-status");
+
+    localStorage.removeItem("sync_unsaved");
+    localStorage.setItem("last_sync_timestamp", timestamp);
 
     if (syncStatus) {
-        syncStatus.textContent = "";
-        syncStatus.style.display = "none";
+        syncStatus.textContent = "● Saved";
+        syncStatus.style.display = "";
+    }
+}
+
+async function deleteSelectedPublisher() {
+    if (!currentSelectedPublisher || !currentSelectedPublisher.IDPub) {
+        await showCustomAlert(
+            "⚠️ NO PUBLISHER SELECTED\n\n" +
+            "Please select a publisher first."
+        );
+        return;
     }
 
-    localStorage.setItem(
-        "last_sync_timestamp",
-        timestamp
+    const publisherId = String(currentSelectedPublisher.IDPub);
+
+        const publisherName = [
+            currentSelectedPublisher.FNAME,
+            currentSelectedPublisher.MName,
+            currentSelectedPublisher.LName
+        ].filter(Boolean).join(" ");
+
+    const confirmed = await showCustomConfirm(
+        "⚠️ DELETE PUBLISHER\n\n" +
+        "Are you sure you want to delete:\n\n" +
+        publisherName + "\n\n" +
+        "This will permanently delete the publisher AND all of this publisher's monthly records.\n\n" +
+        "Do you want to continue?"
     );
+
+    if (!confirmed) return;
+
+    try {
+        const db = await openIndexedDB();
+
+        await new Promise((resolve, reject) => {
+            const tx = db.transaction(
+                ["PUBLISHERS", "RECORDS"],
+                "readwrite"
+            );
+
+            const publisherStore = tx.objectStore("PUBLISHERS");
+            const recordsStore = tx.objectStore("RECORDS");
+
+            // 1. Delete publisher
+               publisherStore.delete(publisherId);
+
+
+            // 2. Delete ALL RECORDS belonging to this publisher
+            const request = recordsStore.openCursor();
+
+            request.onsuccess = event => {
+                const cursor = event.target.result;
+
+                if (!cursor) return;
+
+                const record = cursor.value;
+
+                if (String(record.IdPubs) === String(publisherId)) {
+                    cursor.delete();
+                }
+
+                cursor.continue();
+            };
+
+            request.onerror = () => {
+                reject(request.error);
+            };
+
+            tx.oncomplete = () => {
+                resolve();
+            };
+
+            tx.onerror = () => {
+                reject(tx.error);
+            };
+
+            tx.onabort = () => {
+                reject(tx.error || new Error("Transaction aborted."));
+            };
+        });
+
+        db.close();
+
+        console.log(
+            "✅ Publisher and all RECORDS deleted:",
+            publisherId,
+            publisherName
+        );
+
+        currentSelectedPublisher = null;
+
+        window.location.reload();
+
+    } catch (err) {
+        console.error("❌ Failed to delete publisher and records:", err);
+
+        await showCustomAlert(
+            "❌ DELETE ERROR\n\n" +
+            "The publisher could not be completely deleted.\n\n" +
+            err.message
+        );
+    }
 }
+
+

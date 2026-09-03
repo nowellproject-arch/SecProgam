@@ -232,63 +232,205 @@
     .total-row { background-color: #f9f9f9; }
 
     /* RIGHT SIDE: Extra Narrowed Service Year Summary Sidebar */
-    .s21-sidebar {
-        flex: 0.9;
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        min-width: 200px;
-    }
+   /* Container Layout */
+.s21-sidebar {
+  flex: 0.9;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 220px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
 
-    .Month-sidebar-nav {
-        text-align: center;
-        font-size: 11px;
-        padding: 4px;
-        background: #f8f9fa;
-        border: 1px solid #ccc;
-        border-radius: 3px;
-    }
-    .nav-arrow-month { cursor: pointer; color: #007bff; font-weight: bold; padding: 0 4px; }
+/* Card & Box Styling */
+.side-box {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
 
-    .side-box {
-        border: 1px solid #acacac;
-        background: #cac8c8;
-        padding: 4px 6px;
-        border-radius: 3px;
-    }
+.action-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 
-    .side-title {
-        font-weight: bold;
-        font-size: 10px;
-        color: #222;
-        margin-bottom: 2px;
-    }
+/* Fieldset Styling for Grouped Options */
+.side-fieldset {
+  position: relative;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px 12px 10px 12px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  margin: 0;
+}
 
-    .side-desc {
-        font-size: 8px;
-        color: #555;
-        margin-bottom: 2px;
-        line-height: 1.1;
-    }
+.side-fieldset-legend {
+  width: auto;
+  padding: 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0;
+  border-bottom: none;
+}
 
-    .side-label {
-        font-size: 9px;
-        color: #444;
-        display: block;
-        margin-bottom: 1px;
-    }
+/* Form Controls & Labels */
+.custom-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  min-height: auto;
+}
 
-    .grid-sub-inputs {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 4px;
-    }
+.custom-check:last-child {
+  margin-bottom: 0;
+}
 
-    .grid-sub-inputs-3 {
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 3px;
-    }
+.custom-check .form-check-input {
+  cursor: pointer;
+  margin-top: 0;
+  width: 14px;
+  height: 14px;
+}
+
+.custom-check .form-check-label {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: #334155;
+  user-select: none;
+}
+
+.sub-options-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-left: 20px;
+  margin-top: 6px;
+  padding-left: 8px;
+  border-left: 2px solid #f1f5f9;
+}
+
+/* Modern Button Styling */
+.btn-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.btn-icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* Button Variants */
+.btn-preview {
+  background-color: #f8fafc;
+  color: #1e293b;
+  border-color: #cbd5e1;
+}
+
+.btn-preview:hover {
+  background-color: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.btn-add {
+  background-color: #2563eb;
+  color: #ffffff;
+}
+
+.btn-add:hover {
+  background-color: #1d4ed8;
+}
+
+.btn-danger-soft {
+  background-color: #fef2f2;
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+.btn-danger-soft:hover {
+  background-color: #fee2e2;
+  border-color: #fca5a5;
+}
+
+/* Modal Improvements */
+.custom-modal-backdrop {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(2px);
+  z-index: 9999;
+  justify-content: center;
+  align-items: center;
+}
+
+.custom-modal-content {
+  background: #ffffff;
+  width: 85%;
+  height: 85%;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.custom-modal-header {
+  padding: 12px 20px;
+  background: #f8fafc;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.custom-modal-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.custom-modal-close {
+  background: none;
+  border: none;
+  font-size: 22px;
+  color: #64748b;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.custom-modal-close:hover {
+  color: #0f172a;
+}
+
+.custom-modal-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
     .mt-1 { margin-top: 2px; }
 </style>
 <div class="s21-app-container">
@@ -360,11 +502,11 @@
                     </div>
                     <div>
                         <label>Group:</label>
-                        <input type="text" id="pubGroup" value="2" class="form-control text-center" style="border: 1px solid #aaa !important; background: #fff !important;">
+                        <input type="text" id="pubGroup" value="" class="form-control text-center" style="border: 1px solid #aaa !important; background: #fff !important;">
                     </div>
                     <div class="gender-box">
                         <label><input type="checkbox" id="isMale"> M</label>
-                        <label><input type="checkbox" id="isFemale" checked> F</label>
+                        <label><input type="checkbox" id="isFemale"> F</label>
                     </div>
                 </div>
 
@@ -414,61 +556,94 @@
             </table>
         </div>
 
-        <!-- MONTHLY REPORT -->
-        <div class="s21-sidebar">
-    <!-- Print Preview Action Header -->
-            <div class="side-box" style="text-align: center; padding: 10px;">
-                <button type="button" id="btnPrintPreview" class="btn btn-primary w-100" style="font-weight: bold; background-color: #e0e0e0; color: #000; border: 1px solid #adadad; cursor: pointer;">
-                    PRINT PREVIEW
-                </button>
-            </div>
-   
+    <!-- MONTHLY REPORT SIDEBAR -->
+<div class="s21-sidebar">
+  
+  <!-- Print Preview Header -->
+  <div class="side-box text-center p-2">
+    <button type="button" id="btnPrintPreview" class="btn btn-action btn-preview w-100">
+      <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="6 9 6 2 18 2 18 9"></polyline>
+        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+        <rect x="6" y="14" width="12" height="8"></rect>
+      </svg>
+      Print Preview
+    </button>
+  </div>
 
-        <!-- Sub-options for FSG / Categories -->
-   <div class="side-box" style="border: 1px solid #ccc; padding: 10px; border-radius: 4px; background: #f9f9f9; position: relative; margin-top: 10px;">
-    <div style="position: absolute; top: -8px; left: 10px; background: #f9f9f9; padding: 0 4px; font-size: 11px; font-weight: bold; color: #333;">
-        Cong. Pubs. Record
+  <!-- Fieldset Group for Options -->
+  <fieldset class="side-fieldset">
+    <legend class="side-fieldset-legend">Cong. Pubs. Record</legend>
+
+    <div class="form-check custom-check">
+      <input class="form-check-input" type="checkbox" id="chkMultipleSelection">
+      <label class="form-check-label" for="chkMultipleSelection">
+        Multiple Selection
+      </label>
     </div>
 
-    <!-- Multiple Selection Checkbox -->
-    <div class="form-check mt-1" style="font-size: 12px;">
-        <input class="form-check-input" type="checkbox" id="chkMultipleSelection" style="cursor: pointer;">
-        <label class="form-check-label" for="chkMultipleSelection" style="font-weight: bold; cursor: pointer;">
-            Multiple Selection
+    <div class="form-check custom-check">
+      <input class="form-check-input" type="checkbox" id="chkByFSG">
+      <label class="form-check-label" for="chkByFSG">
+        By FSG
+      </label>
+    </div>
+
+    <!-- Indented Sub-options -->
+    <div class="sub-options-group">
+      <div class="form-check custom-check">
+        <input class="form-check-input" type="radio" name="fsgGroup" id="radioRegPioneers">
+        <label class="form-check-label" for="radioRegPioneers">
+          Regular Pioneers
         </label>
-    </div>
-
-    <!-- By FSG Checkbox -->
-    <div class="form-check mt-2" style="font-size: 12px;">
-        <input class="form-check-input" type="checkbox" id="chkByFSG" style="cursor: pointer;">
-        <label class="form-check-label" for="chkByFSG" style="font-weight: bold; cursor: pointer;">
-            By FSG
+      </div>
+      <div class="form-check custom-check">
+        <input class="form-check-input" type="radio" name="fsgGroup" id="radioPublishers">
+        <label class="form-check-label" for="radioPublishers">
+          Publishers
         </label>
+      </div>
+      <div class="form-check custom-check">
+        <input class="form-check-input" type="radio" name="fsgGroup" id="radioUnbaptized">
+        <label class="form-check-label" for="radioUnbaptized">
+          Unbaptized
+        </label>
+      </div>
     </div>
+  </fieldset>
 
-    <!-- Indented Sub-options for FSG / Categories -->
-            <div style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; margin-left: 20px; margin-top: 4px;">
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" name="fsgGroup" id="radioRegPioneers" style="cursor: pointer;">
-                    <label class="form-check-label" for="radioRegPioneers" style="font-weight: bold; cursor: pointer;">
-                        Regular Pioneers
-                    </label>
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" name="fsgGroup" id="radioPublishers" style="cursor: pointer;">
-                    <label class="form-check-label" for="radioPublishers" style="font-weight: bold; cursor: pointer;">
-                        Publishers
-                    </label>
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" name="fsgGroup" id="radioUnbaptized" style="cursor: pointer;">
-                    <label class="form-check-label" for="radioUnbaptized" style="font-weight: bold; cursor: pointer;">
-                        Unbaptized
-                    </label>
-                </div>
-            </div>
-        </div>
+  <!-- Publisher Actions -->
+  <div class="side-box action-box">
+    <button type="button" id="btnAddPublisher" class="btn btn-action btn-add w-100">
+      <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+      Add Publisher
+    </button>
+
+    <button type="button" id="btnDeletePublisher" class="btn btn-action btn-danger-soft w-100">
+      <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+      </svg>
+      Delete Publisher
+    </button>
+  </div>
+
 </div>
+
+<!-- PDF Print Preview Modal -->
+<div id="printPreviewModal" class="custom-modal-backdrop">
+  <div class="custom-modal-content">
+    <div class="custom-modal-header">
+      <h3 class="custom-modal-title">Publisher Record Preview</h3>
+      <button type="button" class="custom-modal-close" onclick="document.getElementById('printPreviewModal').style.display='none'">&times;</button>
+    </div>
+    <iframe id="pdfPreviewIframe" class="custom-modal-iframe"></iframe>
+  </div>
+</div>
+
 
 <!-- PDF Print Preview Modal -->
 <div id="printPreviewModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center;">
@@ -481,6 +656,10 @@
     </div>
 </div>
 
+
+
+
+<script src="/static/js/indexeddb.js"></script>
 <script>
 
 // ==========================================
@@ -913,18 +1092,24 @@ function populateForm(p) {
     const fullName = `${p.FNAME || ''} ${p.LName || ''}`.trim();
     const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
     
-    // 💡 Fix: Explicitly evaluate truthy states so string "0" evaluates to false
-    const setCheck = (id, val) => { 
-        const el = document.getElementById(id); 
+    // Accept IndexedDB "1"/"0" and CSV/PostgreSQL "True"/"False"
+    const setCheck = (id, val) => {
+        const el = document.getElementById(id);
         if (el) {
-            el.checked = (val === '1' || val === 1 || val === true || val === 'Y');
+            el.checked = (
+                val === '1' ||
+                val === 1 ||
+                val === true ||
+                val === 'Y' ||
+                String(val).trim().toUpperCase() === 'TRUE'
+            );
         }
     };
 
     setVal('pubName', fullName);
     setVal('pubDob', formatDateForInput(p.Birthdate));
     setVal('pubBaptism', formatDateForInput(p.Baptism));
-    setVal('pubGroup', p.GROUP_ || '');
+    setVal('pubGroup', p.GROUP || '');
     setVal('pubStatus', p.Status ? p.Status.trim() : "");
     
     setCheck('isMale', p.Male);
@@ -945,12 +1130,18 @@ function savePublisherChanges() {
     // NOTE: Removed the faulty name-splitting lines here! 
     // The expandable name editor already handles LName, FNAME, and MName correctly.
 
+    // Save name fields from expandable editor
+    currentSelectedPublisher.LName = document.getElementById('editLName')?.value.trim() || currentSelectedPublisher.LName || "";
+    currentSelectedPublisher.FNAME = document.getElementById('editFName')?.value.trim() || currentSelectedPublisher.FNAME || "";
+    currentSelectedPublisher.MName = document.getElementById('editMName')?.value.trim() || currentSelectedPublisher.MName || "";
+    currentSelectedPublisher.Fullname = `${currentSelectedPublisher.LName}, ${currentSelectedPublisher.FNAME}${currentSelectedPublisher.MName ? " " + currentSelectedPublisher.MName : ""}`;
+
     // Gather other form values into currentSelectedPublisher
     currentSelectedPublisher.Birthdate = document.getElementById('pubDob').value;
     currentSelectedPublisher.Baptism = document.getElementById('pubBaptism').value;
     
     const groupVal = document.getElementById('pubGroup')?.value || "";
-    currentSelectedPublisher.GROUP_ = groupVal; 
+    currentSelectedPublisher.GROUP = groupVal; 
     
     const maleEl = document.getElementById('isMale');
     const femaleEl = document.getElementById('isFemale');
@@ -979,8 +1170,6 @@ function savePublisherChanges() {
             const cursor = e.target.result;
             if (cursor) {
                 if (String(cursor.value.IDPub) === String(currentSelectedPublisher.IDPub)) {
-                    currentSelectedPublisher.id = cursor.value.id;
-                    
                     const updateRequest = cursor.update(currentSelectedPublisher);
                     updateRequest.onsuccess = () => {
                         console.log(`✅ Successfully updated publisher (IDPub: ${currentSelectedPublisher.IDPub}) at internal key: ${cursor.value.id}`);
@@ -1023,7 +1212,7 @@ function savePublisherChanges() {
                     items.forEach(item => {
                         const itemId = item.dataset.id || item.getAttribute('data-id');
                         if (String(itemId) === String(activeId)) {
-                            console.log("✅ Found matching item in listbox DOM. Simulating click to restore selection.");
+                            console.log("✅ Found matching listbox item in DOM. Simulating click to restore selection.");
                             item.click();
                             found = true;
                         }
@@ -1040,7 +1229,7 @@ function savePublisherChanges() {
             console.error("❌ Transaction failed:", e.target.error);
         };
     };
-    }
+}
 
     // 9. Event Listeners Setup on DOM Load
     // 9. Event Listeners Setup on DOM Load
@@ -1600,6 +1789,20 @@ function cleanS21Records() {
 // filling user details, and loading their S-21 monthly table.
 function selectPublisher(p, itemElement) {
     if (!p) return;
+
+        // Exit ADD mode when an existing publisher is selected
+            isAddingPublisher = false;
+            window.newPublisherIDPub = null;
+
+            const addBtn = document.getElementById("btnAddPublisher");
+            if (addBtn) addBtn.innerHTML = "➕ ADD PUBLISHER";
+
+            currentSelectedPublisher = p;
+
+            // 🔒 Lock saves immediately so stray change events don't cross-contaminate
+            isSwitchingPublisher = true;
+
+
     currentSelectedPublisher = p; // Keep track of active publisher
 
     // 🔒 Lock saves immediately so stray change events don't cross-contaminate
@@ -2584,5 +2787,263 @@ document.getElementById('btnPrintPreview').addEventListener('click', () => {
     });
 });
 
+// ====================delete/add publisher
+document.getElementById("btnDeletePublisher").addEventListener("click", deleteSelectedPublisher);
+
+let isAddingPublisher = false;
+
+document.getElementById("btnAddPublisher").addEventListener("click", startAddPublisher);
+
+async function startAddPublisher() {
+    try {
+        const db = await openIndexedDB();
+
+        const publishers = await new Promise((resolve, reject) => {
+            const tx = db.transaction("PUBLISHERS", "readonly");
+            const request = tx.objectStore("PUBLISHERS").getAll();
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error);
+        });
+
+        db.close();
+
+        // Find highest existing IDPub
+        const maxID = publishers.reduce((max, p) => {
+            const id = parseInt(p.IDPub, 10);
+            return Number.isFinite(id) && id > max ? id : max;
+        }, 0);
+
+        const newIDPub = String(maxID + 1);
+
+        // Enter ADD mode
+        isAddingPublisher = true;
+
+        // Clear current publisher selection
+        currentSelectedPublisher = null;
+
+        // Clear the publisher form
+        clearPublisherForm();
+
+        const nameEdit = document.getElementById("nameEditContainer");
+        const nameDisplay = document.getElementById("pubNameDisplay");
+
+        if (nameEdit) nameEdit.style.display = "flex";
+        if (nameDisplay) nameDisplay.style.display = "none";
+
+        // Store the generated ID temporarily
+        window.newPublisherIDPub = newIDPub;
+
+        // Change button
+        const btn = document.getElementById("btnAddPublisher");
+        btn.innerHTML = "💾 SAVE PUBLISHER";
+
+        console.log("➕ Add Publisher mode");
+        console.log("🆕 New IDPub:", newIDPub);
+
+    } catch (err) {
+        console.error("❌ Failed to start Add Publisher:", err);
+
+        await showCustomAlert(
+            "❌ ERROR\n\n" +
+            "Unable to prepare a new publisher."
+        );
+    }
+}
+
+
+function clearPublisherForm() {
+    // Name
+    const lName = document.getElementById("editLName");
+    const fName = document.getElementById("editFName");
+    const mName = document.getElementById("editMName");
+    if (lName) lName.value = "";
+    if (fName) fName.value = "";
+    if (mName) mName.value = "";
+
+    // Name display
+    const nameDisplay = document.getElementById("pubNameDisplay");
+    if (nameDisplay) nameDisplay.value = "";
+
+    // Dates
+    const dob = document.getElementById("pubDob");
+    const baptism = document.getElementById("pubBaptism");
+    if (dob) dob.value = "";
+    if (baptism) baptism.value = "";
+
+    // Group
+    const group = document.getElementById("pubGroup");
+    if (group) group.value = "";
+
+    // Gender
+    const male = document.getElementById("isMale");
+    const female = document.getElementById("isFemale");
+    if (male) male.checked = false;
+    if (female) female.checked = false;
+
+    // Status
+    const status = document.getElementById("pubStatus");
+    if (status) status.value = "";
+
+    // Privileges
+    const elder = document.getElementById("isElder");
+    const ms = document.getElementById("isMS");
+    const rp = document.getElementById("isRP");
+    const sp = document.getElementById("isSP");
+    if (elder) elder.checked = false;
+    if (ms) ms.checked = false;
+    if (rp) rp.checked = false;
+    if (sp) sp.checked = false;
+
+    // Show the normal name display and hide the name editor
+    const nameEdit = document.getElementById("nameEditContainer");
+    if (nameEdit) nameEdit.style.display = "none";
+    if (nameDisplay) nameDisplay.style.display = "";
+
+    console.log("🧹 Publisher form cleared for new publisher.");
+
+        // Clear S-21 table
+    if (typeof s21Months !== "undefined") {
+        s21Months.forEach((m, index) => {
+            const minEl = document.getElementById(`${m.id}-ministry`);
+            const bsEl = document.getElementById(`${m.id}-studies`);
+            const auxEl = document.getElementById(`${m.id}-aux`);
+            const hrsEl = document.getElementById(`${m.id}-hours`);
+            const remTextEl = document.getElementById(`${m.id}-remark`);
+            const remSelEl = document.getElementById(`${m.id}-select`);
+
+            [minEl, bsEl, auxEl, hrsEl, remTextEl, remSelEl].forEach(el => {
+                if (el) el.dataset.publisherId = "";
+            });
+
+            if (minEl) minEl.checked = false;
+            if (bsEl) bsEl.value = "";
+            if (auxEl) auxEl.checked = false;
+            if (hrsEl) hrsEl.value = "";
+            if (remTextEl) remTextEl.value = "";
+            if (remSelEl) remSelEl.value = "";
+
+            if (typeof attachS21AutoCheckListeners === "function") {
+                attachS21AutoCheckListeners(index, m);
+            }
+        });
+
+        if (typeof calculateTotalHours === "function") {
+            calculateTotalHours();
+        }
+    }
+    console.log("🧹 Publisher form and S-21 table cleared for new publisher.");
+}
+
+
+document.getElementById("btnAddPublisher").addEventListener("click", async () => {
+    if (isAddingPublisher) {
+        await saveNewPublisher();
+    } else {
+        await startAddPublisher();
+    }
+});
+
+async function saveNewPublisher() {
+    if (!isAddingPublisher) return;
+
+    const publisherId = String(window.newPublisherIDPub || "").trim();
+    const fName = document.getElementById("editFName")?.value.trim() || "";
+    const mName = document.getElementById("editMName")?.value.trim() || "";
+    const lName = document.getElementById("editLName")?.value.trim() || "";
+
+    if (!publisherId) {
+        await showCustomAlert("❌ ERROR\n\nNo new publisher ID was generated.");
+        return;
+    }
+
+    if (!lName || !fName) {
+        await showCustomAlert("⚠️ INCOMPLETE NAME\n\nPlease enter at least the Last Name and First Name.");
+        return;
+    }
+
+    const newPublisher = {
+        "1yrBaptized": "False",
+        "Address": "",
+        "AppointmentDate": "",
+        "Baptism": document.getElementById("pubBaptism")?.value || "",
+        "Birthdate": document.getElementById("pubDob")?.value || "",
+        "Count_": "0",
+        "DatePrinted": "",
+        "Elder": document.getElementById("isElder")?.checked ? "1" : "0",
+        "Elder1": "",
+        "Elder2": "",
+        "FNAME": fName,
+        "Female": document.getElementById("isFemale")?.checked ? "1" : "0",
+        "Fullname": `${lName}, ${fName}${mName ? " " + mName : ""}`,
+        "GROUP": document.getElementById("pubGroup")?.value || "2",
+        "GROUP_": "",
+        "ID": publisherId,
+        "IDPub": publisherId,
+        "LName": lName,
+        "MName": mName,
+        "MS": document.getElementById("isMS")?.checked ? "1" : "0",
+        "Male": document.getElementById("isMale")?.checked ? "1" : "0",
+        "MoveOut": "False",
+        "Nname": fName,
+        "Note1": "",
+        "Print": "False",
+        "RP": document.getElementById("isRP")?.checked ? "1" : "0",
+        "ReportCount": "0",
+        "RpDate": "",
+        "RpDateStarted": "",
+        "RpNumber": "",
+        "Selected": "",
+        "SF": document.getElementById("isSP")?.checked ? "1" : "0",
+        "Started": "",
+        "Status": document.getElementById("pubStatus")?.value || "",
+        "TelCp": "",
+        "TellHome": "",
+        "Update": "False",
+        "new": "True"
+    };
+
+    try {
+        const db = await openIndexedDB();
+
+        await new Promise((resolve, reject) => {
+            const tx = db.transaction("PUBLISHERS", "readwrite");
+            const store = tx.objectStore("PUBLISHERS");
+            const request = store.add(newPublisher);
+
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+
+        db.close();
+
+        console.log("✅ New publisher saved:", newPublisher);
+
+        isAddingPublisher = false;
+        window.newPublisherIDPub = null;
+
+        const btn = document.getElementById("btnAddPublisher");
+        if (btn) btn.innerHTML = "➕ ADD PUBLISHER";
+
+        await showCustomAlert(
+            "✅ PUBLISHER SAVED\n\n" +
+            fName + (mName ? " " + mName : "") + " " + lName +
+            "\n\nIDPub: " + publisherId
+        );
+
+        await loadPublishersFromIndexedDB();
+
+        if (typeof loadPublishers === "function") {
+            await loadPublishers();
+        }
+
+    } catch (err) {
+        console.error("❌ Failed to save new publisher:", err);
+
+        await showCustomAlert(
+            "❌ SAVE FAILED\n\n" +
+            (err?.message || "Unable to save the new publisher.")
+        );
+    }
+}
 
 </script>

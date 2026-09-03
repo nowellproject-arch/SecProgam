@@ -8,6 +8,14 @@ Target Stack (100% Free): Python (FastAPI/Flask), PostgreSQL (Supabase/Neon), Bo
 
 
 
+Get-Process python | Stop-Process -Force
+Kill All: taskkill /F /IM python.exe
+Restart Server: python backend.py
+reload :  uvicorn main:app --reload
+for phone: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+
+
 
 Phase 1: Database Setup & Models (1-2 Days)
   ├── Setup SQLite database
@@ -42,7 +50,7 @@ Phase 5: Free Cloud Deployment (1 Day)
 
 
 ======================================================================
-1. MONTH (Congregation Settings - 1 Row)
+1. CongInfo (Congregation Settings - 1 Row)
 ======================================================================
 - MONTH_            : Text (Active Month Name)
 - NUM               : Integer (Active M/Y ID Pointer)
@@ -55,7 +63,7 @@ Phase 5: Free Cloud Deployment (1 Day)
 - SEC               : Text (Secretary Name)
 
 ======================================================================
-2. GROUPS (Field Service Groups - ~6 Rows)
+2. GROUPS (Field Service Groups - ~6 or more Rows)
 ======================================================================
 - id                : Primary Key
 - Group             : Text / Integer (Group Number/Name)
@@ -132,3 +140,473 @@ FORMS
   ├── 3. PUBLISHERS (Master Profiles & Status)
   ├── 4. MonthlyRecords (Locked Monthly Summary & Attendance)
   └── 5. RECORDS (Individual Monthly Service Activity)
+
+
+
+======================================================================
+S-21 monthly Render
+
+source: IndexDB "RECORDS"
+field Names
+- IdPubs            : Foreign Key -> PUBLISHERS.IDPub
+- NUMBER            : Integer (Actual Service Month M/Y ID)
+- Date_entered      : Integer (Processing/Submission M/Y ID for Late Reports)
+- HRS               : Integer / Float (Field Service Hours)
+- AUX               : Boolean (Y/N - Auxiliary Pioneer for Month)
+- Note              : Text (General Secretary Remarks)
+- REMARKS           : Text (Flag keywords: "RP", "RP Moved In", "New UBP", dropdown etc.)
+----------------------
+HTML
+  // 1. Month Row Generation for Table
+    const s21Months = [
+        { name: "September", id: "sep" },
+        { name: "October", id: "oct" },
+        { name: "November", id: "nov" },
+        { name: "December", id: "dec" },
+        { name: "January", id: "jan" },
+        { name: "February", id: "feb" },
+        { name: "March", id: "mar" },
+        { name: "April", id: "apr" },
+        { name: "May", id: "may" },
+        { name: "June", id: "jun" },
+        { name: "July", id: "jul" },
+        { name: "August", id: "aug" }
+    ];
+
+    const tbody = document.getElementById('s21TableBody');
+    if (tbody) {
+        s21Months.forEach((m, index) => {
+            const row = document.createElement('tr');
+            row.id = `row-${m.id}`;
+            row.innerHTML = `
+                <td><strong style="padding-left: 2px;">${m.name}</strong></td>
+                <td class="text-center"><input type="checkbox" class="table-check ministry-check" id="${m.id}-ministry" data-month="${index}"></td>
+                <td><input type="number" min="0" class="text-center study-input" id="${m.id}-studies" data-month="${index}"></td>
+                <td class="text-center"><input type="checkbox" class="table-check aux-check" id="${m.id}-aux" data-month="${index}"></td>
+                <td><input type="number" min="0" step="0.5" class="text-center hours-input" id="${m.id}-hours" data-month="${index}"></td>
+                <td class="remarks-container">
+                    <input type="text" class="remark-text" id="${m.id}-remark" data-month="${index}">
+                    <select class="remark-select" id="${m.id}-select" data-month="${index}">
+                        <option value=""></option>
+                        <option value="INACTIVE">Inactive</option>
+                        <option value="MOVED">Moved</option>
+                        <option value="NOTE">Note</option>
+                        <option value="RP">RP</option>
+                    </select>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+------------------
+FILTERS
+RECORDS.IdPubs 
+  if (String(cursor.value.IDPub) === String(currentSelectedPublisher.IDPub))
+
+YEARS = selectedYear
+
+  // ─────────────────────────────────────────
+  // Service year (September start)
+  // ─────────────────────────────────────────
+  serviceYearBase = month >= 8 ? year + 1 : year;
+  BASE MAP number = 26 = Sept/2012
+
+
+ 
+
+Sample RECORDS data
+
+    
+{
+    "PubID": "55",
+    "NUMBER": 194,
+    "MINISTRY": 1,
+    "BS": "",
+    "AUX": 1,
+    "HRS": "",
+    "Note": "",
+    "REMARKS": "RP",
+    "Date_entered": 197,
+
+}
+
+the s-21 table have this fixed 12 mos, if find record in specific NUMBER get, if no, leave it blank, later if enter there, it will add new record in RECORD, Having the IDpud, NUmber and the entered data
+
+is this clear or you need other info?
+
+
+MONTH REPORT TOTAL
+( this is where all reported during the month appear, this get all report based on
+RECORDS.Date_entered this will filter that match the activeMonthIndex  
+
+
+1. All Active Publishers ( later) 
+2. Average Weekend Attendance ( manualy write and save directly to MontlyRecord in indexdb)
+
+3. Publishers - Reports
+4. Publishers - Studies
+
+5. Auxiliary Pioneers - Reports
+6. Auxiliary Pioneers - Hours
+7. Auxiliary Pioneers - Studies
+
+8. Regular Pioneers - Reports
+9. Regular Pioneers - Hours
+10. Regular Pioneers - Studies
+
+
+
+
+4. MonthlyRecords (IndexDB , CongregationDB indexdb)
+
+- ID                : Primary Key
+- NUMBER            : Integer (M/Y ID Index) this is the unique ID for Monthindex to match
+- MONTH_            : Text / Integer (Month)
+- Year              : Integer (Calendar Year)
+- ServiceYear       : Integer (Service Year)
+- AttendcMidweekTotal : Integer (Total Midweek Attendance)
+- AttendcPublickTotal : Integer (Total Weekend Attendance)
+- NoMtgs1           : Integer (Midweek Meetings Count)
+- NoMtgs2           : Integer (Weekend Meetings Count)
+- ActivePublishers  : Integer (Locked Active Publisher Count)
+
+
+
+PHASE 2: ======================================================================
+SYNCING DATABASE 
+
+import sqlite3
+DB_FILE = "congReport.db"
+DATABASE SCHEMA & SYNC OBJECTS REFERENCE
+
+Database File: congReport.db
+Multi-Tenant Key: passcode
+Sync Engine Fields: updated_at (epoch ms), is_deleted (soft deletes)
+
+1. CongInfo (Congregation Header Information)
+ (passcode)
+
+Columns:
+NUM (INTEGER) - Month identifier / index
+MONTH_ (TEXT) - Month display name
+Congregation (TEXT) - Congregation name
+CongNumber (TEXT) - Congregation number
+Address (TEXT) - Meeting address
+Province (TEXT) - State / Province
+CBOE (TEXT) - Coordinator of the Body of Elders
+SO (TEXT) - Service Overseer
+SEC (TEXT) - Secretary
+User (TEXT) - User profile / handle
+passcode (TEXT) - Account security passcode
+updated_at (INTEGER) - Sync timestamp in milliseconds
+
+
+2. GROUPS (Field Service Groups)
+Purpose: Tracks field service group organization, overseers, and meeting places.
+Primary Key: id (AUTOINCREMENT)
+
+Columns:
+id (INTEGER) - Auto-incrementing row ID
+Group_ (TEXT) - Group name / number
+Overseer (TEXT) - Group overseer name
+Assistant (TEXT) - Assistant overseer name
+MeetingPlace (TEXT) - Meeting location
+Remarks (TEXT) - Additional group notes
+passcode (TEXT) - Account security passcode
+updated_at (INTEGER) - Sync timestamp in milliseconds
+
+
+3. PUBLISHERS (Publisher Directory)
+Purpose: Main directory containing personal, contact, and privilege profiles for all publishers.
+Primary Key: (IDPub, passcode)
+
+Columns:
+IDPub (TEXT) - Unique Publisher ID
+FNAME (TEXT) - First name
+MName (TEXT) - Middle name
+LName (TEXT) - Last name
+Nname (TEXT) - Nickname
+Birthdate (TEXT) - Date of birth
+Male (TEXT) - Male indicator flag
+Female (TEXT) - Female indicator flag
+Address (TEXT) - Home address
+TelCp (TEXT) - Phone / Mobile number
+Baptism (TEXT) - Baptism date
+Elder (TEXT) - Elder flag
+MS (TEXT) - Ministerial Servant flag
+RP (TEXT) - Regular Pioneer flag
+RpNumber (TEXT) - Pioneer ID / Number
+RpDateStarted (TEXT) - Pioneer start date
+GROUP_ (TEXT) - Assigned group
+Status (TEXT) - Active, Inactive, Moved Out, etc.
+Started (INTEGER) - Year/Date active service started
+passcode (TEXT) - Account security passcode
+updated_at (INTEGER) - Sync timestamp in milliseconds
+
+
+4. MonthlyRecords (Monthly Congregation Summary)
+Purpose: High-level monthly meeting attendance and active publisher count summaries.
+Primary Key: id (AUTOINCREMENT)
+
+Columns:
+ID (INTEGER) - Auto-incrementing record ID
+NUMBER (INTEGER) - Service month number
+MONTH_ (TEXT) - Month display name
+Year (INTEGER) - Calendar year
+ServiceYear (INTEGER) - Service year
+AttendcMidweekTotal (INTEGER) - Midweek meeting total attendance
+AttendcPublickTotal (INTEGER) - Weekend meeting total attendance
+NoMtgs1 (INTEGER) - Midweek meeting count
+NoMtgs2 (INTEGER) - Weekend meeting count
+ActivePublishers (INTEGER) - Active publishers count for the month
+passcode (TEXT) - Account security passcode
+updated_at (INTEGER) - Sync timestamp in milliseconds
+
+
+5. RECORDS (S-21 Individual Service Records)
+Purpose: Individual monthly field service activity entries per publisher.
+Primary Key: (IdPubs, NUMBER, passcode)
+
+Columns:
+IdPubs (TEXT) - Publisher ID link (IDPub)
+NUMBER (INTEGER) - Service month number
+Date_entered (INTEGER) - Entry date / month index
+HRS (REAL) - Field ministry hours
+AUX (TEXT) - Auxiliary pioneer flag
+REMARKS (TEXT) - Specific activity markers
+Note (TEXT) - Additional notes / comments
+passcode (TEXT) - Account security passcode
+updated_at (INTEGER) - Sync timestamp in milliseconds
+
+
+Performance & Delta Sync Indexes:
+CREATE INDEX IF NOT EXISTS idx_publishers_sync ON PUBLISHERS(passcode, updated_at);
+CREATE INDEX IF NOT EXISTS idx_records_sync ON RECORDS(passcode, updated_at);
+CREATE INDEX IF NOT EXISTS idx_groups_sync ON GROUPS(passcode, updated_at);
+CREATE INDEX IF NOT EXISTS idx_month_sync ON MONTH(passcode, updated_at);
+CREATE INDEX IF NOT EXISTS idx_monthlyrecords_sync ON MonthlyRecords(passcode, updated_at);
+
+================================
+indexdb SCHEMA
+
+INDEXDB OBJECT STORES SUMMARY
+
+CongInfo (Congregation Settings)
+Row Count: 1 Row
+Purpose: Stores congregation metadata, contact details, and active month/year pointers.
+Fields:
+MONTH_ (Text)
+NUM (Integer)
+Congregation (Text)
+CongNumber (Text)
+Address (Text)
+Province (Text)
+CBOE (Text)
+SO (Text)
+SEC (Text)
+
+GROUPS (Field Service Groups)
+Row Count: ~6 or more Rows
+Purpose: Field service group details, overseers, locations, and notes.
+Fields:
+id (Primary Key)
+Group (Text / Integer)
+Overseer (Text)
+Assistant (Text)
+MeetingPlace (Text)
+Remarks (Text)
+
+PUBLISHERS (Publisher Master Records)
+Row Count: ~100 Rows
+Purpose: Comprehensive publisher profiles, privileges, status, and service dates.
+Fields:
+IDPub (Primary Key)
+FNAME (Text)
+MName (Text)
+LName (Text)
+Nname (Text)
+Birthdate (Date)
+Male (Boolean / Char)
+Female (Boolean / Char)
+Address (Text)
+TelCp (Text)
+Baptism (Date)
+Elder (Boolean)
+MS (Boolean)
+RP (Boolean)
+RpNumber (Text)
+RpDateStarted (Date)
+GROUP (Foreign Key -> GROUPS.id)
+Status (Text)
+Started (Integer)
+
+MonthlyRecords (Congregation Monthly Summaries)
+Row Count: 12 Rows / Year
+Purpose: High-level monthly meeting attendance totals and active publisher counts.
+Fields:
+ID (Primary Key)
+NUMBER (Integer)
+MONTH_ (Text / Integer)
+Year (Integer)
+ServiceYear (Integer)
+AttendcMidweekTotal (Integer)
+AttendcPublickTotal (Integer)
+NoMtgs1 (Integer)
+NoMtgs2 (Integer)
+ActivePublishers (Integer)
+
+RECORDS (Individual Monthly Service Reports)
+Row Count: Thousands of Rows
+Purpose: Specific monthly field service activity records per individual publisher.
+Fields:
+IdPubs (Foreign Key -> PUBLISHERS.IDPub)
+NUMBER (Integer)
+Date_entered (Integer)
+HRS (Integer / Float)
+AUX (Boolean)
+REMARKS (Text)
+Note (Text)
+
+========================================
+ localStorage.setItem('user_passcode', passcode);
+
+
+
+====================
+
+echo "# SecProgam" >> README.md
+git init
+git add README.md
+git commit -m "first commit"
+git branch -M main
+git remote add origin https://github.com/nowellproject-arch/SecProgam.git
+git push -u origin main
+
+
+
+…or push an existing repository from the command line
+git remote add origin https://github.com/nowellproject-arch/SecProgam.git
+git branch -M main
+git push -u origin main
+
+=========================
+RECORDS CONSOLE
+(async () => {
+    const db = await new Promise((resolve, reject) => {
+        const req = indexedDB.open("CongregationDB");
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+
+    const tx = db.transaction("RECORDS", "readonly");
+    const store = tx.objectStore("RECORDS");
+
+    const rows = await new Promise((resolve, reject) => {
+        const req = store.getAll();
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+
+    rows.sort((a, b) => Number(a.NUMBER) - Number(b.NUMBER));
+
+    console.log(`📋 Total RECORDS: ${rows.length}`);
+    console.table(rows);
+
+    db.close();
+})();
+
+=========================
+console name
+(async () => {
+    const db = await new Promise((resolve, reject) => {
+        const req = indexedDB.open("CongregationDB");
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+
+    const tx = db.transaction("PUBLISHERS", "readonly");
+    const store = tx.objectStore("PUBLISHERS");
+
+    const rows = await new Promise((resolve, reject) => {
+        const req = store.getAll();
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+
+    rows.sort((a, b) =>
+        String(a.LName ?? "").localeCompare(
+            String(b.LName ?? ""),
+            undefined,
+            { sensitivity: "base" }
+        )
+    );
+
+    console.log(`📋 Total PUBLISHERS: ${rows.length}`);
+
+    console.table(
+        rows.map(p => ({
+            Name: `${p.LName ?? ""}, ${p.FNAME ?? ""}`.trim(),
+            IDPub: p.IDPub,
+            LName: p.LName ?? "",
+            FNAME: p.FNAME ?? "",
+            MName: p.MName ?? ""
+        }))
+    );
+
+    db.close();
+})();
+
+=====================
+
+publishers================
+
+
+const db = await openIndexedDB();
+const tx = db.transaction(["PUBLISHERS", "RECORDS"], "readonly");
+
+const publishers = await new Promise((resolve, reject) => {
+    const r = tx.objectStore("PUBLISHERS").getAll();
+    r.onsuccess = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+});
+
+const records = await new Promise((resolve, reject) => {
+    const r = tx.objectStore("RECORDS").getAll();
+    r.onsuccess = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+});
+
+const result = publishers
+    .map(p => ({
+        IDPub: p.IDPub,
+        LastName: p.LName || "",
+        FirstName: p.FNAME || "",
+        MiddleName: p.MName || "",
+        Name: [p.FNAME, p.MName, p.LName].filter(Boolean).join(" "),
+        RECORDS: records.filter(r => String(r.IdPubs) === String(p.IDPub)).length
+    }))
+    .sort((a, b) => a.LastName.localeCompare(b.LastName));
+
+console.table(result);
+
+db.close();
+
+========================
+
+npx neon@latest init
+
+postgresql://neondb_owner:npg_0iVv5hRdoZtG@ep-muddy-art-azqxh2dq.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
+
+
+uvicorn main:app --reload
+uvicorn main:app --reload --port 8000
+
+
+git status
+git add .
+git commit -m "Update application"
+git push origin main
+
+git add .
+git commit -m "Describe your changes"
+git push origin main

@@ -208,6 +208,10 @@
       flex-direction: column;
       flex: 1;
     }
+
+    
+
+
   </style>
 
 </head>
@@ -471,6 +475,9 @@
 </div>
 
 
+
+
+
 <!-- LOG OUT -->
 <div class="top-right">
   <button
@@ -525,6 +532,9 @@
 
   </div>
 
+
+
+
   <!-- MAIN SCRIPT FILE -->
 
   <script src="/static/js/indexeddb.js"></script>
@@ -556,33 +566,6 @@ const TAB_CONFIG = {
 };
 
 
-
-async function logout() {
-    localStorage.removeItem('user_passcode');
-    localStorage.removeItem('username');
-    
-    // (Optional) Fallback to clear everything else if needed
-    localStorage.clear();
-    sessionStorage.clear();
-
-    // 2. Delete the IndexedDB database
-    const deleteReq = indexedDB.deleteDatabase("CongregationDB");
-
-    deleteReq.onsuccess = () => {
-      console.log("IndexedDB database deleted successfully.");
-      window.location.href = '/login.html';
-    };
-
-    deleteReq.onerror = (err) => {
-      console.error("Error deleting IndexedDB:", err);
-      window.location.href = '/login.html';
-    };
-
-    deleteReq.onblocked = () => {
-      // Force redirect if connections were blocked
-      window.location.href = '/login.html';
-    };
-  }
 
 // 2. TAB SWITCHING LOGIC
 async function switchTab(event, tabId) {
@@ -647,15 +630,11 @@ async function loadSubForm(tabId, filename, callback) {
 
 // ============================================================ Refresh onload
 document.addEventListener("DOMContentLoaded", async () => {
-
     // 1. AUTHENTICATION GUARD
     const passcode = localStorage.getItem("user_passcode");
 
     if (!passcode) {
-        console.warn(
-            "🔒 Unauthorized access detected. Redirecting to login..."
-        );
-
+        console.warn("🔒 Unauthorized access detected. Redirecting to login...");
         window.location.href = "/login.html";
         return;
     }
@@ -663,40 +642,29 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.log("🚀 Initializing application...");
 
     // 2. Load existing data from IndexedDB
-    const allTablesData =
-        await loadTablesFromIndexedDB();
+    const allTablesData = await loadTablesFromIndexedDB();
 
     // 3. Restore sync-status visibility
-    const syncStatus =
-        document.getElementById("sync-status");
-
-    const syncUnsaved =
-        localStorage.getItem("sync_unsaved") === "true";
+    const syncStatus = document.getElementById("sync-status");
+    const syncUnsaved = localStorage.getItem("sync_unsaved") === "true";
 
     if (syncStatus) {
-
         if (syncUnsaved) {
-            syncStatus.style.display = "none";
-
-            console.log(
-                "🔴 Sync status hidden: local changes are unsaved."
-            );
-
+            syncStatus.style.display = "inline";
+            syncStatus.textContent = "● Unsaved";
+            syncStatus.style.color = "#dc3545";
+            console.log("🔴 Sync status shown: local changes are unsaved.");
         } else {
             syncStatus.style.display = "inline";
             syncStatus.textContent = "● Saved";
             syncStatus.style.color = "#28a745";
-
-            console.log(
-                "🟢 Sync status shown: data is saved."
-            );
+            console.log("🟢 Sync status shown: data is saved.");
         }
     }
 
     // 4. Load the active tab interface
     await switchTab(null, "tab-1");
 });
-
 // ============================================================
 async function loadTablesFromIndexedDB() {
     const db = await openIndexedDB();
@@ -985,10 +953,14 @@ async function openRestoreModal() {
   // Console log to verify what string is actually being sent
   console.log("Fetching backups for passcode:", passcode);
 
-  if (!passcode) {
-    alert("Passcode missing from storage! Please check your login session.");
-    return;
-  }
+      if (!passcode) {
+        await showCustomAlert(
+            "⚠️ PASSCODE MISSING\n\n" +
+            "Your login session could not be verified.\n\n" +
+            "Please log in again and try again."
+        );
+        return;
+      }
 
   container.innerHTML = '<div style="text-align:center; padding: 10px; color: #666; font-size: 13px;">Loading backups...</div>';
   modal.style.display = 'flex';
@@ -1027,34 +999,46 @@ function closeRestoreModal() {
   document.getElementById('restore-modal').style.display = 'none';
 }
 
-function confirmRestore(backupId) {
-  if (confirm("Restoring this backup will replace current local data. Continue?")) {
-    // Call your restore execution logic passing backupId
-    executeRestore(backupId);
+  function confirmRestore(backupId) {
+      executeRestore(backupId);
   }
-}
-
 
 
 // 3. Execute Restore from Chosen Slot
 async function executeRestore(slotNumber) {
-  const passcode = localStorage.getItem('user_passcode');
-  if (!confirm(`Restore data from Backup Slot ${slotNumber}? Unsaved local changes will be replaced.`)) return;
+    const passcode = localStorage.getItem('user_passcode');
 
-  try {
-    const res = await fetch(`/api/restore-slot?passcode=${encodeURIComponent(passcode)}&slot=${slotNumber}`);
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.detail || 'Restore failed.');
+    const confirmed = await showCustomConfirm(
+        `⚠️ RESTORE BACKUP\n\n` +
+        `Restore data from Backup Slot ${slotNumber}?\n\n` +
+        `Any unsaved changes on this device will be replaced.\n\n` +
+        `Do you want to continue?`
+    );
 
-    await saveToIndexedDB(result.data);
-    alert('Restore completed successfully!');
-    closeRestoreModal();
-    window.location.reload();
-  } catch (err) {
-    alert(`Restore Error: ${err.message}`);
-  }
+    if (!confirmed) return;
+
+    try {
+        const res = await fetch(`/api/restore-slot?passcode=${encodeURIComponent(passcode)}&slot=${slotNumber}`);
+        const result = await res.json();
+
+        if (!res.ok) throw new Error(result.detail || 'Restore failed.');
+
+        await saveToIndexedDB(result.data);
+
+        await showCustomAlert(
+            "✅ RESTORE COMPLETED\n\n" +
+            "Your backup has been restored successfully."
+        );
+
+        closeRestoreModal();
+        window.location.reload();
+    } catch (err) {
+        await showCustomAlert(
+            "❌ RESTORE ERROR\n\n" +
+            err.message
+        );
+    }
 }
-
 
 function toggleCloudMenu(event) {
     event.stopPropagation();
@@ -1179,6 +1163,44 @@ document.addEventListener("click", function (event) {
     if (restore) restore.style.display = "none";
   }
 });
+
+
+
+async function logout() {
+    const confirmed = await showCustomConfirm(
+        "⚠️ WARNING\n\n" +
+        "Logging out will remove the data currently saved on this device.\n\n" +
+        "Please make sure your latest backup is complete before continuing.\n\n" +
+        "Do you want to continue?"
+    );
+    if (!confirmed) {
+        console.log("Logout cancelled by user.");
+        return;
+    }
+
+    localStorage.clear();
+    sessionStorage.clear();
+
+    const deleteReq =
+        indexedDB.deleteDatabase("CongregationDB");
+
+    deleteReq.onsuccess = () => {
+        console.log("✅ IndexedDB deleted.");
+        window.location.href = "/login.html";
+    };
+
+    deleteReq.onerror = (err) => {
+        console.error("❌ IndexedDB delete error:", err);
+        window.location.href = "/login.html";
+    };
+
+    deleteReq.onblocked = () => {
+        console.warn("⚠️ IndexedDB deletion blocked.");
+        window.location.href = "/login.html";
+    };
+}
+
+
 
   </script>
 </body>
