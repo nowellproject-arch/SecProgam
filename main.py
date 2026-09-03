@@ -218,6 +218,17 @@ async def api_reports(passcode: str):
         if conn:
             conn.close()
 
+
+
+# -------------------------------------------------------------------
+
+def display_hours(record):
+    value = record.get("HRS", "")
+    if value is None or str(value).strip() in ("", "0", "0.0"):
+        return ""
+    return str(value)
+
+
 @app.post("/api/generate-pdf")
 def api_generate_pdf(data_payload: Union[dict, list] = Body(...)):
     """FastAPI endpoint to generate Google Slides PDF preview."""
@@ -268,96 +279,380 @@ def format_date(date_str):
     except Exception:
         return str(date_str)
 
+
 def generate_publisher_record_pdf(data_payload):
     creds = get_oauth_credentials()
-
     slides_service = build('slides', 'v1', credentials=creds)
     drive_service = build('drive', 'v3', credentials=creds)
-    
     template_id = "15rS-3_bi9kF4GM-iQdLt7m1GWcxuIr9p1l1y9xU5LOU"
-    publishers = data_payload if isinstance(data_payload, list) else [data_payload]
-    
+    parents_id = "1XC_7zc1HiDmRzmduxVssFibf_e61JHIK"
+
+    if not isinstance(data_payload, dict):
+        raise ValueError("Expected two-service-year payload object")
+
+    service_years = data_payload.get("serviceYears", {})
+    publishers = data_payload.get("publishers", [])
+
     if not publishers:
         raise ValueError("No publishers provided")
 
-    pub_name = publishers[0].get('publisher', {}).get('Name', 'Unknown_Publisher')
+    previous_info = service_years.get("previous", {})
+    current_info = service_years.get("current", {})
+    previous_year = int(previous_info.get("year", 0))
+    current_year = int(current_info.get("year", 0))
+    previous_numbers = previous_info.get("monthNumbers", [])
+    current_numbers = current_info.get("monthNumbers", [])
 
+    if len(previous_numbers) != 12:
+        raise ValueError(f"Previous service year must contain 12 NUMBERs, got {len(previous_numbers)}")
+    if len(current_numbers) != 12:
+        raise ValueError(f"Current service year must contain 12 NUMBERs, got {len(current_numbers)}")
+
+    print("========================================")
+    print("📄 GENERATING TWO-SERVICE-YEAR PDF")
+    print("========================================")
+    print("Previous Service Year:", previous_year)
+    print("Previous NUMBERs:", previous_numbers)
+    print("Current Service Year:", current_year)
+    print("Current NUMBERs:", current_numbers)
+    print("Publishers:", len(publishers))
+
+    # ---------------------------------------------------------
+    # COPY TEMPLATE ONCE
+    # ---------------------------------------------------------
     copy_body = {
-        'name': f"{pub_name}_PRC",
-        'parents': ['1XC_7zc1HiDmRzmduxVssFibf_e61JHIK']
+        "name": f"MULTI_PRC_{current_year}",
+        "parents": [parents_id]
     }
-    copied_file = drive_service.files().copy(fileId=template_id, body=copy_body).execute()
-    temp_pres_id = copied_file['id']
+    copied_file = drive_service.files().copy(
+        fileId=template_id,
+        body=copy_body
+    ).execute()
+    temp_pres_id = copied_file["id"]
+    print("📄 Temporary Slides ID:", temp_pres_id)
 
     try:
-        requests = []
-        
-        for pdata in publishers:
-            pub = pdata.get('publisher', {})
-            year = pdata.get('serviceYear', 2026)
-            
-            check = lambda v: "✓" if v in ["Yes", "✓", True, 1] else ""
-            
+        # ---------------------------------------------------------
+        # GET TEMPLATE SLIDE
+        # ---------------------------------------------------------
+        presentation = slides_service.presentations().get(
+            presentationId=temp_pres_id
+        ).execute()
+
+        slides = presentation.get("slides", [])
+        if not slides:
+            raise ValueError("Template presentation contains no slides")
+
+        template_slide_id = slides[0]["objectId"]
+        print("📄 Template Slide ID:", template_slide_id)
+
+        # ---------------------------------------------------------
+        # REMOVE ANY EXTRA SLIDES FROM TEMPLATE
+        # ---------------------------------------------------------
+        cleanup_requests = []
+        for slide in slides[1:]:
+            cleanup_requests.append({
+                "deleteObject": {
+                    "objectId": slide["objectId"]
+                }
+            })
+
+        if cleanup_requests:
+            slides_service.presentations().batchUpdate(
+                presentationId=temp_pres_id,
+                body={"requests": cleanup_requests}
+            ).execute()
+
+        # ---------------------------------------------------------
+        # HELPER FUNCTIONS
+        # ---------------------------------------------------------
+        def is_true(value):
+            if value is None:
+                return False
+            if isinstance(value, bool):
+                return value
+            if isinstance(value, (int, float)):
+                return value != 0
+            value = str(value).strip().upper()
+            return value in {"1", "TRUE", "YES", "Y", "✓", "-1"}
+
+        def check(value):
+            return "✓" if is_true(value) else ""
+
+        def safe_number(value):
+            if value is None or value == "":
+                return 0
+            try:
+                return float(value)
+            except (ValueError, TypeError):
+                return 0
+
+        def get_record_by_number(records, number):
+            target = str(number).strip()
+            for record in records:
+                record_number = str(record.get("NUMBER", "")).strip()
+                if record_number == target:
+                    return record
+            return {}
+
+        # ---------------------------------------------------------
+        # GENERATE ONE SLIDE/PAGE FOR EACH PUBLISHER
+        # ---------------------------------------------------------
+        for publisher_index, pub in enumerate(publishers, start=1):
+            pub_name = (
+                pub.get("Fullname")
+                or f"{pub.get('LName', '')}, {pub.get('FNAME', '')}".strip(", ")
+                or "Unknown_Publisher"
+            )
+
+            print("----------------------------------------")
+            print(f"👤 Publisher {publisher_index}/{len(publishers)}:", pub_name)
+            print("🆔 IDPub:", pub.get("IDPub"))
+
+            # -----------------------------------------------------
+            # DUPLICATE THE ONE-PAGE TEMPLATE
+            # -----------------------------------------------------
+            duplicate_response = slides_service.presentations().batchUpdate(
+                presentationId=temp_pres_id,
+                body={
+                    "requests": [
+                        {
+                            "duplicateObject": {
+                                "objectId": template_slide_id
+                            }
+                        }
+                    ]
+                }
+            ).execute()
+
+            replies = duplicate_response.get("replies", [])
+            if not replies:
+                raise ValueError(f"Could not duplicate template slide for {pub_name}")
+
+            new_slide_id = replies[0]["duplicateObject"]["objectId"]
+            print("📄 New Slide ID:", new_slide_id)
+
+            # -----------------------------------------------------
+            # GET PUBLISHER RECORDS
+            # -----------------------------------------------------
+            previous_records = pub.get("previousYearRecords", []) or []
+            current_records = pub.get("currentYearRecords", []) or []
+
+            print(f"📋 {previous_year} records:", len(previous_records))
+            print(f"📋 {current_year} records:", len(current_records))
+
+            # -----------------------------------------------------
+            # PLACEHOLDERS
+            # TOP = PREVIOUS SERVICE YEAR
+            # BOTTOM = CURRENT SERVICE YEAR
+            # -----------------------------------------------------
             placeholders = {
-                "{{YearA}}": str(year),
-                "{{YearB}}": str(year - 1),
-                "{{Name}}": pub.get("Name", ""),
-                "{{PubID}}": str(pub.get("PubID", "")),
+                "{{Yeara}}": str(previous_year),
+                "{{Yearb}}": str(current_year),
+                "{{Name}}": pub.get("Fullname", ""),
+                "{{PubID}}": str(pub.get("IDPub", "")),
                 "{{BirthDate}}": format_date(pub.get("Birthdate", "")),
                 "{{Baptism}}": format_date(pub.get("Baptism", "")),
                 "{{RP}}": check(pub.get("RP")),
                 "{{MS}}": check(pub.get("MS")),
-                "{{SP}}": check(pub.get("SP")),
+                "{{SP}}": check(pub.get("SF")),
                 "{{Elder}}": check(pub.get("Elder")),
                 "{{Male}}": check(pub.get("Male")),
                 "{{Female}}": check(pub.get("Female"))
             }
 
-            recsA = pdata.get("currentYear", {}).get("records", [])
-            recsB = pdata.get("previousYear", {}).get("records", [])
-
-            total_hrs_a = sum(float(r.get("HRS", 0) or 0) for r in recsA)
-            total_hrs_b = sum(float(r.get("HRS", 0) or 0) for r in recsB)
+            # -----------------------------------------------------
+            # MONTHLY RECORDS
+            # -----------------------------------------------------
+            total_hrs_previous = 0
+            total_hrs_current = 0
 
             for i in range(12):
-                a = recsA[i] if i < len(recsA) else {}
-                b = recsB[i] if i < len(recsB) else {}
                 idx = str(i + 1).zfill(2)
+                previous_number = previous_numbers[i]
+                current_number = current_numbers[i]
 
-                placeholders[f"{{{{Sa{idx}}}}}"] = check(a.get("MINISTRY"))
-                placeholders[f"{{{{Ba{idx}}}}}"] = str(a.get("BS", ""))
-                placeholders[f"{{{{Aa{idx}}}}}"] = check(a.get("AUX"))
-                placeholders[f"{{{{Ha{idx}}}}}"] = str(a.get("HRS", ""))
-                placeholders[f"{{{{Ra{idx}}}}}"] = str(a.get("Note", ""))
+                previous_record = get_record_by_number(
+                    previous_records,
+                    previous_number
+                )
+                current_record = get_record_by_number(
+                    current_records,
+                    current_number
+                )
 
-                placeholders[f"{{{{Sb{idx}}}}}"] = check(b.get("MINISTRY"))
-                placeholders[f"{{{{Bb{idx}}}}}"] = str(b.get("BS", ""))
-                placeholders[f"{{{{Ab{idx}}}}}"] = check(b.get("AUX"))
-                placeholders[f"{{{{Hb{idx}}}}}"] = str(b.get("HRS", ""))
-                placeholders[f"{{{{Rb{idx}}}}}"] = str(b.get("Note", ""))
+                print(
+                    f"Row {idx}: "
+                    f"Previous NUMBER={previous_number}, "
+                    f"Current NUMBER={current_number}"
+                )
 
-            placeholders["{{Tah}}"] = str(total_hrs_a)
-            placeholders["{{Tbh}}"] = str(total_hrs_b)
+                if previous_record:
+                    print(
+                        f"   ↳ Previous found: "
+                        f"MINISTRY={previous_record.get('MINISTRY')}, "
+                        f"BS={previous_record.get('BS')}, "
+                        f"AUX={previous_record.get('AUX')}, "
+                        f"HRS={previous_record.get('HRS')}, "
+                        f"REMARKS={previous_record.get('REMARKS')}"
+                    )
+                else:
+                    print("   ↳ Previous record NOT FOUND")
+
+                if current_record:
+                    print(
+                        f"   ↳ Current found: "
+                        f"MINISTRY={current_record.get('MINISTRY')}, "
+                        f"BS={current_record.get('BS')}, "
+                        f"AUX={current_record.get('AUX')}, "
+                        f"HRS={current_record.get('HRS')}, "
+                        f"REMARKS={current_record.get('REMARKS')}"
+                    )
+                else:
+                    print("   ↳ Current record NOT FOUND")
+
+                # TOP = PREVIOUS SERVICE YEAR
+                placeholders[f"{{{{Sa{idx}}}}}"] = check(
+                    previous_record.get("MINISTRY")
+                )
+                placeholders[f"{{{{Ba{idx}}}}}"] = str(
+                    previous_record.get("BS", "")
+                )
+                placeholders[f"{{{{Aa{idx}}}}}"] = check(
+                    previous_record.get("AUX")
+                )
+                placeholders[f"{{{{Ha{idx}}}}}"] = display_hours(
+                    previous_record
+                )
+                placeholders[f"{{{{Ra{idx}}}}}"] = str(
+                    previous_record.get("REMARKS")
+                    or previous_record.get("Note")
+                    or ""
+                )
+
+                # BOTTOM = CURRENT SERVICE YEAR
+                placeholders[f"{{{{Sb{idx}}}}}"] = check(
+                    current_record.get("MINISTRY")
+                )
+                placeholders[f"{{{{Bb{idx}}}}}"] = str(
+                    current_record.get("BS", "")
+                )
+                placeholders[f"{{{{Ab{idx}}}}}"] = check(
+                    current_record.get("AUX")
+                )
+                placeholders[f"{{{{Hb{idx}}}}}"] = display_hours(
+                    current_record
+                )
+                placeholders[f"{{{{Rb{idx}}}}}"] = str(
+                    current_record.get("REMARKS")
+                    or current_record.get("Note")
+                    or ""
+                )
+
+                total_hrs_previous += safe_number(
+                    previous_record.get("HRS", 0)
+                )
+                total_hrs_current += safe_number(
+                    current_record.get("HRS", 0)
+                )
+
+            # -----------------------------------------------------
+            # TOTAL HOURS
+            # -----------------------------------------------------
+            placeholders["{{Tah}}"] = str(
+                int(total_hrs_previous)
+                if total_hrs_previous.is_integer()
+                else total_hrs_previous
+            )
+            placeholders["{{Tbh}}"] = str(
+                int(total_hrs_current)
+                if total_hrs_current.is_integer()
+                else total_hrs_current
+            )
+
+            print("📊 TOTAL HOURS")
+            print(f"{previous_year}:", total_hrs_previous)
+            print(f"{current_year}:", total_hrs_current)
+
+            # -----------------------------------------------------
+            # REPLACE ONLY ON THIS PUBLISHER'S SLIDE
+            # -----------------------------------------------------
+            requests = []
 
             for key, val in placeholders.items():
                 requests.append({
-                    'replaceAllText': {
-                        'containsText': {'text': key, 'matchCase': True},
-                        'replaceText': val
+                    "replaceAllText": {
+                        "containsText": {
+                            "text": key,
+                            "matchCase": True
+                        },
+                        "replaceText": str(val),
+                        "pageObjectIds": [new_slide_id]
                     }
                 })
 
-        if requests:
-            slides_service.presentations().batchUpdate(
-                presentationId=temp_pres_id, 
-                body={'requests': requests}
-            ).execute()
+            print(
+                "🔄 Placeholder replacement requests:",
+                len(requests)
+            )
 
-        pdf_request = drive_service.files().export_media(fileId=temp_pres_id, mimeType='application/pdf')
+            if requests:
+                response = slides_service.presentations().batchUpdate(
+                    presentationId=temp_pres_id,
+                    body={"requests": requests}
+                ).execute()
+
+                print(
+                    f"✅ Placeholders replaced for {pub_name}"
+                )
+
+        # ---------------------------------------------------------
+        # DELETE ORIGINAL TEMPLATE SLIDE
+        # ---------------------------------------------------------
+        print("🗑️ Removing original template slide...")
+
+        slides_service.presentations().batchUpdate(
+            presentationId=temp_pres_id,
+            body={
+                "requests": [
+                    {
+                        "deleteObject": {
+                            "objectId": template_slide_id
+                        }
+                    }
+                ]
+            }
+        ).execute()
+
+        print("✅ Original template slide removed")
+
+        # ---------------------------------------------------------
+        # EXPORT COMPLETE PRESENTATION TO ONE PDF
+        # ---------------------------------------------------------
+        print("📄 Exporting PDF...")
+
+        pdf_request = drive_service.files().export_media(
+            fileId=temp_pres_id,
+            mimeType="application/pdf"
+        )
+
         pdf_bytes = pdf_request.execute()
+        b64_pdf = base64.b64encode(pdf_bytes).decode("utf-8")
 
-        b64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
-        file_name = f"{pub_name}_PRC_{publishers[0].get('serviceYear', 2026)}.pdf" if len(publishers) == 1 else "MULTI_PRC.pdf"
+        # ---------------------------------------------------------
+        # FILE NAME
+        # ---------------------------------------------------------
+        if len(publishers) == 1:
+            file_name = f"{pub_name}_PRC_{current_year}.pdf"
+        else:
+            file_name = f"MULTI_PRC_{current_year}.pdf"
+
+        print("========================================")
+        print("✅ PDF GENERATED SUCCESSFULLY")
+        print("========================================")
+        print("👥 Publishers:", len(publishers))
+        print("📄 Pages:", len(publishers))
+        print("📄 File name:", file_name)
 
         return {
             "success": True,
@@ -366,7 +661,18 @@ def generate_publisher_record_pdf(data_payload):
         }
 
     finally:
-        drive_service.files().delete(fileId=temp_pres_id).execute()
+        # ---------------------------------------------------------
+        # DELETE TEMPORARY GOOGLE SLIDES FILE
+        # ---------------------------------------------------------
+        print("🗑️ Deleting temporary Google Slides file...")
+
+        try:
+            drive_service.files().delete(
+                fileId=temp_pres_id
+            ).execute()
+            print("✅ Temporary Slides file deleted")
+        except Exception as cleanup_error:
+            print("⚠️ Could not delete temporary Slides file:", cleanup_error)
 
 
 class BackupRequest(BaseModel):

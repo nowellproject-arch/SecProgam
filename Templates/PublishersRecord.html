@@ -429,7 +429,7 @@
 .custom-modal-iframe {
   width: 100%;
   height: 100%;
-  border: none;
+  border: none; 
 }
     .mt-1 { margin-top: 2px; }
 </style>
@@ -962,7 +962,7 @@ function renderListbox(filter = "", category = "ACTIVE PUBLISHERS") {
                 matchesCategory = isTrueMarker(p.MS);
                 break;
             case "BY GROUP":
-                matchesCategory = p.GROUP_ !== undefined && p.GROUP_ !== null && String(p.GROUP_).trim() !== "";
+                matchesCategory = p.GROUP !== undefined && p.GROUP !== null && String(p.GROUP).trim() !== "";
                 break;
             case "UNBAPTIZED":
                 matchesCategory = !p.Baptism || p.Baptism === "";
@@ -1016,53 +1016,95 @@ function renderListbox(filter = "", category = "ACTIVE PUBLISHERS") {
 
     // Sort Priority: Group first only when "BY GROUP" is selected; otherwise purely alphabetical (Last Name -> First Name)
     filtered.sort((a, b) => {
-        if (selectedCategory === "BY GROUP") {
-            const groupA = String(a.GROUP_ || "");
-            const groupB = String(b.GROUP_ || "");
-            const groupComp = groupA.localeCompare(groupB, undefined, { numeric: true, sensitivity: 'base' });
-            if (groupComp !== 0) return groupComp;
-        }
-        
+      if (selectedCategory === "BY GROUP") {
+        const groupA = String(a.GROUP || "");
+        const groupB = String(b.GROUP || "");
+        const groupComp = groupA.localeCompare(groupB, undefined, { numeric: true, sensitivity: 'base' });
+        if (groupComp !== 0) return groupComp;
+    }
+
         const lastNameA = a.LName || "";
         const lastNameB = b.LName || "";
         const lastNameComp = lastNameA.localeCompare(lastNameB, undefined, { sensitivity: 'base' });
         if (lastNameComp !== 0) return lastNameComp;
-        
+
         return (a.FNAME || "").localeCompare(b.FNAME || "", undefined, { sensitivity: 'base' });
     });
 
-    // Render HTML Items into Listbox DOM
-    filtered.forEach((p, index) => {
-        const displayName = `${p.LName || ''}, ${p.FNAME || ''}`.trim();
-        const div = document.createElement('div');
-        div.className = "listbox-item";
-        
-        // Publisher Name
-        const nameSpan = document.createElement('span');
-        nameSpan.textContent = displayName;
-        div.appendChild(nameSpan);
+    let lastRenderedGroup = null;
 
-        // Publisher Status Tag (if status exists)
-        if (p.Status && String(p.Status).trim() !== "") {
-            const statusSpan = document.createElement('span');
-            statusSpan.className = "status-badge";
-            statusSpan.style.cssText = "font-size: 0.85em; opacity: 0.75; margin-left: 6px; font-style: italic;";
-            statusSpan.textContent = `(${String(p.Status).trim()})`;
-            div.appendChild(statusSpan);
-        }
+filtered.forEach((p, index) => {
+    const currentGroup = String(p.GROUP || "").trim();
 
-        div.dataset.id = p.IDPub ?? p.IdPubs ?? ""; 
-        div.dataset.status = p.Status || "";
-        div._pubData = p;
-        div._pubIndex = index;
+    // Add GROUP HEADER when group changes
+    if (selectedCategory === "BY GROUP" && currentGroup !== lastRenderedGroup) {
+        const groupHeader = document.createElement("div");
+
+        groupHeader.className = "group-header";
+        groupHeader.textContent = `── GROUP ${currentGroup} ──`;
+
+        groupHeader.style.cssText = `
+            color: red;
+            font-weight: bold;
+            font-size: 11px;
+            padding: 6px 8px 3px;
+            margin-top: 4px;
+            pointer-events: none;
+        `;
+
+        listbox.appendChild(groupHeader);
+        lastRenderedGroup = currentGroup;
+    }
+
+    const displayName = `${p.LName || ''}, ${p.FNAME || ''}`.trim();
+
+    const div = document.createElement('div');
+    div.className = "listbox-item";
+
+    // Publisher Name
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = displayName;
+    div.appendChild(nameSpan);
+
+    // Publisher Status Tag
+    if (p.Status && String(p.Status).trim() !== "") {
+        const statusSpan = document.createElement('span');
+
+        statusSpan.className = "status-badge";
+        statusSpan.style.cssText =
+            "font-size: 0.85em; opacity: 0.75; margin-left: 6px; font-style: italic;";
+
+        statusSpan.textContent = `(${String(p.Status).trim()})`;
+
+        div.appendChild(statusSpan);
+    }
+
+    div.dataset.id = p.IDPub ?? p.IdPubs ?? "";
+    div.dataset.status = p.Status || "";
+    div._pubData = p;
+    div._pubIndex = index;
 
         div.onclick = () => {
             currentIndex = div._pubIndex;
             selectedPubId = p.IDPub ?? p.IdPubs ?? "";
+
+            const multiple = document.getElementById("chkMultipleSelection")?.checked;
+
+            if (multiple) {
+                div.classList.toggle("active");
+
+                if (div.classList.contains("active")) {
+                    currentSelectedPublisher = p;
+                }
+
+                return;
+            }
+
             selectPublisher(p, div);
         };
-        listbox.appendChild(div);
-    });
+
+    listbox.appendChild(div);
+});
 
     const countEl = document.getElementById('listboxCount');
     if (countEl) countEl.textContent = `Count: ${filtered.length}`;
@@ -2641,93 +2683,169 @@ function getIrregularPublisherIds(targetMonthIndex) {
 
 
 //==================
-function buildPublisherPayloadForGAS() {
+async function buildPublisherPayloadForGAS() {
     try {
-        console.log("🛠️ Building publisher payload using your app's actual IDs and variables...");
+        console.log("🛠️ Building MULTI-PUBLISHER TWO-SERVICE-YEAR payload...");
 
-        // Pull from current active publisher object if available, with element fallbacks
-        const pub = window.currentSelectedPublisher || {};
+        const currentYear = Number(window.selectedYear ?? selectedYear);
+        if (!Number.isFinite(currentYear)) throw new Error("selectedYear is not available.");
 
-        const publisherName = document.getElementById('pubNameDisplay')?.value || `${pub.FNAME || ''} ${pub.LName || ''}`.trim() || "Sample Publisher";
-        const pubId = pub.IDPub || pub.IdPubs || "";
-        const pubGroup = document.getElementById('pubGroup')?.value || pub.GROUP_ || "";
-        const address = pub.Address || "";
-        const phone = pub.Phone || "";
-        const birthdate = document.getElementById('pubDob')?.value || pub.Birthdate || "";
-        const baptism = document.getElementById('pubBaptism')?.value || pub.Baptism || "";
-        
-        // Privilege and Gender checkboxes using your exact IDs from populateForm
-        const isRP = document.getElementById('isRP')?.checked ? "Yes" : (pub.RP ? "Yes" : "");
-        const isMS = document.getElementById('isMS')?.checked || Boolean(pub.MS);
-        const isSP = document.getElementById('isSP')?.checked || Boolean(pub.SF);
-        const isElder = document.getElementById('isElder')?.checked || Boolean(pub.Elder);
-        const isMale = document.getElementById('isMale')?.checked || Boolean(pub.Male);
-        const isFemale = document.getElementById('isFemale')?.checked || Boolean(pub.Female);
+        const previousYear = currentYear - 1;
 
-        const serviceYear = window.selectedYear || parseInt(document.getElementById('serviceYear')?.value) || 2026;
+        const getServiceMonthNumber = (serviceYear, monthIndex) => {
+            const anchorBaseNumber = 26;
+            const anchorYear = 2012;
+            const yearDiff = Number(serviceYear) - anchorYear;
+            return anchorBaseNumber + (yearDiff * 12) + Number(monthIndex);
+        };
 
-        const currentYearRecords = [];
-        const previousYearRecords = [];
+        const previousYearNumbers = Array.from({length:12},(_,i)=>getServiceMonthNumber(previousYear,i));
+        const currentYearNumbers = Array.from({length:12},(_,i)=>getServiceMonthNumber(currentYear,i));
 
-        // 1. Gather Current Year records using your exact s21Months structure and element IDs
-        if (typeof s21Months !== 'undefined' && Array.isArray(s21Months)) {
-            s21Months.forEach((m) => {
-                currentYearRecords.push({
-                    MINISTRY: document.getElementById(`${m.id}-ministry`)?.checked || false,
-                    BS: document.getElementById(`${m.id}-studies`)?.value || "",
-                    AUX: document.getElementById(`${m.id}-aux`)?.checked || false,
-                    HRS: document.getElementById(`${m.id}-hours`)?.value || 0,
-                    Note: document.getElementById(`${m.id}-remark`)?.value || document.getElementById(`${m.id}-select`)?.value || ""
-                });
-            });
-        } else {
-            // Fallback 12 months if s21Months is not in scope
-            for (let i = 0; i < 12; i++) {
-                currentYearRecords.push({ MINISTRY: false, BS: "", AUX: false, HRS: 0, Note: "" });
+        console.log("📅 Previous Service Year:", previousYear);
+        console.log("🔢 Previous NUMBERs:", previousYearNumbers);
+        console.log("📅 Current Service Year:", currentYear);
+        console.log("🔢 Current NUMBERs:", currentYearNumbers);
+
+        const selectedItems = [...document.querySelectorAll("#publisherListbox .listbox-item.active")];
+        const selectedPublishers = selectedItems.map(item => item._pubData).filter(Boolean);
+
+        if (!selectedPublishers.length) {
+            throw new Error("No publishers are selected.");
+        }
+
+        console.log("========================================");
+        console.log("👥 SELECTED PUBLISHERS");
+        console.log("========================================");
+        console.log("Selected count:", selectedPublishers.length);
+
+        selectedPublishers.forEach((p,index) => {
+            console.log(`${index + 1}.`, p.FNAME, p.LName, "IDPub:", p.IDPub);
+        });
+
+        const db = await openIndexedDB();
+
+        const readStore = storeName => new Promise((resolve,reject) => {
+            const tx = db.transaction(storeName,"readonly");
+            const request = tx.objectStore(storeName).getAll();
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error);
+        });
+
+        const records = await readStore("RECORDS");
+        db.close();
+
+        console.log("📋 TOTAL RECORDS:", records.length);
+
+        const previousSet = new Set(previousYearNumbers.map(n => String(n)));
+        const currentSet = new Set(currentYearNumbers.map(n => String(n)));
+
+        const publisherPayload = selectedPublishers.map(selectedPublisher => {
+            const selectedID = String(
+                selectedPublisher.IDPub ??
+                selectedPublisher.IdPubs ??
+                ""
+            ).trim();
+
+            if (!selectedID) {
+                console.warn("⚠️ Publisher has no IDPub:", selectedPublisher);
             }
-        }
 
-        // 2. Previous Year records fallback (or populated if you maintain a separate previous year structure)
-        for (let i = 0; i < 12; i++) {
-            previousYearRecords.push({ MINISTRY: false, BS: "", AUX: false, HRS: 0, Note: "" });
-        }
+            const selectedRecords = records.filter(record =>
+                String(record.IdPubs ?? record.IDPub ?? "").trim() === selectedID
+            );
 
-        const payload = [{
-            publisher: {
-                Name: publisherName,
-                Birthdate: birthdate,
-                Baptism: baptism,
-                RP: isRP,
-                MS: isMS,
-                SP: isSP,
-                Elder: isElder,
-                Male: isMale,
-                Female: isFemale
+            const previousYearRecords = selectedRecords.filter(record =>
+                previousSet.has(String(record.NUMBER ?? "").trim())
+            );
+
+            const currentYearRecords = selectedRecords.filter(record =>
+                currentSet.has(String(record.NUMBER ?? "").trim())
+            );
+
+            console.log("========================================");
+            console.log("👤 PUBLISHER");
+            console.log("========================================");
+            console.log("Name:", selectedPublisher.FNAME, selectedPublisher.LName);
+            console.log("🆔 IDPub:", selectedID);
+            console.log(`${previousYear} records:`, previousYearRecords.length);
+            console.log(`${currentYear} records:`, currentYearRecords.length);
+
+            return {
+                IDPub: selectedID,
+                ID: selectedPublisher.ID ?? "",
+                FNAME: selectedPublisher.FNAME ?? "",
+                MName: selectedPublisher.MName ?? "",
+                LName: selectedPublisher.LName ?? "",
+                Fullname: selectedPublisher.Fullname ??
+                    `${selectedPublisher.LName || ""}, ${selectedPublisher.FNAME || ""}${selectedPublisher.MName ? " " + selectedPublisher.MName : ""}`.trim(),
+                GROUP: selectedPublisher.GROUP ?? "",
+                Address: selectedPublisher.Address ?? "",
+                TelCp: selectedPublisher.TelCp ?? "",
+                TellHome: selectedPublisher.TellHome ?? "",
+                Birthdate: selectedPublisher.Birthdate ?? "",
+                Baptism: selectedPublisher.Baptism ?? "",
+                AppointmentDate: selectedPublisher.AppointmentDate ?? "",
+                Status: selectedPublisher.Status ?? "",
+                Elder: selectedPublisher.Elder ?? "",
+                MS: selectedPublisher.MS ?? "",
+                RP: selectedPublisher.RP ?? "",
+                SF: selectedPublisher.SF ?? "",
+                Male: selectedPublisher.Male ?? "",
+                Female: selectedPublisher.Female ?? "",
+                MoveOut: selectedPublisher.MoveOut ?? "",
+                "1yrBaptized": selectedPublisher["1yrBaptized"] ?? "",
+                previousYearRecords: previousYearRecords,
+                currentYearRecords: currentYearRecords
+            };
+        });
+
+        const payload = {
+            serviceYears: {
+                previous: {
+                    year: previousYear,
+                    monthNumbers: previousYearNumbers
+                },
+                current: {
+                    year: currentYear,
+                    monthNumbers: currentYearNumbers
+                }
             },
-            serviceYear: serviceYear,
-            currentYear: { records: currentYearRecords },
-            previousYear: { records: previousYearRecords }
-        }];
+            publishers: publisherPayload
+        };
 
-        console.log("✅ Successfully constructed payload:", payload);
+        console.log("========================================");
+        console.log("✅ MULTI-PUBLISHER PAYLOAD READY");
+        console.log("========================================");
+        console.log("👥 Publishers:", publisherPayload.length);
+        console.log("🆔 IDs:", publisherPayload.map(p => p.IDPub));
+        console.log("📦 FULL PAYLOAD:", payload);
+        console.log("========================================");
+
+        window.publisherTwoYearPayload = payload;
+
         return payload;
 
     } catch (err) {
         console.error("❌ Exception inside buildPublisherPayloadForGAS():", err);
-        alert("Error building publisher record data. Check console for details.");
+        alert("Error building publisher record data:\n\n" + err.message);
         return null;
     }
 }
 
+
 // -------------------------------------------------------------------
 // Button Click Event Listener for Print Preview
 // -------------------------------------------------------------------
-document.getElementById('btnPrintPreview').addEventListener('click', () => {
+document.getElementById('btnPrintPreview').addEventListener('click', async () => {    
     console.log("🔘 [DEBUG] 1. Print Preview button clicked!");
     const btn = document.getElementById('btnPrintPreview');
     
-    const payload = buildPublisherPayloadForGAS(); 
-    if (!payload) return;
+
+    const payload = await buildPublisherPayloadForGAS();
+        if (!payload) return;
+
+
 
     // 1. Open a blank tab IMMEDIATELY during the user click event (bypasses popup blocker!)
     const newWindow = window.open('', '_blank');
@@ -2775,7 +2893,7 @@ document.getElementById('btnPrintPreview').addEventListener('click', () => {
         } else {
             console.error("❌ Server returned error:", result);
             newWindow.close();
-            alert("Error generating PDF: " + (result?.error || "Unknown error"));
+            alert("Error generating PDF: " + (result?.detail || result?.error || "Unknown error"));
         }
     })
     .catch(err => {
@@ -3045,5 +3163,66 @@ async function saveNewPublisher() {
         );
     }
 }
+
+
+// ----Prin PDF selection
+document.addEventListener("DOMContentLoaded", () => {
+    const multipleSelection = document.getElementById("chkMultipleSelection");
+    const byFSG = document.getElementById("chkByFSG");
+
+    // Both unchecked by default
+    multipleSelection.checked = false;
+    byFSG.checked = false;
+
+    // Return to single selection
+    const returnToSingleSelection = () => {
+        const activeItems = document.querySelectorAll("#publisherListbox .listbox-item.active");
+
+        if (activeItems.length <= 1) return;
+
+        let keepItem = null;
+
+        // Keep the currently selected publisher if possible
+        if (currentSelectedPublisher) {
+            const currentID = String(
+                currentSelectedPublisher.IDPub ??
+                currentSelectedPublisher.IdPubs ??
+                ""
+            ).trim();
+
+            keepItem = [...activeItems].find(item =>
+                String(item.dataset.id ?? "").trim() === currentID
+            );
+        }
+
+        // Otherwise keep the first active item
+        if (!keepItem) {
+            keepItem = activeItems[0];
+        }
+
+        activeItems.forEach(item => {
+            if (item !== keepItem) {
+                item.classList.remove("active");
+            }
+        });
+    };
+
+    // Only one can be checked at a time
+    multipleSelection.addEventListener("change", () => {
+        if (multipleSelection.checked) {
+            byFSG.checked = false;
+        } else {
+            returnToSingleSelection();
+        }
+    });
+
+    byFSG.addEventListener("change", () => {
+        if (byFSG.checked) {
+            multipleSelection.checked = false;
+            returnToSingleSelection();
+        }
+    });
+});
+
 
 </script>

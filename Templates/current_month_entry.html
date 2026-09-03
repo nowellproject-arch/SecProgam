@@ -804,9 +804,8 @@ function syncGlobalsFromMonthNumber(targetNumber) {
    
 
 // 6. Main Listbox Renderer & Filter (Default category changed to ACTIVE PUBLISHERS)
+// 6. Main Listbox Renderer & Filter (Default category changed to ACTIVE PUBLISHERS)
 function renderListbox(filter = "", category = "ACTIVE PUBLISHERS") {
-
-    window.currentCategory = category;
     const listbox = document.getElementById('publisherListbox');
     if (!listbox) return;
 
@@ -847,12 +846,11 @@ function renderListbox(filter = "", category = "ACTIVE PUBLISHERS") {
     }
 
     // Get target MonthIndex
-    const targetMonthIndex = Number(
-    window.currentActiveMonthIndex ??
-    (typeof getMonthIndex === 'function' ? getMonthIndex() : 0)
-    );
+    const targetMonthIndex = Number(typeof getMonthIndex === 'function' ? getMonthIndex() : 0);
 
-    // Helper: Robust Legacy Marker Normalization
+    // =============================================================
+    // HELPER: Robust Legacy Marker Normalization
+    // =============================================================
     const isTrueMarker = (val) => {
         if (val === null || val === undefined) return false;
         if (typeof val === "boolean") return val;
@@ -862,122 +860,68 @@ function renderListbox(filter = "", category = "ACTIVE PUBLISHERS") {
     };
 
     // =============================================================
-    // STEP 1: GET REPORTED PUB PROFILES (ALLOWING DUPLICATES)
+    // STEP 1: GET REPORTED PUB IDs FROM GLOBAL SUMMARY CACHE
     // =============================================================
-    let reportedPubs = [];
-    let reportedAuxs = [];
-    let reportedRps = [];
+    const reportedPubIds = new Set();
+    const reportedAuxIds = new Set();
+    const reportedRpIds = new Set();
 
-    const isReportCategory = [
-        "ALL PUBLISHERS REPORTED",
-        "ALL AUX REPORTED",
-        "ALL RP REPORTED"
-        ].includes(
-            String(category || "").toUpperCase().trim()
-        );
+    // Safely look up the global summary cache
+    const summary = window.currentMonthSummary || null;
 
+    if (summary) {
+        if (summary.pub && summary.pub.details) {
+            summary.pub.details.forEach(d => {
+                const id = String(d.IdPubs ?? d.IDPub ?? d.idpubs ?? "").trim();
+                if (id) reportedPubIds.add(id);
+            });
+        }
+        if (summary.aux && summary.aux.details) {
+            summary.aux.details.forEach(d => {
+                const id = String(d.IdPubs ?? d.IDPub ?? d.idpubs ?? "").trim();
+                if (id) reportedAuxIds.add(id);
+            });
+        }
+        if (summary.rp && summary.rp.details) {
+            summary.rp.details.forEach(d => {
+                const id = String(d.IdPubs ?? d.IDPub ?? d.idpubs ?? "").trim();
+                if (id) reportedRpIds.add(id);
+            });
+        }
+    } else {
+        // Fallback if summary hasn't run yet
         const activeMonthRecords = recData.filter(r => {
-            if (isReportCategory) {
-                // Reported categories use ONLY Date_entered.
-                return Number(r.Date_entered) === targetMonthIndex;
-            }
-
-            // Other categories continue using NUMBER.
-            return Number(r.NUMBER) === targetMonthIndex;
+            const recordMonthNum = Number(r.NUMBER ?? r.MonthIndex);
+            return recordMonthNum === targetMonthIndex;
         });
+                activeMonthRecords.forEach(r => {
+            const rawPubId = r.IdPubs ?? r.IDPub ?? r.idpubs;
+            if (rawPubId === undefined || rawPubId === null) return;
+            
+            const pubIdStr = String(rawPubId).trim();
+            const hours = Number(r.HRS || r.Hours || 0);
+            const studies = Number(r.BS || r.Studies || 0);
 
-    activeMonthRecords.forEach(r => {
-        const rawPubId =
-            r.IdPubs ??
-            r.IDPub ??
-            r.idpubs;
+            const remarkStr = String(r.REMARKS || r.Remarks || "").trim().toUpperCase();
+            const isRP = remarkStr === "RP" || remarkStr.startsWith("RP ");
+            const isAux = isTrueMarker(r.AUX ?? r.aux ?? r.AuxPioneer ?? r.Aux);
+            const hasMinistryFlag = isTrueMarker(r.MINISTRY || r.Ministry);
+            const isReporting = hasMinistryFlag || hours > 0 || studies > 0 || isAux || isRP;
 
-        if (rawPubId === undefined || rawPubId === null) {
-            return;
-        }
+            if (!isReporting) return;
 
-        const pubIdStr = String(rawPubId).trim();
-
-        const foundPub = pubData.find(p =>
-            String(p.IDPub ?? p.IdPubs).trim() === pubIdStr
-        ) || {
-            LName: "Unknown",
-            FNAME: "",
-            IDPub: pubIdStr
-        };
-
-        const recordNum = Number(
-            r.NUMBER ??
-            r.Date_entered ??
-            targetMonthIndex
-        );
-
-        const publisher = {
-            ...foundPub,
-            reportNumber: recordNum
-        };
-
-        const hours = Number(
-            r.HRS ||
-            r.Hours ||
-            0
-        );
-
-        const studies = Number(
-            r.BS ||
-            r.Studies ||
-            0
-        );
-
-        const remarkStr = String(
-            r.REMARKS ||
-            r.Remarks ||
-            ""
-        ).trim().toUpperCase();
-
-        const isRP = remarkStr.includes("RP");
-
-        const isAux = isTrueMarker(
-            r.AUX ??
-            r.aux ??
-            r.AuxPioneer ??
-            r.Aux
-        );
-
-        const hasMinistryFlag = isTrueMarker(
-            r.MINISTRY ||
-            r.Ministry
-        );
-
-        const isReporting =
-            hasMinistryFlag ||
-            hours > 0 ||
-            studies > 0;
-
-        if (!isReporting) {
-            return;
-        }
-
-        if (isRP) {
-            reportedRps.push(publisher);
-        } else if (isAux) {
-            reportedAuxs.push(publisher);
-        } else {
-            reportedPubs.push(publisher);
-        }
-    });
-
+            if (isRP) reportedRpIds.add(pubIdStr);
+            else if (isAux) reportedAuxIds.add(pubIdStr);
+            else reportedPubIds.add(pubIdStr);
+        });
+    }
     // =============================================================
     // STEP 2: FILTER PUBLISHERS DATA BY CATEGORY & SEARCH TEXT
     // =============================================================
     const selectedCategory = (category || "ACTIVE PUBLISHERS").toUpperCase().trim();
 
-    let sourceData = pubData;
-    if (selectedCategory === "ALL PUBLISHERS REPORTED") sourceData = reportedPubs;
-    else if (selectedCategory === "ALL AUX REPORTED") sourceData = reportedAuxs;
-    else if (selectedCategory === "ALL RP REPORTED") sourceData = reportedRps;
-
-    const filtered = sourceData.filter(p => {
+    const filtered = pubData.filter(p => {
+        // Search Filter (First Name, Last Name, Nickname)
         const fullName = `${p.FNAME || ''} ${p.LName || ''}`.trim();
         const nickname = p.Nname || '';
         const matchesSearch = fullName.toLowerCase().includes(filter.toLowerCase()) || 
@@ -986,40 +930,78 @@ function renderListbox(filter = "", category = "ACTIVE PUBLISHERS") {
         let matchesCategory = true;
         const statusVal = (p.Status || "").trim().toLowerCase();
         
-        const isReportCategory = ["ALL PUBLISHERS REPORTED", "ALL AUX REPORTED", "ALL RP REPORTED"].includes(selectedCategory);
+        // Normalize primary key as trimmed string
+        const pubIdStr = String(p.IDPub ?? p.IdPubs ?? "").trim();
+        
+        // Category Selection Filter
+        switch (selectedCategory) {
+            case "ACTIVE PUBLISHERS":
+                matchesCategory = !p.Status || statusVal === "" || statusVal === "active";
+                break;
 
-        if (isReportCategory) {
-            matchesCategory = true; 
-        } else {
-            switch (selectedCategory) {
-                case "ACTIVE PUBLISHERS":
-                    matchesCategory = !p.Status || statusVal === "" || statusVal === "active";
-                    break;
-                case "BY GROUP":
-                    matchesCategory = p.GROUP_ !== undefined && p.GROUP_ !== null && String(p.GROUP_).trim() !== "";
-                    break;
-                case "REGULAR PIONEERS":
-                    matchesCategory = isTrueMarker(p.RP);
-                    break;
-                case "INACTIVES":
-                    matchesCategory = statusVal === "inactive" || statusVal === "inactives";
-                    break;
-                case "ALL":
-                default:
-                    matchesCategory = true;
-                    break;
-            }
+            case "ALL PUBLISHERS REPORTED":
+                matchesCategory = reportedPubIds.has(pubIdStr);
+                break;
+            case "ALL AUX REPORTED":
+                matchesCategory = reportedAuxIds.has(pubIdStr);
+                break;
+            case "ALL RP REPORTED":
+                matchesCategory = reportedRpIds.has(pubIdStr);
+                break;
 
-            if (selectedCategory !== "ALL" && selectedCategory !== "MOVED OUT" && selectedCategory !== "INACTIVES") {
-                if (["inactive", "inactives", "moved out", "disqualified", "removed"].includes(statusVal)) {
+            // --- ROLES & STATUS CATEGORIES ---
+            case "ELDERS":
+                matchesCategory = isTrueMarker(p.Elder);
+                break;
+            case "MINISTERIAL SERVANTS":
+                matchesCategory = isTrueMarker(p.MS);
+                break;
+            case "BY GROUP":
+                matchesCategory = p.GROUP !== undefined && p.GROUP !== null && String(p.GROUP).trim() !== "";
+                break;
+            case "UNBAPTIZED":
+                matchesCategory = !p.Baptism || p.Baptism === "";
+                break;
+            case "REGULAR PIONEERS":
+                matchesCategory = isTrueMarker(p.RP);
+                break;
+            case "SP / MISSIONARIES":
+                matchesCategory = isTrueMarker(p.SP) || String(p.SpecialPioneer || "").toLowerCase() === "1";
+                break;
+            case "INACTIVES":
+                matchesCategory = statusVal === "inactive" || statusVal === "inactives";
+                break;
+            case "MOVED OUT":
+                matchesCategory = (statusVal === "moved out" || statusVal === "disqualified" || statusVal === "removed") && 
+                                  statusVal !== "inactive" && statusVal !== "inactives";
+                break;
+            case "1 YEAR BAPTIZED":
+                if (!p.Baptism) {
                     matchesCategory = false;
+                } else {
+                    const bDate = new Date(p.Baptism);
+                    const now = new Date();
+                    const oneYearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+                    matchesCategory = bDate >= oneYearAgo;
                 }
+                break;
+            case "ALL":
+            default:
+                matchesCategory = true;
+                break;
+        }
+
+        // Exclude Inactive, Moved Out, Disqualified, and Removed records from general categories
+        if (selectedCategory !== "ALL" && selectedCategory !== "MOVED OUT" && selectedCategory !== "INACTIVES") {
+            if (statusVal === "inactive" || statusVal === "inactives" || statusVal === "moved out" || statusVal === "disqualified" || statusVal === "removed") {
+                matchesCategory = false;
             }
         }
 
         return matchesSearch && matchesCategory;
     });
 
+    // Handle Empty Results UI
     if (filtered.length === 0) {
         listbox.innerHTML = `<div style="padding: 8px; color: #999; text-align: center; font-size: 11px;">No records found</div>`;
         const countEl = document.getElementById('listboxCount');
@@ -1027,103 +1009,102 @@ function renderListbox(filter = "", category = "ACTIVE PUBLISHERS") {
         return;
     }
 
+    // Sort Priority: Group first only when "BY GROUP" is selected; otherwise purely alphabetical (Last Name -> First Name)
     filtered.sort((a, b) => {
-        if (selectedCategory === "BY GROUP") {
-            const groupA = String(a.GROUP_ || "");
-            const groupB = String(b.GROUP_ || "");
-            const groupComp = groupA.localeCompare(groupB, undefined, { numeric: true, sensitivity: 'base' });
-            if (groupComp !== 0) return groupComp;
-        }
-        
+      if (selectedCategory === "BY GROUP") {
+        const groupA = String(a.GROUP || "");
+        const groupB = String(b.GROUP || "");
+        const groupComp = groupA.localeCompare(groupB, undefined, { numeric: true, sensitivity: 'base' });
+        if (groupComp !== 0) return groupComp;
+    }
+
         const lastNameA = a.LName || "";
         const lastNameB = b.LName || "";
         const lastNameComp = lastNameA.localeCompare(lastNameB, undefined, { sensitivity: 'base' });
         if (lastNameComp !== 0) return lastNameComp;
-        
+
         return (a.FNAME || "").localeCompare(b.FNAME || "", undefined, { sensitivity: 'base' });
     });
 
-    // Render HTML Items into Listbox DOM
-    filtered.forEach((p, index) => {
-        const displayName = `${p.LName || ''}, ${p.FNAME || ''}`.trim();
-        const div = document.createElement('div');
-        div.className = "listbox-item";
-        
-        const nameSpan = document.createElement('span');
-        nameSpan.textContent = displayName;
-        div.appendChild(nameSpan);
+    let lastRenderedGroup = null;
 
-        if (p.Status && String(p.Status).trim() !== "") {
-            const statusSpan = document.createElement('span');
-            statusSpan.className = "status-badge";
-            statusSpan.style.cssText = "font-size: 0.85em; opacity: 0.75; margin-left: 6px; font-style: italic;";
-            statusSpan.textContent = `(${String(p.Status).trim()})`;
-            div.appendChild(statusSpan);
-        }
+filtered.forEach((p, index) => {
+    const currentGroup = String(p.GROUP || "").trim();
 
-        // Attach ID and NUMBER data attributes
-        const selectedPubIdValue = p.IDPub ?? p.IdPubs ?? "";
-        const selectedRecordNumber = p.reportNumber !== undefined ? Number(p.reportNumber) : targetMonthIndex;
+    // Add GROUP HEADER when group changes
+    if (selectedCategory === "BY GROUP" && currentGroup !== lastRenderedGroup) {
+        const groupHeader = document.createElement("div");
 
-        div.dataset.id = selectedPubIdValue;
-        div.dataset.number = selectedRecordNumber;
-        div.dataset.status = p.Status || "";
-        div._pubData = p;
-        div._pubIndex = index;
+        groupHeader.className = "group-header";
+        groupHeader.textContent = `── GROUP ${currentGroup} ──`;
 
-        // Helper boolean to check if active category allows highlighting
-        const isHighlightAllowed = [
-            "ALL PUBLISHERS REPORTED",
-            "ALL AUX REPORTED",
-            "ALL RP REPORTED",
-            "BY GROUP"
-        ].includes(String(selectedCategory).trim().toUpperCase());
+        groupHeader.style.cssText = `
+            color: red;
+            font-weight: bold;
+            font-size: 11px;
+            padding: 6px 8px 3px;
+            margin-top: 4px;
+            pointer-events: none;
+        `;
+
+        listbox.appendChild(groupHeader);
+        lastRenderedGroup = currentGroup;
+    }
+
+    const displayName = `${p.LName || ''}, ${p.FNAME || ''}`.trim();
+
+    const div = document.createElement('div');
+    div.className = "listbox-item";
+
+    // Publisher Name
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = displayName;
+    div.appendChild(nameSpan);
+
+    // Publisher Status Tag
+    if (p.Status && String(p.Status).trim() !== "") {
+        const statusSpan = document.createElement('span');
+
+        statusSpan.className = "status-badge";
+        statusSpan.style.cssText =
+            "font-size: 0.85em; opacity: 0.75; margin-left: 6px; font-style: italic;";
+
+        statusSpan.textContent = `(${String(p.Status).trim()})`;
+
+        div.appendChild(statusSpan);
+    }
+
+    div.dataset.id = p.IDPub ?? p.IdPubs ?? "";
+    div.dataset.status = p.Status || "";
+    div._pubData = p;
+    div._pubIndex = index;
 
     div.onclick = () => {
         currentIndex = div._pubIndex;
-        selectedPubId = selectedPubIdValue;
-        
-        // 💾 SAVE TO LOCAL STORAGE
-        localStorage.setItem('selectedPubId', selectedPubIdValue);
-
-        // Set global selection variable for downstream usage
-        window.SelNumber = selectedRecordNumber;
-
-        // Apply visual highlight ONLY if category is in the allowed list
-        listbox.querySelectorAll('.listbox-item').forEach(el => el.classList.remove('active', 'selected'));
-        if (isHighlightAllowed) {
-            div.classList.add('active');
-        }
-
-        if (typeof selectPublisher === 'function') {
-            selectPublisher(p, div, selectedRecordNumber);
-        } else if (typeof selectSelectedPublisher === 'function') {
-            selectSelectedPublisher(p, selectedRecordNumber);
-        }
+        selectedPubId = p.IDPub ?? p.IdPubs ?? "";
+        selectPublisher(p, div);
     };
 
-    // 🔄 AUTO-RESTORE SAVED SELECTION ON REFRESH
-    const savedPubId = localStorage.getItem('selectedPubId');
-    if (savedPubId && String(selectedPubIdValue) === String(savedPubId)) {
-        setTimeout(() => {
-            if (typeof div.click === 'function') {
-                div.click();
-            }
-        }, 0);
-    }
-
-        listbox.appendChild(div);
-    });
+    listbox.appendChild(div);
+});
 
     const countEl = document.getElementById('listboxCount');
     if (countEl) countEl.textContent = `Count: ${filtered.length}`;
 
+  // =============================================================
+    // RESTORE SELECTION STATE (WITHOUT RE-TRIGGERING FORM RESET)
+    // =============================================================
     if (typeof selectedPubId !== 'undefined' && selectedPubId) {
         const matchingEl = listbox.querySelector(`[data-id="${selectedPubId}"]`);
         if (matchingEl) {
             currentIndex = matchingEl._pubIndex;
+            
+            // Remove active class from all items, add to matching one
             listbox.querySelectorAll('.listbox-item').forEach(el => el.classList.remove('active', 'selected'));
-            matchingEl.classList.add('active'); 
+            matchingEl.classList.add('active'); // Change to 'selected' if your CSS uses that
+            
+            // NOTE: We do NOT call matchingEl.click() here anymore 
+            // because it was resetting your form inputs and unchecking your box!
         }
     }
 }
