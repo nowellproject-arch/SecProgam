@@ -22,6 +22,7 @@ import pg8000.native
 from pydantic import BaseModel
 import traceback
 
+
 # Import custom routers (using importer_router consistently)
 from csv_importer import router as importer_router
 from Sync import sync_router
@@ -272,19 +273,34 @@ SCOPES = [
 
 def get_oauth_credentials():
     creds = None
-    if os.path.exists('token.json'):
-        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+    token_json = os.getenv("GOOGLE_TOKEN_JSON")
+
+    if token_json:
+        try:
+            creds = Credentials.from_authorized_user_info(
+                json.loads(token_json), SCOPES
+            )
+        except Exception as e:
+            print(f"⚠️ GOOGLE_TOKEN_JSON error: {e}")
+    elif os.path.exists("token.json"):
+        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+
+    if creds and creds.expired and creds.refresh_token:
+        print("🔄 Refreshing Google OAuth token...")
+        creds.refresh(GoogleRequest())
 
     if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(GoogleRequest())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                'credentials.json', SCOPES
+        if os.getenv("RENDER"):
+            raise RuntimeError(
+                "Google OAuth token is missing or invalid on Render. "
+                "Set GOOGLE_TOKEN_JSON in Render Environment Variables."
             )
-            creds = flow.run_local_server(port=0)
-
-        with open('token.json', 'w') as token:
+        print("🌐 Starting local Google OAuth...")
+        flow = InstalledAppFlow.from_client_secrets_file(
+            "credentials.json", SCOPES
+        )
+        creds = flow.run_local_server(port=0)
+        with open("token.json", "w") as token:
             token.write(creds.to_json())
 
     return creds
