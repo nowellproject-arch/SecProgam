@@ -20,6 +20,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 import pg8000.native
 from pydantic import BaseModel
+import traceback
 
 # Import custom routers (using importer_router consistently)
 from csv_importer import router as importer_router
@@ -229,18 +230,36 @@ def display_hours(record):
     return str(value)
 
 
+
+
 @app.post("/api/generate-pdf")
+
 def api_generate_pdf(data_payload: Union[dict, list] = Body(...)):
     """FastAPI endpoint to generate Google Slides PDF preview."""
     try:
+        print("🚀 /api/generate-pdf CALLED")
+        print("📦 Payload type:", type(data_payload))
+
         if not data_payload:
-            raise HTTPException(status_code=400, detail="No data payload provided")
-            
+            raise HTTPException(
+                status_code=400,
+                detail="No data payload provided"
+            )
+
         result = generate_publisher_record_pdf(data_payload)
+
+        print("✅ PDF generation completed")
         return result
+
     except Exception as e:
-        print(f"❌ PDF Generation Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        print("❌ PDF Generation Error:", str(e))
+        print("❌ FULL TRACEBACK:")
+        traceback.print_exc()
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
 
 # -------------------------------------------------------------------
 # Google Slides / Drive PDF Helper Functions
@@ -279,8 +298,9 @@ def format_date(date_str):
     except Exception:
         return str(date_str)
 
-
 def generate_publisher_record_pdf(data_payload):
+    print("🔥🔥🔥 USING generate_publisher_record_pdf GOOGLE SLIDES VERSION")
+
     creds = get_oauth_credentials()
     slides_service = build('slides', 'v1', credentials=creds)
     drive_service = build('drive', 'v3', credentials=creds)
