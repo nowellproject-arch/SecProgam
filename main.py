@@ -272,37 +272,43 @@ SCOPES = [
 ]
 
 def get_oauth_credentials():
-    creds = None
     token_json = os.getenv("GOOGLE_TOKEN_JSON")
 
     if token_json:
+        print("✅ GOOGLE_TOKEN_JSON found")
         try:
             creds = Credentials.from_authorized_user_info(
                 json.loads(token_json), SCOPES
             )
+            if creds.expired and creds.refresh_token:
+                print("🔄 Refreshing Google OAuth token...")
+                creds.refresh(GoogleRequest())
+            if not creds.valid:
+                raise RuntimeError("GOOGLE_TOKEN_JSON credentials are invalid")
+            print("✅ Google OAuth credentials ready")
+            return creds
         except Exception as e:
-            print(f"⚠️ GOOGLE_TOKEN_JSON error: {e}")
-    elif os.path.exists("token.json"):
+            print(f"❌ GOOGLE_TOKEN_JSON authentication failed: {e}")
+            raise
+
+    print("⚠️ GOOGLE_TOKEN_JSON not found")
+
+    if os.path.exists("token.json"):
+        print("📄 Using local token.json")
         creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+        if creds.expired and creds.refresh_token:
+            print("🔄 Refreshing local Google OAuth token...")
+            creds.refresh(GoogleRequest())
+        if creds.valid:
+            return creds
 
-    if creds and creds.expired and creds.refresh_token:
-        print("🔄 Refreshing Google OAuth token...")
-        creds.refresh(GoogleRequest())
-
-    if not creds or not creds.valid:
-        if os.getenv("RENDER"):
-            raise RuntimeError(
-                "Google OAuth token is missing or invalid on Render. "
-                "Set GOOGLE_TOKEN_JSON in Render Environment Variables."
-            )
-        print("🌐 Starting local Google OAuth...")
-        flow = InstalledAppFlow.from_client_secrets_file(
-            "credentials.json", SCOPES
-        )
-        creds = flow.run_local_server(port=0)
-        with open("token.json", "w") as token:
-            token.write(creds.to_json())
-
+    print("🌐 Starting local Google OAuth...")
+    flow = InstalledAppFlow.from_client_secrets_file(
+        "credentials.json", SCOPES
+    )
+    creds = flow.run_local_server(port=0)
+    with open("token.json", "w") as token:
+        token.write(creds.to_json())
     return creds
 
 def format_date(date_str):
