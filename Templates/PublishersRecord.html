@@ -2860,7 +2860,7 @@ document.getElementById('btnPrintPreview').addEventListener('click', async () =>
 
     console.log("🚀 [DEBUG] Sending fetch request to /api/generate-pdf...");
 
-    fetch('http://127.0.0.1:8000/api/generate-pdf', {
+    fetch('/api/generate-pdf', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
