@@ -293,7 +293,7 @@
 // --- HELPER FUNCTION: WRITE ALL RETURNED TABLES TO INDEXEDDB ---
 function saveImportedDataToIndexedDB(payloadData, passcode) {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open('CongregationDB', 1);
+        const request = indexedDB.open('CongregationDB', 10);
 
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
@@ -301,7 +301,7 @@ function saveImportedDataToIndexedDB(payloadData, passcode) {
             if (!db.objectStoreNames.contains('GROUPS')) db.createObjectStore('GROUPS', { keyPath: 'id', autoIncrement: true });
             if (!db.objectStoreNames.contains('PUBLISHERS')) db.createObjectStore('PUBLISHERS', { keyPath: ['IDPub', 'passcode'] });
             if (!db.objectStoreNames.contains('MonthlyRecords')) db.createObjectStore('MonthlyRecords', { keyPath: 'ID', autoIncrement: true });
-            if (!db.objectStoreNames.contains('RECORDS')) db.createObjectStore('RECORDS', { keyPath: ['IdPubs', 'NUMBER', 'passcode'] });
+            if (!db.objectStoreNames.contains('RECORDS')) db.createObjectStore('RECORDS', { keyPath: ['NUMBER','IdPubs','passcode'] });
         };
 
         request.onsuccess = (event) => {

@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  /* Screen & Print Page Setup */
+  @page {
+    size: letter portrait;
+    margin: 10mm;
+  }
+
+  body {
+    font-family: Arial, sans-serif;
+    background-color: #f5f5f5;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .print-page {
+    background: #fff;
+    width: 210mm;
+    min-height: 297mm;
+    padding: 15mm;
+    box-sizing: border-box;
+    box-shadow: 0 0 10px rgba(0,0,0,0.15);
+  }
+
+  .header-title {
+    text-align: center;
+    font-size: 16px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    margin-bottom: 15px;
+    text-transform: uppercase;
+  }
+
+  .section-title {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 12px 0 4px 0;
+  }
+
+  /* Fixed Print-Ready Table Structure */
+  table.attendance-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    text-align: center;
+    table-layout: fixed;
+  }
+
+  table.attendance-table th, 
+  table.attendance-table td {
+    border: 1px solid #000;
+    padding: 2px 4px;
+    height: 20px;
+    vertical-align: middle;
+  }
+
+  table.attendance-table th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+  }
+
+  /* Form Input Styling */
+  table.attendance-table input[type="number"],
+  table.attendance-table input[type="text"] {
+    width: 100%;
+    border: none;
+    background: transparent;
+    text-align: center;
+    font-size: 11px;
+    font-family: inherit;
+    box-sizing: border-box;
+  }
+
+  table.attendance-table input[type="number"]:focus {
+    outline: 1px solid #000;
+    background-color: #fff;
+  }
+
+  /* Hide input spinner controls */
+  input[type=number]::-webkit-inner-spin-button, 
+  input[type=number]::-webkit-outer-spin-button { 
+    -webkit-appearance: none;
+    margin: 0; 
+  }
+  input[type=number] { -moz-appearance: textfield; }
+
+  .calc-val {
+    font-weight: normal;
+  }
+
+  .footer-row td {
+    font-weight: bold;
+    background-color: #f9f9f9;
+  }
+
+  .month-cell {
+    text-align: left;
+    padding-left: 6px !important;
+  }
+
+  .month-idx {
+    font-size: 9px;
+    color: #666;
+    margin-right: 4px;
+  }
+
+  .form-code {
+    font-size: 9px;
+    color: #000;
+    margin-top: 8px;
+  }
+
+  /* Printing Optimizations */
+  @media print {
+    body {
+      background: none;
+      padding: 0;
+    }
+    .print-page {
+      box-shadow: none;
+      width: 100%;
+      height: 100%;
+      padding: 0;
+    }
+    table.attendance-table th {
+      background-color: #f2f2f2 !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="print-page">
+  <div class="header-title">Congregation Meeting Attendance Record</div>
+
+  <div class="section-title">Midweek Meeting</div>
+  <table class="attendance-table" id="midweekTable">
+    <thead>
+      <tr>
+        <th style="width: 15%;">Service Year<br><input type="text" value="2025" style="font-weight:bold;"></th>
+        <th style="width: 11%;">Number of Meetings</th>
+        <th style="width: 12%;">Total Attendance</th>
+        <th style="width: 12%;">Average Attendance Each Week</th>
+        <th style="width: 15%;">Service Year<br><input type="text" value="2026" style="font-weight:bold;"></th>
+        <th style="width: 11%;">Number of Meetings</th>
+        <th style="width: 12%;">Total Attendance</th>
+        <th style="width: 12%;">Average Attendance Each Week</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+    <tfoot>
+      <tr class="footer-row">
+        <td colspan="3" style="text-align: right; padding-right: 6px;">Average Attendance Each Month</td>
+        <td id="midweek-avg-yr1" class="calc-val"></td>
+        <td colspan="3" style="text-align: right; padding-right: 6px;">Average Attendance Each Month</td>
+        <td id="midweek-avg-yr2" class="calc-val"></td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <div class="section-title">Weekend Meeting</div>
+  <table class="attendance-table" id="weekendTable">
+    <thead>
+      <tr>
+        <th style="width: 15%;">Service Year<br><input type="text" value="2025" style="font-weight:bold;"></th>
+        <th style="width: 11%;">Number of Meetings</th>
+        <th style="width: 12%;">Total Attendance</th>
+        <th style="width: 12%;">Average Attendance Each Week</th>
+        <th style="width: 15%;">Service Year<br><input type="text" value="2026" style="font-weight:bold;"></th>
+        <th style="width: 11%;">Number of Meetings</th>
+        <th style="width: 12%;">Total Attendance</th>
+        <th style="width: 12%;">Average Attendance Each Week</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+    <tfoot>
+      <tr class="footer-row">
+        <td colspan="3" style="text-align: right; padding-right: 6px;">Average Attendance Each Month</td>
+        <td id="weekend-avg-yr1" class="calc-val"></td>
+        <td colspan="3" style="text-align: right; padding-right: 6px;">Average Attendance Each Month</td>
+        <td id="weekend-avg-yr2" class="calc-val"></td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <div class="form-code">S-88-E 12/18</div>
+</div>
+
+<script>
+const months = [
+  "September", "October", "November", "December", 
+  "January", "February", "March", "April", 
+  "May", "June", "July", "August"
+];
+
+function generateFixedRows(tableId, prefix) {
+  const tbody = document.querySelector(`#${tableId} tbody`);
+  tbody.innerHTML = "";
+
+  months.forEach((month, index) => {
+    const row = document.createElement("tr");
+    const monthIndexFormatted = String(index + 1).padStart(2, '0'); // e.g., [01], [02]
+
+    row.innerHTML = `
+      <td class="month-cell"><span class="month-idx">[${monthIndexFormatted}]</span>${month}</td>
+      <td><input type="number" min="0" id="${prefix}_yr1_m_${index}" oninput="calculateTable('${prefix}')"></td>
+      <td><input type="number" min="0" id="${prefix}_yr1_t_${index}" oninput="calculateTable('${prefix}')"></td>
+      <td id="${prefix}_yr1_a_${index}" class="calc-val"></td>
+      
+      <td class="month-cell"><span class="month-idx">[${monthIndexFormatted}]</span>${month}</td>
+      <td><input type="number" min="0" id="${prefix}_yr2_m_${index}" oninput="calculateTable('${prefix}')"></td>
+      <td><input type="number" min="0" id="${prefix}_yr2_t_${index}" oninput="calculateTable('${prefix}')"></td>
+      <td id="${prefix}_yr2_a_${index}" class="calc-val"></td>
+    `;
+    tbody.appendChild(row);
+  });
+}
+
+function calculateTable(prefix) {
+  ["yr1", "yr2"].forEach(yr => {
+    let monthlyAveragesSum = 0;
+    let activeMonthsCount = 0;
+
+    months.forEach((_, index) => {
+      const numMeetings = parseFloat(document.getElementById(`${prefix}_${yr}_m_${index}`).value) || 0;
+      const totalAtt = parseFloat(document.getElementById(`${prefix}_${yr}_t_${index}`).value) || 0;
+      const avgCell = document.getElementById(`${prefix}_${yr}_a_${index}`);
+
+      if (numMeetings > 0 && totalAtt > 0) {
+        const weeklyAvg = Math.round(totalAtt / numMeetings);
+        avgCell.innerText = weeklyAvg;
+        monthlyAveragesSum += weeklyAvg;
+        activeMonthsCount++;
+      } else {
+        avgCell.innerText = "";
+      }
+    });
+
+    const grandAvgCell = document.getElementById(`${prefix}-avg-${yr}`);
+    if (activeMonthsCount > 0) {
+      grandAvgCell.innerText = Math.round(monthlyAveragesSum / activeMonthsCount);
+    } else {
+      grandAvgCell.innerText = "";
+    }
+  });
+}
+
+generateFixedRows("midweekTable", "midweek");
+generateFixedRows("weekendTable", "weekend");
+</script>
+
+</body>
+</html>

@@ -64,7 +64,7 @@ const PRIMARY_KEYS = {
     GROUPS: 'Group',
     PUBLISHERS: 'IDPub',
     MonthlyRecords: 'NUMBER',
-    RECORDS: ['IdPubs', 'NUMBER']
+    RECORDS: ['NUMBER', 'IdPubs']
 };
 
 const STORE_MAP = {
@@ -80,13 +80,13 @@ const REQUIRED_STORES = {
     GROUPS: 'Group',
     PUBLISHERS: 'IDPub',
     MonthlyRecords: 'NUMBER',
-    RECORDS: ['IdPubs', 'NUMBER']
+    RECORDS: ['NUMBER', 'IdPubs']
 };
 
 function saveToIndexedDB(data) {
   return new Promise((resolve, reject) => {
     // Open DB with upgrade handler instead of destructive deletion
-    const request = indexedDB.open("CongregationDB", 1);
+    const request = indexedDB.open("CongregationDB", 10);
 
     request.onupgradeneeded = (event) => {
       const db = event.target.result;

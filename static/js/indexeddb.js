@@ -1,6 +1,9 @@
+
 // ==========================================
 // GLOBAL CUSTOM POPUPS
 // ==========================================
+
+console.log("🚨 indexeddb.js EXECUTED");
 (function() {
     if (!document.getElementById("customPopupStyles")) {
         const style = document.createElement("style");
@@ -137,7 +140,7 @@ function showCustomAlert(message) {
 }
 
 const DB_NAME = "CongregationDB";
-const DB_VERSION = 7;
+const DB_VERSION = 10; 
 
 
 const DB_STORES = {
@@ -145,9 +148,51 @@ const DB_STORES = {
     GROUPS: "Group_",
     PUBLISHERS: ["IDPub"],
     MonthlyRecords: "NUMBER",
-    RECORDS: ["IdPubs", "NUMBER"]
+    RECORDS: ["NUMBER","IdPubs"]
 };
 
+
+
+// ============================================================
+// Get Month/Year
+// ============================================================
+window.getServiceMonthNumber=function(serviceYear,monthIndex){
+    // monthIndex: 0 = Sept, 1 = Oct, 2 = Nov, 3 = Dec,
+    //             4 = Jan, 5 = Feb, 6 = Mar, 7 = Apr,
+    //             8 = May, 9 = Jun, 10 = Jul, 11 = Aug
+
+    // 🎯 Dynamically update header display if element exists
+    if(serviceYear){
+        const yearEl=document.getElementById("serviceYearDisplay");
+        if(yearEl){
+            yearEl.textContent=serviceYear;
+        }
+    }
+
+    const anchorBaseNumber=26; // Sept 2012
+    const anchorYear=2012;
+
+    // Calculate year difference from the 2012 anchor
+    const yearDiff=serviceYear-anchorYear;
+
+    // Each service year adds 12 numbers, plus the specific month index offset
+    return anchorBaseNumber+(yearDiff*12)+monthIndex;
+};
+
+// ============================================================
+// Present month index for IndexedDB primary key mapping
+// ============================================================
+
+
+window.getMonthIndex=function(){
+    console.log("🚨 getMonthIndex DEFINED:",typeof window.getMonthIndex);
+    const month=window.activeCalendarMonth;
+    const year=window.activeCalendarYear;
+    const sYear=month>=8?year+1:year;
+    const baseNumber=194+(sYear-2026)*12;
+    const offset=month>=8?month-8:month+4;
+    return baseNumber+offset;
+};
 
 // ============================================================
 // OPEN / CREATE THE DATABASE
@@ -190,7 +235,7 @@ function openCongregationDB() {
 
             if (!db.objectStoreNames.contains("RECORDS")) {
                 db.createObjectStore("RECORDS", {
-                    keyPath: ["IdPubs", "NUMBER"]
+                    keyPath: ["NUMBER","IdPubs"]
                 });
             }
 
@@ -234,38 +279,47 @@ function openCongregationDB() {
 // ========================================
 function openIndexedDB() {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open("CongregationDB", 7);
+        const request = indexedDB.open("CongregationDB", 10);
 
-        request.onupgradeneeded = event => {
-            const db = event.target.result;
+        request.onupgradeneeded=function(event){
+            const db=event.target.result;
 
-            if (!db.objectStoreNames.contains("CongInfo")) {
-                db.createObjectStore("CongInfo", {
-                    keyPath: "passcode"
-                });
+            if(!db.objectStoreNames.contains("CongInfo")){
+                db.createObjectStore("CongInfo",{keyPath:"passcode"});
             }
 
-            if (!db.objectStoreNames.contains("GROUPS")) {
-                db.createObjectStore("GROUPS", {
-                    keyPath: "Group"
-                });
+            if(!db.objectStoreNames.contains("GROUPS")){
+                db.createObjectStore("GROUPS",{keyPath:"Group"});
             }
 
-            if (!db.objectStoreNames.contains("PUBLISHERS")) {
-                db.createObjectStore("PUBLISHERS", {
-                    keyPath: ["IDPub"]
-                });
+            if(!db.objectStoreNames.contains("PUBLISHERS")){
+                db.createObjectStore("PUBLISHERS",{keyPath:"IDPub"});
             }
 
-            if (!db.objectStoreNames.contains("MonthlyRecords")) {
-                db.createObjectStore("MonthlyRecords", {
-                    keyPath: "NUMBER"
-                });
+            if(!db.objectStoreNames.contains("MonthlyRecords")){
+                db.createObjectStore("MonthlyRecords",{keyPath:"NUMBER"});
             }
 
-            if (!db.objectStoreNames.contains("RECORDS")) {
-                db.createObjectStore("RECORDS", {
-                    keyPath: ["IdPubs", "NUMBER"]
+            // ==========================================
+            // RECORDS SCHEMA MIGRATION
+            // Version 10 changes keyPath order
+            // ==========================================
+            if(event.oldVersion<10){
+                if(db.objectStoreNames.contains("RECORDS")){
+                    console.warn("🗑️ Deleting old RECORDS schema...");
+                    db.deleteObjectStore("RECORDS");
+                }
+
+                console.log("🆕 Creating RECORDS with new keyPath...");
+
+                db.createObjectStore("RECORDS",{
+                    keyPath:["NUMBER","IdPubs"]
+                });
+            }
+            // Normal creation for completely new database
+            else if(!db.objectStoreNames.contains("RECORDS")){
+                db.createObjectStore("RECORDS",{
+                    keyPath:["NUMBER","IdPubs"]
                 });
             }
 
@@ -287,60 +341,30 @@ function openIndexedDB() {
 // ============================================================
 async function saveAllTablesToIndexedDB(allTablesData) {
     const db = await openIndexedDB();
-    const storeNames = [
-        "CongInfo",
-        "GROUPS",
-        "PUBLISHERS",
-        "MonthlyRecords",
-        "RECORDS"
-    ];
+    const storeNames = ["CongInfo", "GROUPS", "PUBLISHERS", "MonthlyRecords", "RECORDS"];
 
     return new Promise((resolve, reject) => {
-        const transaction =
-            db.transaction(storeNames, "readwrite");
+        const transaction = db.transaction(storeNames, "readwrite");
         let failed = false;
         transaction.oncomplete = () => {
             db.close();
-            console.log(
-                "✅ All 5 IndexedDB stores imported successfully."
-            );
+            console.log("✅ All 5 IndexedDB stores imported successfully.");
             resolve(true);
         };
         transaction.onerror = () => {
-            console.error(
-                "❌ IndexedDB TRANSACTION ERROR:",
-                transaction.error
-            );
+            console.error("❌ IndexedDB TRANSACTION ERROR:", transaction.error);
             db.close();
-            reject(
-                transaction.error ||
-                new Error("IndexedDB transaction failed.")
-            );
+            reject(transaction.error || new Error("IndexedDB transaction failed."));
         };
         transaction.onabort = () => {
-            console.error(
-                "❌ IndexedDB TRANSACTION ABORTED:",
-                transaction.error
-            );
+            console.error("❌ IndexedDB TRANSACTION ABORTED:", transaction.error);
             db.close();
-            reject(
-                transaction.error ||
-                new Error("IndexedDB transaction aborted.")
-            );
+            reject(transaction.error || new Error("IndexedDB transaction aborted."));
         };
         for (const storeName of storeNames) {
-
-            const store =
-                transaction.objectStore(storeName);
-            const rows =
-                allTablesData[storeName];
-            console.log(
-                `📥 Importing ${storeName}:`,
-                Array.isArray(rows)
-                    ? rows.length
-                    : 0,
-                "records"
-            );
+            const store = transaction.objectStore(storeName);
+            const rows = allTablesData[storeName];
+            console.log(`📥 Importing ${storeName}:`, Array.isArray(rows) ? rows.length : 0, "records");
             // ---------------------------------------------
             // CLEAR EXISTING DATA
             // ---------------------------------------------
@@ -353,93 +377,55 @@ async function saveAllTablesToIndexedDB(allTablesData) {
             // ---------------------------------------------
             rows.forEach((row, index) => {
                 if (failed) return;
+
+                // Transform zero hours to empty string
+                if (row.HRS === 0 || row.HRS === "0") row.HRS = "";
+
                 // =========================================
                 // SPECIAL CHECK FOR RECORDS
                 // =========================================
                 if (storeName === "RECORDS") {
-                    if (
-                        index >= 2720 &&
-                        index <= 2730
-                    ) {
-                        console.log(
-                            "🔍 RECORDS DEBUG:",
-                            {
-                                index: index,
-                                row: row,
-                                IdPubs: row.IdPubs,
-                                NUMBER: row.NUMBER,
-                                IdPubsType:
-                                    typeof row.IdPubs,
-                                NUMBERType:
-                                    typeof row.NUMBER,
-                                keys:
-                                    Object.keys(row)
-                            }
-                        );
+                    if (index >= 2720 && index <= 2730) {
+                        console.log("🔍 RECORDS DEBUG:", {
+                            index: index,
+                            row: row,
+                            IdPubs: row.IdPubs,
+                            NUMBER: row.NUMBER,
+                            IdPubsType: typeof row.IdPubs,
+                            NUMBERType: typeof row.NUMBER,
+                            keys: Object.keys(row)
+                        });
                     }
                     // Check property existence
-                    const hasIdPubs =
-                        Object.prototype
-                            .hasOwnProperty
-                            .call(row, "IdPubs");
-                    const hasNUMBER =
-                        Object.prototype
-                            .hasOwnProperty
-                            .call(row, "NUMBER");
+                    const hasIdPubs = Object.prototype.hasOwnProperty.call(row, "IdPubs");
+                    const hasNUMBER = Object.prototype.hasOwnProperty.call(row, "NUMBER");
                     if (!hasIdPubs || !hasNUMBER) {
                         failed = true;
-                        console.error(
-                            "🚨 INVALID RECORD FOUND",
-                            {
-                                store: storeName,
-                                index: index,
-                                row: row,
-                                hasIdPubs: hasIdPubs,
-                                hasNUMBER: hasNUMBER,
-                                IdPubs: row.IdPubs,
-                                NUMBER: row.NUMBER,
-                                keys: Object.keys(row)
-                            }
-                        );
+                        console.error("🚨 INVALID RECORD FOUND", {
+                            store: storeName,
+                            index: index,
+                            row: row,
+                            hasIdPubs: hasIdPubs,
+                            hasNUMBER: hasNUMBER,
+                            IdPubs: row.IdPubs,
+                            NUMBER: row.NUMBER,
+                            keys: Object.keys(row)
+                        });
                         transaction.abort();
-                        reject(
-                            new Error(
-                                `RECORDS row ${index} is missing ` +
-                                `${!hasIdPubs ? "IdPubs" : ""}` +
-                                `${!hasNUMBER ? " NUMBER" : ""}`
-                            )
-                        );
+                        reject(new Error(`RECORDS row ${index} is missing ${!hasIdPubs ? "IdPubs" : ""}${!hasNUMBER ? " NUMBER" : ""}`));
                         return;
                     }
                     // Check undefined/null
-                    if (
-                        row.IdPubs === undefined ||
-                        row.IdPubs === null ||
-                        row.NUMBER === undefined ||
-                        row.NUMBER === null
-                    ) {
-
+                    if (row.IdPubs === undefined || row.IdPubs === null || row.NUMBER === undefined || row.NUMBER === null) {
                         failed = true;
-
-                        console.error(
-                            "🚨 INVALID RECORD KEY",
-                            {
-                                index: index,
-                                IdPubs: row.IdPubs,
-                                NUMBER: row.NUMBER,
-                                row: row
-                            }
-                        );
-
+                        console.error("🚨 INVALID RECORD KEY", {
+                            index: index,
+                            IdPubs: row.IdPubs,
+                            NUMBER: row.NUMBER,
+                            row: row
+                        });
                         transaction.abort();
-
-                        reject(
-                            new Error(
-                                `RECORDS row ${index} ` +
-                                `has invalid IdPubs or NUMBER`
-                            )
-                        );
-
+                        reject(new Error(`RECORDS row ${index} has invalid IdPubs or NUMBER`));
                         return;
                     }
                 }
@@ -447,38 +433,20 @@ async function saveAllTablesToIndexedDB(allTablesData) {
                 // =========================================
                 // PUT
                 // =========================================
-
                 try {
-
                     store.put(row);
-
-                }
-                catch (error) {
-
+                } catch (error) {
                     failed = true;
-
-                    console.error(
-                        "❌ PUT FAILED",
-                        {
-                            store: storeName,
-                            index: index,
-                            row: row,
-                            error: error,
-                            message: error.message
-                        }
-                    );
-
+                    console.error("❌ PUT FAILED", {
+                        store: storeName,
+                        index: index,
+                        row: row,
+                        error: error,
+                        message: error.message
+                    });
                     transaction.abort();
-
-                    reject(
-                        new Error(
-                            `IndexedDB PUT failed in ` +
-                            `${storeName}, row ${index}: ` +
-                            error.message
-                        )
-                    );
+                    reject(new Error(`IndexedDB PUT failed in ${storeName}, row ${index}: ${error.message}`));
                 }
-
             });
         }
     });
@@ -489,192 +457,94 @@ async function saveAllTablesToIndexedDB(allTablesData) {
 // ============================================================
 async function handleRestoreFromCloud() {
     const passcode = localStorage.getItem("user_passcode");
-
     if (!passcode) {
-        await showCustomAlert(
-            "⚠️ PASSCODE MISSING\n\n" +
-            "Please log in again."
-        );
+        await showCustomAlert("⚠️ PASSCODE MISSING\n\nPlease log in again.");
         return;
     }
 
-    const confirmed = await showCustomConfirm(
-        "☁️ RESTORE FROM CLOUD?\n\n" +
-        "Your current local data will be replaced " +
-        "with the cloud backup.\n\n" +
-        "Do you want to continue?"
-    );
-
+    const confirmed = await showCustomConfirm("☁️ RESTORE FROM CLOUD?\n\nYour current local data will be replaced with the cloud backup.\n\nDo you want to continue?");
     if (!confirmed) return;
 
-    const syncStatus =
-        window.parent.document.getElementById("sync-status");
+    const syncStatus = window.parent.document.getElementById("sync-status");
 
     try {
-
-        // ====================================================
         // 1. SHOW RESTORING STATUS
-        // ====================================================
-
         if (syncStatus) {
             syncStatus.style.display = "inline";
-            syncStatus.textContent =
-                "● Restoring...";
-            syncStatus.style.color =
-                "#ffc107";
+            syncStatus.textContent = "● Restoring...";
+            syncStatus.style.color = "#ffc107";
         }
+        console.log("☁️ Starting cloud restore...");
+        console.log("🔑 Passcode:", passcode);
 
-        console.log(
-            "☁️ Starting cloud restore..."
-        );
-
-        console.log(
-            "🔑 Passcode:",
-            passcode
-        );
-
-
-        // ====================================================
         // 2. GET BACKUP FROM CLOUD
-        // ====================================================
-
-        const response = await fetch(
-            `/api/backup-restore/${encodeURIComponent(passcode)}`
-        );
-
+        const response = await fetch(`/api/backup-restore/${encodeURIComponent(passcode)}`);
         if (!response.ok) {
-
-            const errorData =
-                await response.json()
-                    .catch(() => ({}));
-
-            throw new Error(
-                errorData.detail ||
-                `Server error ${response.status}`
-            );
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || `Server error ${response.status}`);
         }
-
-        const result =
-            await response.json();
-
-        console.log(
-            "☁️ Cloud backup received."
-        );
-
-        console.log(
-            "🕒 Backup timestamp:",
-            result.updated_at
-        );
+        const result = await response.json();
+        console.log("☁️ Cloud backup received.");
+        console.log("🕒 Backup timestamp:", result.updated_at);
 
         if (!result.payload) {
-            throw new Error(
-                "Cloud backup contains no payload."
-            );
+            throw new Error("Cloud backup contains no payload.");
         }
 
+        // ----------------------------------------------------
+        // TRANSFORM: Ensure HRS == 0 or "0" is converted to ""
+        // ----------------------------------------------------
+      if (result.payload && result.payload.RECORDS && Array.isArray(result.payload.RECORDS)) {
+                result.payload.RECORDS.forEach(row => {
+                    // Loose check (== 0) catches 0, "0", "0 ", "0.0", and null
+                    if (row.HRS == 0 || String(row.HRS).trim() === "0") {
+                        row.HRS = "";
+                    }
+                });
+            }
 
-        // ====================================================
         // 3. SAVE RESTORED DATA INTO INDEXEDDB
-        // ====================================================
-
         if (syncStatus) {
             syncStatus.style.display = "inline";
-            syncStatus.textContent =
-                "● Saving restored data...";
-            syncStatus.style.color =
-                "#ffc107";
+            syncStatus.textContent = "● Saving restored data...";
+            syncStatus.style.color = "#ffc107";
         }
+        console.log("📥 Saving cloud backup into IndexedDB...");
+        await saveAllTablesToIndexedDB(result.payload);
+        console.log("✅ Cloud backup restored to IndexedDB.");
 
-        console.log(
-            "📥 Saving cloud backup into IndexedDB..."
-        );
-
-        await saveAllTablesToIndexedDB(
-            result.payload
-        );
-
-        console.log(
-            "✅ Cloud backup restored to IndexedDB."
-        );
-
-
-        // ====================================================
         // 4. MARK DATA AS SAVED
-        // ====================================================
-
-        localStorage.setItem(
-            "sync_unsaved",
-            "false"
-        );
-
+        localStorage.setItem("sync_unsaved", "false");
         if (result.updated_at) {
-            localStorage.setItem(
-                "last_sync_timestamp",
-                result.updated_at
-            );
+            localStorage.setItem("last_sync_timestamp", result.updated_at);
         }
 
-
-        // ====================================================
         // 5. SHOW SUCCESS
-        // ====================================================
-
         if (syncStatus) {
             syncStatus.style.display = "inline";
-            syncStatus.textContent =
-                "● Restore complete";
-            syncStatus.style.color =
-                "#28a745";
+            syncStatus.textContent = "● Restore complete";
+            syncStatus.style.color = "#28a745";
         }
+        console.log("🟢 Restore complete. Sync status marked as saved.");
 
-        console.log(
-            "🟢 Restore complete. Sync status marked as saved."
-        );
-
-
-        // ====================================================
         // 6. SMALL DELAY SO USER CAN SEE SUCCESS
-        // ====================================================
+        await new Promise(resolve => setTimeout(resolve, 800));
 
-        await new Promise(resolve =>
-            setTimeout(resolve, 800)
-        );
-
-
-        // ====================================================
         // 7. REFRESH APPLICATION
-        // ====================================================
-
         window.location.reload();
 
-    }
-    catch (error) {
+    } catch (error) {
+        console.error("❌ Cloud restore failed:", error);
 
-        console.error(
-            "❌ Cloud restore failed:",
-            error
-        );
-
-
-        // ====================================================
         // 8. SHOW ERROR STATUS
-        // ====================================================
-
         if (syncStatus) {
             syncStatus.style.display = "inline";
-            syncStatus.textContent =
-                "● Restore failed";
-            syncStatus.style.color =
-                "#dc3545";
+            syncStatus.textContent = "● Restore failed";
+            syncStatus.style.color = "#dc3545";
         }
-
-        await showCustomAlert(
-            "Restore failed:\n\n" +
-            error.message
-        );
+        await showCustomAlert("Restore failed:\n\n" + error.message);
     }
 }
-
 
 
 async function handleExportBackup(event) {
@@ -840,161 +710,93 @@ async function handleImportBackup(event) {
     event?.stopPropagation();
 
     const input = document.createElement("input");
-
     input.type = "file";
     input.accept = ".crb,application/json";
 
     input.onchange = async () => {
         const file = input.files[0];
-
         if (!file) return;
 
         console.log("📂 Selected CRB:", file.name);
-
-        const syncStatus =
-            window.parent.document.getElementById("sync-status");
+        const syncStatus = window.parent.document.getElementById("sync-status");
 
         try {
-
-            // ====================================================
             // 1. SHOW IMPORTING STATUS
-            // ====================================================
-
             if (syncStatus) {
                 syncStatus.style.display = "inline";
                 syncStatus.textContent = "● Importing...";
                 syncStatus.style.color = "#ffc107";
             }
 
-            // ====================================================
             // 2. READ CRB FILE
-            // ====================================================
-
-            const text = await file.text();
-
+            const buffer = await file.arrayBuffer();
+            const text = new TextDecoder("windows-1252").decode(buffer);
             let backupData;
 
             try {
                 backupData = JSON.parse(text);
-            }
-            catch (error) {
-                throw new Error(
-                    "The selected CRB file is not valid."
-                );
+            } catch (error) {
+                throw new Error("The selected CRB file is not valid.");
             }
 
-            // ====================================================
             // 3. REQUIRED INDEXEDDB STORES
-            // ====================================================
+            const storeNames = ["CongInfo", "GROUPS", "PUBLISHERS", "MonthlyRecords", "RECORDS"];
 
-            const storeNames = [
-                "CongInfo",
-                "GROUPS",
-                "PUBLISHERS",
-                "MonthlyRecords",
-                "RECORDS"
-            ];
-
-            // ====================================================
             // 4. VALIDATE BACKUP STRUCTURE
-            // ====================================================
-
             for (const storeName of storeNames) {
-
-                if (
-                    !Object.prototype.hasOwnProperty.call(
-                        backupData,
-                        storeName
-                    )
-                ) {
-                    throw new Error(
-                        `Missing table: ${storeName}`
-                    );
+                if (!Object.prototype.hasOwnProperty.call(backupData, storeName)) {
+                    throw new Error(`Missing table: ${storeName}`);
                 }
-
                 if (!Array.isArray(backupData[storeName])) {
-                    throw new Error(
-                        `${storeName} is not an array.`
-                    );
+                    throw new Error(`${storeName} is not an array.`);
                 }
             }
-
             console.log("✅ CRB structure validated.");
 
-            // ====================================================
-            // 5. CONFIRM IMPORT
-            // ====================================================
-
-            const summary = storeNames.map(
-                storeName =>
-                    `${storeName}: ` +
-                    `${backupData[storeName].length} records`
-            );
-
-       const confirmed = await showCustomConfirm(
-                "📥 IMPORT BACKUP?\n\n" +
-                "This will replace the current data saved on this device.\n\n" +
-                "Do you want to continue?"
+            // ----------------------------------------------------
+            // TRANSFORM: Ensure HRS == 0 or "0" is converted to ""
+            // ----------------------------------------------------
+            if (backupData.RECORDS && Array.isArray(backupData.RECORDS)) {
+                backupData.RECORDS.forEach(row => {
+                    if (row.HRS == 0 || String(row.HRS).trim() === "0") {
+                        row.HRS = "";
+                    }
+                });
+            }
+                        // 5. CONFIRM IMPORT
+             const summary = storeNames.map(storeName => `${storeName}: ${backupData[storeName].length} records`);
+            const confirmed = await showCustomConfirm(
+                "📥 IMPORT BACKUP?\n\nThis will replace the current data saved on this device.\n\nDo you want to continue?"
             );
 
             if (!confirmed) {
                 console.log("⚠️ CRB import cancelled.");
-
-                if (syncStatus) {
-                    syncStatus.style.display = "none";
-                }
-
+                if (syncStatus) syncStatus.style.display = "none";
                 return;
             }
 
-            // ====================================================
             // 6. IMPORT INTO INDEXEDDB
-            // ====================================================
+            console.log("📥 Importing CRB into IndexedDB...");
+            await saveAllTablesToIndexedDB(backupData);
+            console.log("✅ CRB imported successfully.");
 
-            console.log(
-                "📥 Importing CRB into IndexedDB..."
-            );
-
-            await saveAllTablesToIndexedDB(
-                backupData
-            );
-
-            console.log(
-                "✅ CRB imported successfully."
-            );
-
-            // ====================================================
             // 7. SHOW RESTORED STATUS
-            // ====================================================
-
             if (syncStatus) {
                 syncStatus.style.display = "inline";
                 syncStatus.textContent = "● Restored";
                 syncStatus.style.color = "#28a745";
             }
 
-            // ====================================================
             // 8. RELOAD APPLICATION
-            // ====================================================
-
             location.reload();
 
-        }
-        catch (error) {
+        } catch (error) {
+            console.error("❌ CRB import failed:", error);
 
-            console.error(
-                "❌ CRB import failed:",
-                error
-            );
-
-            // ====================================================
             // SHOW ERROR WITHOUT ALERT
-            // ====================================================
-
             if (syncStatus) {
                 syncStatus.style.display = "inline";
-                syncStatus.textContent =
-                    "● Import failed";
+                syncStatus.textContent = "● Import failed";
                 syncStatus.style.color = "#dc3545";
                 syncStatus.title = error.message;
             }
@@ -1129,4 +931,32 @@ async function deleteSelectedPublisher() {
     }
 }
 
+   
 
+async function globalSelectedPubID(pubID = null) {
+    const db = await openIndexedDB();
+    try {
+        const tx = db.transaction("CongInfo", pubID === null ? "readonly" : "readwrite");
+        const store = tx.objectStore("CongInfo");
+        const records = await new Promise((resolve,reject) => {
+            const req = store.getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => reject(req.error);
+        });
+        if (!records.length) return "";
+        const record = records[0];
+        if (pubID !== null) {
+            record.SelectedPubID = pubID;
+            store.put(record);
+            await new Promise((resolve,reject) => {
+                tx.oncomplete = resolve;
+                tx.onerror = () => reject(tx.error);
+                tx.onabort = () => reject(tx.error);
+            });
+            return pubID;
+        }
+        return record.SelectedPubID ?? "";
+    } finally {
+        db.close();
+    }
+}

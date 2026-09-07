@@ -20,7 +20,7 @@
       color: #333;
     }
 
-    /* TOP HEADER BAR */
+  /* TOP HEADER BAR */
     .top-bar {
       display: flex;
       height: 50px;
@@ -34,7 +34,7 @@
       height: 100%;
       background-color: #d96b00; /* Official orange accent */
       display: flex;
-      align-items: baseline;     /* Aligns text along the bottom reading line */
+      align-items: center;       /* Centers all content vertically */
       gap: 6px;                  /* Space between title and version */
       padding: 0 15px;
       font-weight: bold;
@@ -47,20 +47,23 @@
       font-size: 10px;
       font-weight: normal;
       opacity: 0.85;
+      line-height: 1;            /* Prevents text box padding from pushing it out of alignment */
     }
 
+    /* TOP NAVIGATION & TABS */
     .top-nav {
       display: flex;
-      height: 100%;
-      align-items: center;
+      height: 100%;             /* Fills the full 50px header height */
+      align-items: stretch;     /* Stretches buttons from top to bottom */
     }
 
-    .top-nav button {
-      color: #ffffff;
+    .tab-button {
+      position: relative;
       background: transparent;
       border: none;
+      color: #ffffff;
       padding: 0 18px;
-      height: 100%;
+      height: 100%;             /* Sagad sa taas at baba */
       display: flex;
       align-items: center;
       font-size: 12px;
@@ -70,11 +73,14 @@
       transition: background-color 0.2s ease-in-out;
     }
 
-    .top-nav button.active {
+    /* Active tab state: full height background fill */
+    .tab-button.active {
       background-color: #d96b00;
+      color: #ffffff;
     }
 
-    .top-nav button:hover:not(.active) {
+    /* Hover effect on inactive tabs */
+    .tab-button:hover:not(.active) {
       background-color: #444444;
     }
 
@@ -213,7 +219,7 @@
 
 
   </style>
-
+  <script src="/static/js/indexeddb.js"></script>
 </head>
 <body>
 
@@ -242,7 +248,7 @@
 
     <button class="tab-button"
       onclick="switchTab(event, 'tab-4')">
-      Congregation Report
+      ADMINISTRATION
     </button>
   </nav>
 
@@ -522,7 +528,7 @@
         <iframe src="/Templates/current_month_entry.html" style="width: 100%; height: 100%; border: none;"></iframe>
       </div>
       <div id="tab-2" class="tab-panel">
-    <iframe src="/Templates/PublishersRecord.html" style="width: 100%; height: 100%; border: none;"></iframe>
+     <iframe src="/Templates/PublishersRecord.html" style="width: 100%; height: 100%; border: none;"></iframe>
    
       </div>
       <div id="tab-3" class="tab-panel"></div>
@@ -537,93 +543,125 @@
 
   <!-- MAIN SCRIPT FILE -->
 
-  <script src="/static/js/indexeddb.js"></script>
+
 
   
   <script>
 
-// 1. TAB CONFIGURATION & ROUTER
-const TAB_CONFIG = {
-    'tab-1': {
-        form: 'current_month_entry.html',
-        callback: () => window.renderCurrentMonthData?.()
-    },
 
-    'tab-2': {
-        form: 'PublishersRecord.html',
-        callback: () => window.renderPublisherData?.()
-    },
-
-    'tab-3': {
-        form: 'congregation_analysis.html',
-        callback: () => window.renderAnalysisData?.()
-    },
-
-    'tab-4': {
-        form: 'congregation_report.html',
-        callback: () => window.renderReportData?.()
-    }
-};
-
-
-
+        const TAB_CONFIG = {
+        'tab-1': {
+            form: 'current_month_entry.html',
+            callback: () => window.renderCurrentMonthData?.()
+        },
+        'tab-2': {
+            form: 'PublishersRecord.html',
+            callback: () => window.renderPublisherData?.()
+        },
+        'tab-3': {
+              form:'AnalysisReport.html',
+              callback:async()=>{
+                  await window.renderAnalysisData?.();
+                  await window.loadUnbaptizedPublishers?.();
+                  await window.loadMSPublishers?.();
+                  await window.loadUnbaptizedPublishers?.();
+                  await window.loadActiveBaptizedPublishers?.();
+                  await window.loadElders?.();
+                  await window.loadRP?.();
+                  await window.updateRecordsPeriodLabels?.();
+                  await window.getSixMonthReportingPeriod();
+                  await window.loadIrregularPublishers?.();
+              }
+          },
+        'tab-4': {
+            form: 'congregation_report.html',
+            callback: () => window.renderReportData?.()
+        }
+    };
 // 2. TAB SWITCHING LOGIC
-async function switchTab(event, tabId) {
-  document.querySelectorAll('.tab-panel')
-    .forEach(panel => panel.classList.remove('active'));
+async function switchTab(event,tabId){
+    document.querySelectorAll('.tab-panel').forEach(panel=>panel.classList.remove('active'));
+    document.querySelectorAll('.top-nav button,.tab-btn').forEach(btn=>btn.classList.remove('active'));
 
-  document.querySelectorAll('.top-nav button, .tab-btn')
-    .forEach(btn => btn.classList.remove('active'));
+    const activePanel=document.getElementById(tabId);
+    if(!activePanel)return;
 
-  const activePanel = document.getElementById(tabId);
-  if (!activePanel) return;
+    activePanel.classList.add('active');
 
-  activePanel.classList.add('active');
-
-  // Activate clicked button, or the button matching tabId
-  if (event && event.currentTarget) {
-    event.currentTarget.classList.add('active');
-  } else {
-    document.querySelector(
-      `.top-nav button[onclick*="'${tabId}'"]`
-    )?.classList.add('active');
-  }
-
-  const config = TAB_CONFIG[tabId];
-  if (!config) return;
-
-  if (activePanel.children.length === 0) {
-    await loadSubForm(tabId, config.form, config.callback);
-  } else {
-    // If already loaded, just run the render callback directly
-    if (typeof config.callback === 'function') {
-      config.callback();
+    if(event&&event.currentTarget){
+        event.currentTarget.classList.add('active');
+    }else{
+        document.querySelector(`.top-nav button[onclick*="'${tabId}'"]`)?.classList.add('active');
     }
-  }
+
+    const config=TAB_CONFIG[tabId];
+    if(!config)return;
+
+    if(activePanel.children.length===0){
+        await loadSubForm(tabId,config.form,config.callback);
+    }else if(typeof config.callback==='function'){
+        await config.callback();
+    }
+
+    if(tabId==="tab-3"){
+    const iframe=activePanel.querySelector("iframe");
+    if(iframe){
+        const run=()=>{
+            iframe.contentWindow.loadUnbaptizedPublishers?.();
+        };
+        if(iframe.contentDocument?.readyState==="complete")run();
+        else iframe.addEventListener("load",run,{once:true});
+        }
+    }
+
+    if(typeof renderListbox==='function'&&document.getElementById('publisherListbox')){
+        console.log("🔄 Refreshing publisher listbox after tab switch...");
+        renderListbox();
+    }
 }
 
-// 3. SUB-FORM LOADER
-async function loadSubForm(tabId, filename, callback) {
-    try {
-        const response = await fetch(`/Templates/${filename}`);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: Failed to load ${filename}`);
-        }
-        
-        const html = await response.text();
-        const panel = document.getElementById(tabId);
-        if (panel) {
-            panel.innerHTML = html;
-            if (typeof callback === 'function') {
-                callback();
+
+async function loadSubForm(tabId,filename,callback){
+    try{
+        const response=await fetch(`/Templates/${filename}`);
+        if(!response.ok)throw new Error(`HTTP ${response.status}: Failed to load ${filename}`);
+
+        const html=await response.text();
+        const panel=document.getElementById(tabId);
+        if(!panel)return;
+
+        panel.innerHTML=html;
+
+        /* =====================================================
+           EXECUTE SCRIPTS FROM DYNAMICALLY LOADED HTML
+           -----------------------------------------------------
+           This allows AnalysisReport.html to contain its own
+           JavaScript while still being loaded inside index.html.
+           ===================================================== */
+        const scripts=[...panel.querySelectorAll("script")];
+
+        for(const oldScript of scripts){
+            const newScript=document.createElement("script");
+
+            for(const attr of oldScript.attributes){
+                newScript.setAttribute(attr.name,attr.value);
             }
+
+            newScript.textContent=oldScript.textContent;
+            oldScript.replaceWith(newScript);
         }
-    } catch (error) {
-        console.error(`Error loading subform [${filename}]:`, error);
+
+        /* =====================================================
+           RUN TAB CALLBACK AFTER THE HTML + SCRIPT ARE READY
+           ===================================================== */
+        if(typeof callback==="function"){
+            await callback();
+        }
+
+    }catch(error){
+        console.error(`Error loading subform [${filename}]:`,error);
     }
 }
-
 
 
 
@@ -1203,5 +1241,6 @@ async function logout() {
 
 
   </script>
+
 </body>
 </html>

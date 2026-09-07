@@ -8,7 +8,7 @@ import traceback
 from typing import Any, Dict, Union
 from urllib.parse import unquote, urlparse
 
-from dotenv import load_dotenv
+
 from fastapi import Body, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
@@ -22,13 +22,29 @@ import pg8000.native
 from pydantic import BaseModel
 import traceback
 
-
 # Import custom routers (using importer_router consistently)
 from csv_importer import router as importer_router
 from Sync import sync_router
 
 from fastapi.responses import JSONResponse
 from datetime import datetime
+
+
+
+
+
+from fastapi import FastAPI
+from dotenv import load_dotenv
+from google import genai
+from google.genai import types
+
+load_dotenv()
+
+app = FastAPI()
+
+api_key = os.getenv("GEMINI_API_KEY")
+client = genai.Client(api_key=api_key)
+
 
 # --- LOAD ENVIRONMENT VARIABLES ---
 load_dotenv()
@@ -566,11 +582,8 @@ def generate_publisher_record_pdf(data_payload):
                 placeholders[f"{{{{Ha{idx}}}}}"] = display_hours(
                     previous_record
                 )
-                placeholders[f"{{{{Ra{idx}}}}}"] = str(
-                    previous_record.get("REMARKS")
-                    or previous_record.get("Note")
-                    or ""
-                )
+
+                placeholders[f"{{{{Ra{idx}}}}}"] = str(previous_record.get("Note") or "")
 
                 # BOTTOM = CURRENT SERVICE YEAR
                 placeholders[f"{{{{Sb{idx}}}}}"] = check(
@@ -585,11 +598,7 @@ def generate_publisher_record_pdf(data_payload):
                 placeholders[f"{{{{Hb{idx}}}}}"] = display_hours(
                     current_record
                 )
-                placeholders[f"{{{{Rb{idx}}}}}"] = str(
-                    current_record.get("REMARKS")
-                    or current_record.get("Note")
-                    or ""
-                )
+                placeholders[f"{{{{Rb{idx}}}}}"] = str(current_record.get("Note") or "")
 
                 total_hrs_previous += safe_number(
                     previous_record.get("HRS", 0)
@@ -680,27 +689,28 @@ def generate_publisher_record_pdf(data_payload):
 
         pdf_bytes = pdf_request.execute()
         b64_pdf = base64.b64encode(pdf_bytes).decode("utf-8")
+    # ---------------------------------------------------------
+    # FILE NAME
+    # ---------------------------------------------------------
+      
+        batch_type = data_payload.get("batchType")
 
-        # ---------------------------------------------------------
-        # FILE NAME
-        # ---------------------------------------------------------
-        if len(publishers) == 1:
+        if batch_type == "publishers":
+            file_name = f"All_Publisher_PRC_{current_year}.pdf"
+        elif batch_type == "unbaptized":
+            file_name = f"All_Unbaptized_PRC_{current_year}.pdf"
+        elif batch_type == "regular_pioneers":
+            file_name = f"All_Regular_Pioneers_PRC_{current_year}.pdf"
+        elif len(publishers) == 1:
             file_name = f"{pub_name}_PRC_{current_year}.pdf"
         else:
             file_name = f"MULTI_PRC_{current_year}.pdf"
 
-        print("========================================")
-        print("✅ PDF GENERATED SUCCESSFULLY")
-        print("========================================")
-        print("👥 Publishers:", len(publishers))
-        print("📄 Pages:", len(publishers))
-        print("📄 File name:", file_name)
-
-        return {
-            "success": True,
-            "dataUrl": f"data:application/pdf;base64,{b64_pdf}",
-            "fileName": file_name
-        }
+            return {
+                "success": True,
+                "dataUrl": f"data:application/pdf;base64,{b64_pdf}",
+                "fileName": file_name
+            }
 
     finally:
         # ---------------------------------------------------------
@@ -906,7 +916,45 @@ def export_backup():
         }
 
 
+@app.post("/api/ai-query")
+async def ai_query(data: dict):
+    query = str(data.get("query", "")).strip()
+    publishers = data.get("publishers", [])
+    
+    if not query:
+        return {"answer": "Please enter a question.", "results": []}
 
+    try:
+        prompt = f"""
+        You are a database assistant for an S-88-E publisher records system.
+        
+        Publisher Dataset:
+        {json.dumps(publishers)}
+
+        User Request: "{query}"
+
+        Instructions:
+        1. "answer": Provide a summary response addressing the request.
+        2. "results": Filter the provided dataset based on the user request and return matching items with keys 'name', 'role', and 'status'.
+           If the query is a simple greeting, return an empty array [].
+        """
+
+        response = client.models.generate_content(
+            model='gemini-3.6-flash',
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json"
+            )
+        )
+
+        return json.loads(response.text)
+
+    except Exception as e:
+        print(f"Gemini Error: {e}")
+        return {"answer": f"Error: {str(e)}", "results": []}
+
+
+        
 
 if __name__ == "__main__":
     import uvicorn

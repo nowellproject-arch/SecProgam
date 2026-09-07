@@ -545,16 +545,43 @@
 // ==========================================
 // 1. STATE & HELPERS
 // ==========================================
-
 const today = new Date();
 
-let activeCalendarMonth = today.getMonth() - 1;
-let activeCalendarYear = today.getFullYear();
+console.log("🧪 TEMP 1 — REAL DATE:", today.toString());
+console.log("🧪 TEMP 2 — Calendar month BEFORE cutoff:", today.getMonth());
+console.log("🧪 TEMP 3 — Calendar year BEFORE cutoff:", today.getFullYear());
+console.log("🧪 TEMP 4 — Day of month:", today.getDate());
 
-if (activeCalendarMonth < 0) {
-    activeCalendarMonth = 11;
-    activeCalendarYear--;
+window.activeCalendarMonth = today.getMonth();
+window.activeCalendarYear = today.getFullYear();
+
+console.log(
+    "🧪 TEMP 5 — Initial active month/year:",
+    window.activeCalendarMonth,
+    window.activeCalendarYear
+);
+
+if (today.getDate() < 21) {
+    console.log("🧪 TEMP 6 — Date is BEFORE 21st → move to PREVIOUS month");
+
+    window.activeCalendarMonth--;
+
+    if (window.activeCalendarMonth < 0) {
+        window.activeCalendarMonth = 11;
+        window.activeCalendarYear--;
+        console.log("🧪 TEMP 7 — Wrapped to December of previous year");
+    }
 }
+
+console.log(
+    "🧪 TEMP 8 — EFFECTIVE REPORT MONTH:",
+    window.activeCalendarMonth,
+    window.activeCalendarYear
+);
+
+console.log(
+    "🧪 TEMP 9 — Expected active NUMBER will be calculated from this month/year"
+);
 
 function calculateServiceYear(month, year) {
     return month >= 8
@@ -563,8 +590,8 @@ function calculateServiceYear(month, year) {
 }
 
 let activeServiceYear = calculateServiceYear(
-    activeCalendarMonth,
-    activeCalendarYear
+      window.activeCalendarMonth,
+     window.activeCalendarYear
 );
 
 
@@ -577,8 +604,8 @@ const calendarMonthNames = [
 function setServiceYear(year) {
     if (year === undefined || year === null) {
         activeServiceYear = calculateServiceYear(
-            activeCalendarMonth,
-            activeCalendarYear
+              window.activeCalendarMonth,
+             window.activeCalendarYear
         );
     } else {
         activeServiceYear = Number(year);
@@ -594,31 +621,10 @@ function setServiceYear(year) {
 // 🎯 Initialize on script load to set current Service Year immediately
 setServiceYear();
 
-// 🎯 Safe S-21 Month Mapping formula isolated to activeServiceYear
-function getServiceMonthNumber(serviceYear, monthIndex) {
-    const sYear = serviceYear ?? activeServiceYear;
-    const anchorBaseNumber = 26; // Sep 2012 anchor (194 for SY2026 Sep)
-    const anchorYear = 2012;
-    const yearDiff = Number(sYear) - anchorYear;
-    return anchorBaseNumber + (yearDiff * 12) + Number(monthIndex);
-}
 
-// Generate a unique MonthIndex for IndexedDB primary key mapping
-// 1. Standalone Index Calculation based on current calendar globals
-function getMonthIndex() {
-    const month = typeof activeCalendarMonth !== 'undefined' ? activeCalendarMonth : new Date().getMonth();
-    const year = typeof activeCalendarYear !== 'undefined' ? activeCalendarYear : new Date().getFullYear();
 
-    // Determine Service Year (Sept–Dec belongs to next year's SY)
-    const sYear = month >= 8 ? year + 1 : year;
-    
-    // SY 2026 starts at Sep 2025 = 194
-    const baseNumber = 194 + (sYear - 2026) * 12;
-    const offset = month >= 8 ? month - 8 : month + 4;
-    return baseNumber + offset;
-}
 
-// 🔄 Reverse sync activeCalendarMonth & activeCalendarYear from target NUMBER mapping
+// 🔄 Reverse sync   window.activeCalendarMonth &  window.activeCalendarYear from target NUMBER mapping
 function syncGlobalsFromMonthNumber(targetNumber) {
     const num = Number(targetNumber);
     
@@ -630,12 +636,12 @@ function syncGlobalsFromMonthNumber(targetNumber) {
 
     if (monthOffset >= 4) {
         // Months: January (0) to August (7)
-        activeCalendarMonth = monthOffset - 4;
-        activeCalendarYear = 2026 + yearShift;
+          window.activeCalendarMonth = monthOffset - 4;
+         window.activeCalendarYear = 2026 + yearShift;
     } else {
         // Months: September (8) to December (11)
-        activeCalendarMonth = monthOffset + 8;
-        activeCalendarYear = 2025 + yearShift; // 👈 Fixed: Sep 2025 is base year
+          window.activeCalendarMonth = monthOffset + 8;
+         window.activeCalendarYear = 2025 + yearShift; // 👈 Fixed: Sep 2025 is base year
     }
 
     // 🎯 Sync activeServiceYear (Sept 2025 -> SY 2026)
@@ -677,6 +683,7 @@ function syncGlobalsFromMonthNumber(targetNumber) {
                     <select class="remark-select" id="${m.id}-select" data-month="${index}">
                         <option value=""></option>
                         <option value="INACTIVE">Inactive</option>
+                        <option value="UPB">New UPB</option>
                         <option value="MOVED">Moved</option>
                         <option value="NOTE">Note</option>
                         <option value="RP">RP</option>
@@ -720,7 +727,7 @@ function syncGlobalsFromMonthNumber(targetNumber) {
     let isSwitchingPublisher = false;
     let selectedPubId = null;
     window.recordsData = null; // Forces renderListbox to reload fresh records from IndexedDB
-    window.currentActiveMonthIndex = getMonthIndex();
+    window.currentActiveMonthIndex = window.getMonthIndex();
    
 
     // 3. Helper: Format dates for input[type="date"]
@@ -736,7 +743,7 @@ function syncGlobalsFromMonthNumber(targetNumber) {
 
     // 4. Load Data from IndexedDB
     function loadPublishersFromIndexedDB() {
-    const request = indexedDB.open("CongregationDB", 7);
+    const request = indexedDB.open("CongregationDB", 10);
 
     request.onerror = (event) => {
         console.error(
@@ -846,7 +853,7 @@ function renderListbox(filter = "", category = "ACTIVE PUBLISHERS") {
     }
 
     // Get target MonthIndex
-    const targetMonthIndex = Number(typeof getMonthIndex === 'function' ? getMonthIndex() : 0);
+    const targetMonthIndex = Number(typeof window.getMonthIndex === 'function' ? window.getMonthIndex() : 0);
 
     // =============================================================
     // HELPER: Robust Legacy Marker Normalization
@@ -1079,11 +1086,21 @@ filtered.forEach((p, index) => {
     div._pubData = p;
     div._pubIndex = index;
 
-    div.onclick = () => {
-        currentIndex = div._pubIndex;
-        selectedPubId = p.IDPub ?? p.IdPubs ?? "";
-        selectPublisher(p, div);
-    };
+
+
+       div.onclick = async () => {
+            currentIndex = div._pubIndex;
+            selectedPubId = p.IDPub ?? p.IdPubs ?? "";
+
+            try {
+                await globalSelectedPubID(selectedPubId);
+                console.log("👤 Global SelectedPubID saved:", selectedPubId);
+            } catch (err) {
+                console.error("❌ Error saving SelectedPubID:", err);
+            }
+
+            selectPublisher(p, div);
+        };
 
     listbox.appendChild(div);
 });
@@ -1091,23 +1108,33 @@ filtered.forEach((p, index) => {
     const countEl = document.getElementById('listboxCount');
     if (countEl) countEl.textContent = `Count: ${filtered.length}`;
 
-  // =============================================================
-    // RESTORE SELECTION STATE (WITHOUT RE-TRIGGERING FORM RESET)
     // =============================================================
-    if (typeof selectedPubId !== 'undefined' && selectedPubId) {
-        const matchingEl = listbox.querySelector(`[data-id="${selectedPubId}"]`);
-        if (matchingEl) {
+    // RESTORE GLOBAL SELECTED PUBLISHER
+    // =============================================================
+   // =============================================================
+// RESTORE GLOBAL SELECTED PUBLISHER
+// =============================================================
+        globalSelectedPubID().then(IDPubSel => {
+            if (!IDPubSel) return;
+
+            const matchingEl = listbox.querySelector(`[data-id="${IDPubSel}"]`);
+            if (!matchingEl) return;
+
             currentIndex = matchingEl._pubIndex;
-            
-            // Remove active class from all items, add to matching one
-            listbox.querySelectorAll('.listbox-item').forEach(el => el.classList.remove('active', 'selected'));
-            matchingEl.classList.add('active'); // Change to 'selected' if your CSS uses that
-            
-            // NOTE: We do NOT call matchingEl.click() here anymore 
-            // because it was resetting your form inputs and unchecking your box!
-        }
-    }
+            selectedPubId = IDPubSel;
+            currentSelectedPublisher = matchingEl._pubData;
+
+            listbox.querySelectorAll('.listbox-item').forEach(el => el.classList.remove('active','selected'));
+            matchingEl.classList.add('active');
+
+            console.log("🌐 Restoring publisher:", IDPubSel);
+
+            // Load publisher into the form without triggering onclick
+            selectPublisher(matchingEl._pubData, matchingEl);
+
+        });
 }
+
 
 // 7. Populate Form Fields
 function populateForm(p) {
@@ -1176,7 +1203,7 @@ function savePublisherChanges() {
     currentSelectedPublisher.RP = document.getElementById('isRP')?.checked ? "1" : "0";
     currentSelectedPublisher.SF = document.getElementById('isSP')?.checked ? "1" : "0"; 
     
-    const request = indexedDB.open("CongregationDB", 7);
+    const request = indexedDB.open("CongregationDB", 10);
     request.onsuccess = (event) => {
         const db = event.target.result;
         const transaction = db.transaction(["PUBLISHERS"], "readwrite");
@@ -1596,7 +1623,7 @@ function loadS21RecordsForPublisher(selectedRecordNumber) {
     
     const activePublisherId = currentSelectedPublisher.IDPub;
 
-    const activeMonthIndex = Number(typeof getMonthIndex === 'function' ? getMonthIndex() : 0);
+    const activeMonthIndex = Number(typeof window.getMonthIndex === 'function' ? window.getMonthIndex() : 0);
     const targetHighlightNumber = selectedRecordNumber !== undefined 
         ? Number(selectedRecordNumber) 
         : (window.SelNumber !== undefined ? Number(window.SelNumber) : activeMonthIndex);
@@ -1619,9 +1646,13 @@ function loadS21RecordsForPublisher(selectedRecordNumber) {
         if (hrsEl) hrsEl.value = "";
         if (remTextEl) remTextEl.value = "";
         if (remSelEl) remSelEl.value = "";
+
+        
     });
 
-    const request = indexedDB.open("CongregationDB", 7);
+    
+     const request = indexedDB.open("CongregationDB");
+    
     request.onsuccess = (event) => {
         const db = event.target.result;
         const transaction = db.transaction(["RECORDS"], "readonly");
@@ -1638,9 +1669,7 @@ function loadS21RecordsForPublisher(selectedRecordNumber) {
                 }
             });
 
-            const activeCategory = String(
-                window.currentCategory || (typeof selectedCategory !== 'undefined' ? selectedCategory : "")
-            ).trim().toUpperCase();
+            const activeCategory=String(document.getElementById("categorySelect")?.value||"").trim().toUpperCase();
 
             const isHighlightAllowed = [
                 "ALL PUBLISHERS REPORTED",
@@ -1650,7 +1679,7 @@ function loadS21RecordsForPublisher(selectedRecordNumber) {
             ].includes(activeCategory);
 
             s21Months.forEach((m, index) => {
-                const targetNumber = getServiceMonthNumber(window.selectedYear || activeServiceYear, index);
+                const targetNumber = getServiceMonthNumber(selectedYear, index);
                 const rec = publisherRecordMap.get(Number(targetNumber));
 
                 const minEl = document.getElementById(`${m.id}-ministry`);
@@ -1696,8 +1725,7 @@ function loadS21RecordsForPublisher(selectedRecordNumber) {
 
                     // 🎯 FIX: Match targetNumber (the row's month NUMBER) strictly against targetHighlightNumber.
                     // Removed Date_entered matching to prevent duplicate highlights from batch-saved dates.
-                    const isTargetMonth = hasActivity && (Number(targetNumber) === activeHighlightIdx);
-
+                    const isTargetMonth = hasActivity && (recordDateEntered === activeHighlightIdx);
                     rowEl.dataset.dateEntered = recordDateEntered;
 
                     if (isHighlightAllowed && isTargetMonth) {
@@ -1748,8 +1776,8 @@ function saveS21MonthRecord(monthIndex, eventTarget) {
     const activeMonthIndex = Number(
         window.currentActiveMonthIndex ??
         (
-            typeof getMonthIndex === "function"
-                ? getMonthIndex()
+            typeof window.getMonthIndex === "function"
+                ? window.getMonthIndex()
                 : targetNumber
         )
     );
@@ -1819,7 +1847,7 @@ function saveS21MonthRecord(monthIndex, eventTarget) {
     const request =
         indexedDB.open(
             "CongregationDB",
-            7
+            10
         );
 
     request.onerror = (event) => {
@@ -2163,7 +2191,7 @@ function updateCurrentMonthDebugStorage() {
 
     const request = indexedDB.open(
         "CongregationDB",
-        7
+        10
     );
 
     request.onsuccess = (event) => {
@@ -2287,38 +2315,33 @@ function removeRecordsFromIndexedDB(garbageRecords) {
 // ==========================================
 // Handles clicking a name in the listbox, highlighting it, 
 // filling user details, and loading their S-21 monthly table.
-function selectPublisher(p, itemElement) {
-    if (!p) return;
-    currentSelectedPublisher = p; // Keep track of active publisher
+        function selectPublisher(p,itemElement) {
+            if (!p) return;
+            currentSelectedPublisher = p;
 
-    // 🔒 Lock saves immediately so stray change events don't cross-contaminate
-    isSwitchingPublisher = true;
+            // 🔒 Lock saves immediately so stray change events don't cross-contaminate
+            isSwitchingPublisher = true;
 
-    // ⚡ 1. Fast active class swap (Only target the previously active item instead of looping all)
-    const prevActive = document.querySelector('.listbox-item.active');
-    if (prevActive) prevActive.classList.remove('active');
-    
-    // ⚡ 2. Highlight and scroll instantly
-    if (itemElement) {
-        itemElement.classList.add('active');
-        itemElement.scrollIntoView({ block: 'nearest', behavior: 'auto' }); // 'auto' eliminates smooth-scroll layout thrashing
-    }
+            // ⚡ 1. Fast active class swap
+            const prevActive = document.querySelector('.listbox-item.active');
+            if (prevActive) prevActive.classList.remove('active');
 
-    // ⚡ 3. Populate primary UI fields synchronously
-    loadPublisherNameIntoUI(p);
-    populateForm(p);
+            // ⚡ 2. Highlight and scroll instantly
+            if (itemElement) {
+                itemElement.classList.add('active');
+                itemElement.scrollIntoView({block:'nearest',behavior:'auto'});
+            }
 
-    // ⚡ 4. Defer S-21 records loading & metrics calculation slightly to let the UI paint first
-    setTimeout(() => {
-        loadS21RecordsForPublisher();
-        
- 
+            // ⚡ 3. Populate primary UI fields synchronously
+            loadPublisherNameIntoUI(p);
+            populateForm(p);
 
-        // 🔓 Unlock saves after the DOM and inputs have fully settled
-        isSwitchingPublisher = false;
-    }, 0);
-}
-
+            // ⚡ 4. Defer S-21 records loading & metrics calculation slightly
+            setTimeout(() => {
+                loadS21RecordsForPublisher();
+                isSwitchingPublisher = false;
+            },0);
+        }
 
 // ==========================================
 // EXPANDABLE NAME EDIT LOGIC
@@ -2453,24 +2476,25 @@ function updateMonthSidebarDisplay() {
     if (!monthNavStrong) return;
 
     const now = new Date();
-    const isThisMonth = (activeCalendarYear === now.getFullYear() && activeCalendarMonth === now.getMonth());
-    const monthName = calendarMonthNames[activeCalendarMonth];
+    const isThisMonth = (window.activeCalendarYear === now.getFullYear() &&   window.activeCalendarMonth === now.getMonth());
+    const monthName = calendarMonthNames[ window.activeCalendarMonth];
 
     if (isThisMonth) {
-        monthNavStrong.textContent = `${monthName} ${activeCalendarYear} - This Month`;
+        monthNavStrong.textContent = `${monthName} ${window.activeCalendarYear} - This Month`;
     } else {
-        monthNavStrong.textContent = `${monthName} ${activeCalendarYear}`;
+        monthNavStrong.textContent = `${monthName} ${window.activeCalendarYear}`;
     }
 }
 
 // Triggered whenever month changes via arrows
 function onMonthOrYearChanged() {
-    console.log(`🔄 Calendar changed to: ${calendarMonthNames[activeCalendarMonth]} ${activeCalendarYear} (MonthIndex: ${getMonthIndex()})`);
+    console.log(`🔄 Calendar changed to: ${calendarMonthNames[window.activeCalendarMonth]} ${activeCalendarYear} (MonthIndex: ${window.getMonthIndex()})`);
     updateMonthSidebarDisplay();
 
     if (typeof loadS21RecordsForPublisher === 'function') {
         loadS21RecordsForPublisher();
     }
+
 
     loadMonthlyAttendanceData();
 
@@ -2494,7 +2518,7 @@ function onMonthOrYearChanged() {
 // 2. INDEXEDDB DATABASE OPERATIONS
 // ==========================================
 function openCongregationDB(callback) {
-    const request = indexedDB.open("CongregationDB", 7);
+    const request = indexedDB.open("CongregationDB", 10);
 
     request.onupgradeneeded = event => {
         const db = event.target.result;
@@ -2529,7 +2553,7 @@ function openCongregationDB(callback) {
 
         if (!db.objectStoreNames.contains("RECORDS")) {
             db.createObjectStore("RECORDS", {
-                keyPath: ["IdPubs", "NUMBER"]
+                keyPath: ["NUMBER","IdPubs"]
             });
         }
 
@@ -2558,7 +2582,7 @@ window.loadMonthlyAttendanceData = loadMonthlyAttendanceData;
 // Save attendance metrics cleanly using IndexedDB in-line key upsert
 // 1. Load attendance metrics using NUMBER as the unique lookup key
 function loadMonthlyAttendanceData() {
-    const targetNumber = Number(getMonthIndex());
+    const targetNumber = Number(window.getMonthIndex());
 
     // Clear inputs first
     document.getElementById('activePublishersInput').value = "";
@@ -2631,7 +2655,7 @@ function saveMonthlyAttendanceData() {
     clearTimeout(saveDebounceTimer);
 
     saveDebounceTimer = setTimeout(() => {
-        const rawMonthIndex = getMonthIndex();
+        const rawMonthIndex = window.getMonthIndex();
         const targetNumber = Number(rawMonthIndex);
         updateActivePublishersCount();
 
@@ -2640,8 +2664,8 @@ function saveMonthlyAttendanceData() {
             return;
         }
 
-        const calYear = Number(activeCalendarYear);
-        const calMonthIdx = Number(activeCalendarMonth); 
+        const calYear = Number(window.activeCalendarYear);
+        const calMonthIdx = Number(window.activeCalendarMonth); 
         const monthName = calendarMonthNames[calMonthIdx] || "";
         const computedServiceYear = calMonthIdx >= 8 ? calYear + 1 : calYear;
 
@@ -2807,10 +2831,10 @@ async function initAppSystem() {
         const leftArrow = navArrows[0];  
         leftArrow.style.cursor = 'pointer';
         leftArrow.onclick = () => {
-            activeCalendarMonth--;
-            if (activeCalendarMonth < 0) {
-                activeCalendarMonth = 11; 
-                activeCalendarYear--;    
+              window.activeCalendarMonth--;
+            if (window.activeCalendarMonth < 0) {
+                  window.activeCalendarMonth = 11; 
+                 window.activeCalendarYear--;    
             }
             if (typeof onMonthOrYearChanged === 'function') onMonthOrYearChanged();
             if (typeof calculateMonthlySummaryMetrics === 'function') calculateMonthlySummaryMetrics();
@@ -2819,10 +2843,10 @@ async function initAppSystem() {
         const rightArrow = navArrows[1]; 
         rightArrow.style.cursor = 'pointer';
         rightArrow.onclick = () => {
-            activeCalendarMonth++;
-            if (activeCalendarMonth > 11) {
-                activeCalendarMonth = 0;  
-                activeCalendarYear++;    
+              window.activeCalendarMonth++;
+            if (window.activeCalendarMonth > 11) {
+                  window.activeCalendarMonth = 0;  
+                 window.activeCalendarYear++;    
             }
             if (typeof onMonthOrYearChanged === 'function') onMonthOrYearChanged();
             if (typeof calculateMonthlySummaryMetrics === 'function') calculateMonthlySummaryMetrics();
@@ -3158,7 +3182,7 @@ window.checkAux = function() {
 
 
 function RecordLog(targetDateEntered = 198) {
-    const req = indexedDB.open("CongregationDB", 7);
+    const req = indexedDB.open("CongregationDB", 10);
 
     req.onsuccess = (e) => {
         const db = e.target.result;
@@ -3393,166 +3417,127 @@ function updateMonthDisplay() {
     const displayEl = document.getElementById("monthDisplayText");
     if (!displayEl) return;
 
-    const monthName = calendarMonthNames[activeCalendarMonth] || "";
-    displayEl.textContent = `${monthName} ${activeCalendarYear}`;
+    const monthName = calendarMonthNames[window.activeCalendarMonth] || "";
+    displayEl.textContent = `${monthName} ${window.activeCalendarYear}`;
 }
 
 // ==========================================
 async function syncMonthStatusUI() {
-    const btn = document.getElementById("monthStatusBtn");
-    if (!btn) return;
+    const btn=document.getElementById("monthStatusBtn");
+    if(!btn) return;
 
-    if (typeof updateMonthDisplay === "function") {
-        updateMonthDisplay();
-    }
+    if(typeof updateMonthDisplay==="function") updateMonthDisplay();
 
-    const activeMonthIndex = Number(
+    const activeMonthIndex=Number(
         window.currentActiveMonthIndex ??
-        (typeof getMonthIndex === "function" ? getMonthIndex() : 0)
+        (typeof window.getMonthIndex==="function"?window.getMonthIndex():0)
     );
 
-    console.group(
-        `🔄 [syncMonthStatusUI] Checking status for NUMBER: ${activeMonthIndex}`
-    );
+    console.group(`🔄 [syncMonthStatusUI] Checking status for NUMBER: ${activeMonthIndex}`);
 
-    // IMPORTANT:
-    // Always open the database using the current application version.
-    // This allows old databases to upgrade to the correct schema.
-    const request = indexedDB.open("CongregationDB", 7);
+    const request=indexedDB.open("CongregationDB",10);
 
-    request.onerror = (event) => {
-        console.error(
-            "❌ Database open error in syncMonthStatusUI:",
-            event.target.error
-        );
-
-        setButtonUIState(btn, false);
+    request.onerror=(event)=>{
+        console.error("❌ Database open error in syncMonthStatusUI:",event.target.error);
+        setButtonUIState(btn,false);
         console.groupEnd();
     };
 
-    request.onupgradeneeded = (event) => {
-        console.log(
-            `🔄 IndexedDB upgrade:
-             ${event.oldVersion} → ${event.newVersion}`
-        );
+    request.onupgradeneeded=(event)=>{
+        console.log(`🔄 IndexedDB upgrade: ${event.oldVersion} → ${event.newVersion}`);
     };
 
-    request.onsuccess = (event) => {
-        const db = event.target.result;
+    request.onsuccess=(event)=>{
+        const db=event.target.result;
 
-        console.log("📦 DB VERSION:", db.version);
+        console.log("📦 DB VERSION:",db.version);
 
-        if (!db.objectStoreNames.contains("MonthlyRecords")) {
-            console.warn(
-                "⚠️ MonthlyRecords object store missing; " +
-                "defaulting button to open."
-            );
-
-            setButtonUIState(btn, false);
+        if(!db.objectStoreNames.contains("MonthlyRecords")){
+            console.warn("⚠️ MonthlyRecords object store missing; defaulting button to open.");
+            setButtonUIState(btn,false);
             db.close();
             console.groupEnd();
             return;
         }
 
-        const tx = db.transaction(
-            ["MonthlyRecords"],
-            "readonly"
-        );
+        const tx=db.transaction(["MonthlyRecords"],"readonly");
+        const store=tx.objectStore("MonthlyRecords");
 
-        const store = tx.objectStore("MonthlyRecords");
+        // NUMBER is stored as a STRING in IndexedDB.
+        const getReq=store.get(String(activeMonthIndex));
 
-        let found = false;
+        getReq.onsuccess=(evt)=>{
+            const rec=evt.target.result;
 
-        const cursorReq = store.openCursor();
+            if(rec){
+                const isClosed=Number(rec.Closed)===1;
 
-             cursorReq.onsuccess = (evt) => {
-            const cursor = evt.target.result;
+                console.log(
+                    `✅ [FOUND] Record for NUMBER ${activeMonthIndex} | ` +
+                    `Closed Status: ${isClosed} (${rec.Closed})`
+                );
 
-            if (cursor) {
+                const today=new Date();
 
-                if (
-                    Number(cursor.value.NUMBER) ===
-                    activeMonthIndex
-                ) {
-                    found = true;
-
-                    const rec = cursor.value;
-
-                    const isClosed =
-                        Number(rec.Closed) === 1;
+                if(isClosed && today.getDate()<21){
+                    const nextNumber=activeMonthIndex+1;
 
                     console.log(
-                        `✅ [FOUND] Record for NUMBER ${activeMonthIndex} | ` +
-                        `Closed Status: ${isClosed} (${rec.Closed})`
+                        `🔒 NUMBER ${activeMonthIndex} is CLOSED → ` +
+                        `Bypassing 21st-day rule → NUMBER ${nextNumber}`
                     );
-
-                    const today = new Date();
-
-                    if (isClosed && today.getDate() < 21) {
-                        const nextNumber = activeMonthIndex + 1;
-
-                        console.log(
-                            `🔒 NUMBER ${activeMonthIndex} is CLOSED → ` +
-                            `Bypassing 21st-day rule → NUMBER ${nextNumber}`
-                        );
-
-                        db.close();
-                        console.groupEnd();
-
-                        syncGlobalsFromMonthNumber(nextNumber);
-
-                        // Rebuild summary for the NEW reporting month.
-                        calculateMonthlySummaryMetrics(nextNumber);
-
-                        selectedYear = activeServiceYear;
-
-                        if (typeof setServiceYear === "function") {
-                            setServiceYear(activeServiceYear);
-                        }
-
-                        if (typeof updateMonthDisplay === "function") {
-                            updateMonthDisplay();
-                        }
-
-                        updateYearDisplay();
-
-                        syncMonthStatusUI();
-
-                        return;
-                    }
-
-                    setButtonUIState(btn, isClosed);
 
                     db.close();
                     console.groupEnd();
+
+                    syncGlobalsFromMonthNumber(nextNumber);
+
+                    // Rebuild summary for the NEW reporting month.
+                    calculateMonthlySummaryMetrics(nextNumber);
+
+                    selectedYear=activeServiceYear;
+
+                    if(typeof setServiceYear==="function"){
+                        setServiceYear(activeServiceYear);
+                    }
+
+                    if(typeof updateMonthDisplay==="function"){
+                        updateMonthDisplay();
+                    }
+
+                    updateYearDisplay();
+
+                    syncMonthStatusUI();
+
                     return;
                 }
-            }
 
-            if (!found) {
-
-                console.log(
-                    `ℹ️ [NOT FOUND] No record for NUMBER ` +
-                    `${activeMonthIndex} | ` +
-                    `Defaulting button state to OPEN (false)`
-                );
-
-                setButtonUIState(btn, false);
+                setButtonUIState(btn,isClosed);
 
                 db.close();
                 console.groupEnd();
+                return;
             }
+
+            console.log(
+                `ℹ️ [NOT FOUND] No record for NUMBER ` +
+                `${activeMonthIndex} | ` +
+                `Defaulting button state to OPEN (false)`
+            );
+
+            setButtonUIState(btn,false);
+
+            db.close();
+            console.groupEnd();
         };
 
-        cursorReq.onerror = (event) => {
-
+        getReq.onerror=(event)=>{
             console.error(
-                `❌ Cursor error checking status for NUMBER ` +
-                `${activeMonthIndex}:`,
+                `❌ Error reading NUMBER ${activeMonthIndex}:`,
                 event.target.error
             );
 
-            setButtonUIState(btn, false);
+            setButtonUIState(btn,false);
 
             db.close();
             console.groupEnd();
@@ -3583,10 +3568,10 @@ function setButtonUIState(btn, isClosed) {
 }
 
 // Call on page refresh
-document.addEventListener("DOMContentLoaded", () => {
-    syncMonthStatusUI();
-});
-
+        document.addEventListener("DOMContentLoaded", async () => {
+            const IDPubSel = await globalSelectedPubID();
+            syncMonthStatusUI();
+        });
 
 
 // 2. Close report function integrated with UI sync

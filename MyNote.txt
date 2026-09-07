@@ -1,0 +1,111 @@
+r"""==========================================
+// CLICKABLE ELEMENTS (BUTTONS & CATEGORIES)
+// ==========================================
+
+// Field Service Activity Buttons
+document.querySelector("button[onclick*='S-88']")               // S-88 Attendance
+document.querySelector("button[onclick*='CO-AVG']")             // Circuit Overseer (6-Mo Avg)
+
+// Publisher Analysis Categories (Primary)
+document.querySelector("button[onclick*='Active']")             // Active Publishers
+document.querySelector("button[onclick*='Active Baptized']")    // Active Baptized
+document.querySelector("button[onclick*='Unbaptized']")         // Unbaptized
+document.querySelector("button[onclick*='Elders']")             // Elders
+document.querySelector("button[onclick*='Ministerial Servants']")// Ministerial Servants
+document.querySelector("button[onclick*='Regular Pioneers']")   // Regular Pioneers
+
+// Publisher Analysis Categories (6-Month Summary)
+document.querySelector("button[onclick*='Auxiliary Pioneers']") // Auxiliary Pioneers
+document.querySelector("button[onclick*='New Publishers']")     // New Publishers
+document.querySelector("button[onclick*='Inactive']")          // Inactive Publishers
+document.querySelector("button[onclick*='Irregular']")         // Irregular Publishers
+
+// AI Action Button
+document.querySelector(".ai-btn")                               // "Ask" Button
+
+
+// ==========================================
+// TEXT INPUT FIELDS
+// ==========================================
+
+// AI Assistant Input Box
+document.getElementById("ai-query-input")                       // e.g. "Show publishers with zero hours..."
+
+// Result Table Search Filter
+document.getElementById("search-input")                         // e.g. "Filter names..."
+"""
+
+
+git add .
+git commit -m "Global Selected PUB "
+git push origin main
+
+
+
+
+// delete MonthlyRecords row
+
+(async()=>{
+const db=await new Promise((r,j)=>{
+const q=indexedDB.open("CongregationDB",10);
+q.onsuccess=()=>r(q.result);
+q.onerror=()=>j(q.error);
+});
+const tx=db.transaction("MonthlyRecords","readwrite");
+const store=tx.objectStore("MonthlyRecords");
+const req=store.delete("205");
+req.onsuccess=()=>console.log("🗑️ DELETED MonthlyRecords NUMBER 205");
+req.onerror=()=>console.error("❌ DELETE FAILED:",req.error);
+tx.oncomplete=()=>{
+console.log("✅ Transaction complete. NUMBER 205 no longer exists.");
+db.close();
+};
+tx.onerror=()=>console.error("❌ Transaction error:",tx.error);
+})()
+
+
+// get MonthlyRecords row
+(async()=>{
+    const db=await openIndexedDB();
+    const records=await new Promise((resolve,reject)=>{
+        const req=db.transaction("MonthlyRecords","readonly").objectStore("MonthlyRecords").getAll();
+        req.onsuccess=()=>resolve(req.result||[]);
+        req.onerror=()=>reject(req.error);
+    });
+    db.close();
+
+    const r=records.find(x=>String(x.NUMBER)==="204");
+
+    console.log("📋 NUMBER 204 — FULL RECORD");
+    console.log(r);
+    console.table(r?[r]:[]);
+})();
+
+
+// specific Publishers RECORD
+
+(async()=>{
+    const db=await openIndexedDB();
+    const records=await new Promise((resolve,reject)=>{
+        const req=db.transaction("RECORDS","readonly").objectStore("RECORDS").getAll();
+        req.onsuccess=()=>resolve(req.result||[]);
+        req.onerror=()=>reject(req.error);
+    });
+    db.close();
+
+    const euzziel=records
+        .filter(r=>String(r.IdPubs??"").trim()==="243")
+        .sort((a,b)=>Number(a.NUMBER)-Number(b.NUMBER));
+
+    console.log("🔎 ALL INDEXEDDB RECORDS — EUZZIEL 243");
+    console.table(euzziel);
+    console.log("📦 COMPLETE RAW ROWS:",euzziel);
+})();
+
+
+
+//  setup AI
+Create new YOUR_NEW_KEY
+https://platform.openai.com/?utm_source=chatgpt.com
+
+uvicorn main:app --reload

@@ -280,6 +280,13 @@
   border-bottom: none;
 }
 
+   .side-label {
+        font-size: 9px;
+        color: #444;
+        display: block;
+        margin-bottom: 1px;
+    }
+
 /* Form Controls & Labels */
 .custom-check {
   display: flex;
@@ -665,21 +672,15 @@
 // ==========================================
 // 1. STATE & HELPERS (Must be at the very top)
 // ==========================================
-let activeCalendarMonth = new Date().getMonth(); // 0 = Jan, 7 = Aug, etc.
-let activeCalendarYear = new Date().getFullYear();   // e.g., 2026
+
+
+window.activeCalendarMonth=new Date().getMonth();
+window.activeCalendarYear=new Date().getFullYear();
 
 const calendarMonthNames = [
     "January", "February", "March", "April", "May", "June", 
     "July", "August", "September", "October", "November", "December"
 ];
-
-// Generate a unique MonthIndex for IndexedDB primary key
-function getMonthIndex() {
-    let sYear = activeCalendarMonth >= 8 ? activeCalendarYear + 1 : activeCalendarYear;
-    let baseNumber = 194 + (sYear - 2026) * 12;
-    let offset = activeCalendarMonth >= 8 ? activeCalendarMonth - 8 : activeCalendarMonth + 4;
-    return baseNumber + offset;
-}
 
 
 
@@ -715,6 +716,7 @@ function getMonthIndex() {
                     <select class="remark-select" id="${m.id}-select" data-month="${index}">
                         <option value=""></option>
                         <option value="INACTIVE">Inactive</option>
+                        <option value="UPB">New UPB</option>
                         <option value="MOVED">Moved</option>
                         <option value="NOTE">Note</option>
                         <option value="RP">RP</option>
@@ -758,7 +760,7 @@ function getMonthIndex() {
     let isSwitchingPublisher = false;
     let selectedPubId = null;
     window.recordsData = null; // Forces renderListbox to reload fresh records from IndexedDB
-    window.currentActiveMonthIndex = getMonthIndex();
+    window.currentActiveMonthIndex = window.getMonthIndex();
    
 
     // 3. Helper: Format dates for input[type="date"]
@@ -851,7 +853,7 @@ function renderListbox(filter = "", category = "ACTIVE PUBLISHERS") {
     }
 
     // Get target MonthIndex
-    const targetMonthIndex = Number(typeof getMonthIndex === 'function' ? getMonthIndex() : 0);
+    const targetMonthIndex = Number(typeof window.getMonthIndex === 'function' ? window.getMonthIndex() : 0);
 
     // =============================================================
     // HELPER: Robust Legacy Marker Normalization
@@ -1084,24 +1086,31 @@ filtered.forEach((p, index) => {
     div._pubData = p;
     div._pubIndex = index;
 
-        div.onclick = () => {
-            currentIndex = div._pubIndex;
-            selectedPubId = p.IDPub ?? p.IdPubs ?? "";
+           div.onclick = async () => {
+                currentIndex = div._pubIndex;
+                selectedPubId = p.IDPub ?? p.IdPubs ?? "";
 
-            const multiple = document.getElementById("chkMultipleSelection")?.checked;
-
-            if (multiple) {
-                div.classList.toggle("active");
-
-                if (div.classList.contains("active")) {
-                    currentSelectedPublisher = p;
+                try {
+                    await globalSelectedPubID(selectedPubId);
+                    console.log("👤 Global SelectedPubID saved:", selectedPubId);
+                } catch (err) {
+                    console.error("❌ Error saving SelectedPubID:", err);
                 }
 
-                return;
-            }
+                const multiple = document.getElementById("chkMultipleSelection")?.checked;
 
-            selectPublisher(p, div);
-        };
+                if (multiple) {
+                    div.classList.toggle("active");
+
+                    if (div.classList.contains("active")) {
+                        currentSelectedPublisher = p;
+                    }
+                    return;
+                }
+
+                selectPublisher(p, div);
+            };
+
 
     listbox.appendChild(div);
 });
@@ -1110,21 +1119,29 @@ filtered.forEach((p, index) => {
     if (countEl) countEl.textContent = `Count: ${filtered.length}`;
 
   // =============================================================
-    // RESTORE SELECTION STATE (WITHOUT RE-TRIGGERING FORM RESET)
+    // RESTORE GLOBAL SELECTED PUBLISHER
     // =============================================================
-    if (typeof selectedPubId !== 'undefined' && selectedPubId) {
-        const matchingEl = listbox.querySelector(`[data-id="${selectedPubId}"]`);
-        if (matchingEl) {
+   // =============================================================
+// RESTORE GLOBAL SELECTED PUBLISHER
+// =============================================================
+        globalSelectedPubID().then(IDPubSel => {
+            if (!IDPubSel) return;
+
+            const matchingEl = listbox.querySelector(`[data-id="${IDPubSel}"]`);
+            if (!matchingEl) return;
+
             currentIndex = matchingEl._pubIndex;
-            
-            // Remove active class from all items, add to matching one
-            listbox.querySelectorAll('.listbox-item').forEach(el => el.classList.remove('active', 'selected'));
-            matchingEl.classList.add('active'); // Change to 'selected' if your CSS uses that
-            
-            // NOTE: We do NOT call matchingEl.click() here anymore 
-            // because it was resetting your form inputs and unchecking your box!
-        }
-    }
+            selectedPubId = IDPubSel;
+            currentSelectedPublisher = matchingEl._pubData;
+
+            listbox.querySelectorAll('.listbox-item').forEach(el => el.classList.remove('active','selected'));
+            matchingEl.classList.add('active');
+
+            console.log("🌐 Restoring publisher:", IDPubSel);
+
+            // Load publisher into the form without triggering onclick
+            selectPublisher(matchingEl._pubData, matchingEl);
+        });
 }
 
  // 7. Populate Form Fields
@@ -1401,31 +1418,7 @@ let selectedYear = new Date().getFullYear();
 // ==========================================
 // CALIBRATED SERVICE MONTH NUMBER CALCULATOR
 // ==========================================
-  // ==========================================
-// CALIBRATED SERVICE MONTH NUMBER CALCULATOR
-// ==========================================
-function getServiceMonthNumber(serviceYear, monthIndex) {
-    // monthIndex: 0 = Sept, 1 = Oct, 2 = Nov, 3 = Dec, 
-    //            4 = Jan, 5 = Feb, 6 = Mar, 7 = Apr, 
-    //            8 = May, 9 = Jun, 10 = Jul, 11 = Aug
 
-    // 🎯 Dynamically update header display if element exists
-    if (serviceYear) {
-        const yearEl = document.getElementById('serviceYearDisplay');
-        if (yearEl) {
-            yearEl.textContent = serviceYear;
-        }
-    }
-
-    const anchorBaseNumber = 26; // Sept 2012
-    const anchorYear = 2012;
-
-    // Calculate year difference from the 2012 anchor
-    const yearDiff = serviceYear - anchorYear;
-
-    // Each service year adds 12 numbers, plus the specific month index offset
-    return anchorBaseNumber + (yearDiff * 12) + monthIndex;
-}
 // ==========================================
 // 2. LOAD RECORDS FOR S-21 TABLE
 // ==========================================
@@ -1438,6 +1431,11 @@ function loadS21RecordsForPublisher() {
     const activePublisherId = currentSelectedPublisher.IDPub;
 
     s21Months.forEach((m) => {
+
+
+
+
+
         const minEl = document.getElementById(`${m.id}-ministry`);
         const bsEl = document.getElementById(`${m.id}-studies`);
         const auxEl = document.getElementById(`${m.id}-aux`);
@@ -1460,6 +1458,7 @@ function loadS21RecordsForPublisher() {
     });
 
     const request = indexedDB.open("CongregationDB");
+
     request.onsuccess = (event) => {
         const db = event.target.result;
         const transaction = db.transaction(["RECORDS"], "readonly");
@@ -1522,32 +1521,23 @@ function loadS21RecordsForPublisher() {
 // 3. SAVE / UPSERT S-21 MONTHLY RECORD
 // ==========================================
 // Automatically inserts a new record or updates an existing one 
-// when any input field in a row is modified.
 function saveS21MonthRecord(monthIndex, eventTarget) {
-    // Read the publisher ID directly from the input's own dataset
     const targetPublisherId = eventTarget?.dataset?.publisherId;
-    
-    if (!targetPublisherId) {
-        console.warn("⚠️ Cannot save record: No bound publisher ID found on element.");
-        return;
-    }
+    if (!targetPublisherId) return;
 
     const m = s21Months[monthIndex];
     const targetNumber = getServiceMonthNumber(selectedYear, monthIndex);
 
-    // 👉 Safely resolve active sidebar month index (e.g., 205) vs row month index (e.g., 201)
-    const activeMonthIndex = Number(
-        window.currentActiveMonthIndex ?? 
-        (typeof getMonthIndex === 'function' ? getMonthIndex() : targetNumber)
-    );
-
-    // Gather values from inputs
+    // Gather values
     const ministryVal = document.getElementById(`${m.id}-ministry`)?.checked ? 1 : 0;
     const bsVal = document.getElementById(`${m.id}-studies`)?.value ? Number(document.getElementById(`${m.id}-studies`).value) : "";
     const auxVal = document.getElementById(`${m.id}-aux`)?.checked ? 1 : 0;
     const hrsVal = document.getElementById(`${m.id}-hours`)?.value ? Number(document.getElementById(`${m.id}-hours`).value) : "";
     const noteVal = document.getElementById(`${m.id}-remark`)?.value || "";
     const remarksVal = document.getElementById(`${m.id}-select`)?.value || "";
+
+    // 🚨 GUARD: If all fields are empty/zero, do NOT add or update a blank record!
+    const hasData = ministryVal || bsVal || auxVal || hrsVal || noteVal || remarksVal;
 
     const request = indexedDB.open("CongregationDB");
     request.onsuccess = (event) => {
@@ -1562,71 +1552,118 @@ function saveS21MonthRecord(monthIndex, eventTarget) {
             const cursor = e.target.result;
             if (cursor) {
                 const rec = cursor.value;
-                // Match strictly against the bound publisher ID
                 if (String(rec.IdPubs) === String(targetPublisherId) && Number(rec.NUMBER) === Number(targetNumber)) {
                     found = true;
-                    
-                    rec.MINISTRY = ministryVal;
-                    rec.BS = bsVal;
-                    rec.AUX = auxVal;
-                    rec.HRS = hrsVal;
-                    rec.Note = noteVal;
-                    rec.REMARKS = remarksVal;
- 
-                    const updateReq = cursor.update(rec);
+                    if (!hasData) {
+                        // Delete blank row directly instead of creating garbage
+                        cursor.delete();
+                        console.log(`🗑️ Deleted empty record for Publisher ID ${targetPublisherId}, month ${targetNumber}`);
+                    } else {
+                        rec.MINISTRY = ministryVal;
+                        rec.BS = bsVal;
+                        rec.AUX = auxVal;
+                        rec.HRS = hrsVal;
+                        rec.Note = noteVal;
+                        rec.REMARKS = remarksVal;
+                        cursor.update(rec);
+                    }
                     return;
                 }
                 cursor.continue();
             } else {
-                if (!found) {
+                // Only create new row if there is actual activity
+                if (!found && hasData) {
+                    const activeMonthIndex = Number(
+                        window.currentActiveMonthIndex ?? 
+                        (typeof window.getMonthIndex === 'function' ? window.getMonthIndex() : targetNumber)
+                    );
+
                     const payload = {
                         IdPubs: String(targetPublisherId),
-                        NUMBER: targetNumber,                // Row index (e.g. 201)
+                        NUMBER: targetNumber,
                         MINISTRY: ministryVal,
                         BS: bsVal,
                         AUX: auxVal,
                         HRS: hrsVal,
                         Note: noteVal,
                         REMARKS: remarksVal,
-                        Date_entered: ""       // ✅ FIXED: Save Active Sidebar Month Index (e.g. 205)
+                        Date_entered: activeMonthIndex
                     };
-
-                    const addReq = store.add(payload);
-                    addReq.onsuccess = () => console.log(`✨ Safely created record for publisher ID ${targetPublisherId}, month NUMBER: ${targetNumber}, Date_entered: ${activeMonthIndex}`);
-                    addReq.onerror = (err) => console.error("❌ Error adding record:", err.target.error);
+                    store.add(payload);
                 }
             }
         };
     };
 }
 
-
-// -------------------------------------------------------------
-// AUTO-CHECK & AUTO-REMARK LISTENER HELPER
-// -------------------------------------------------------------
 // -------------------------------------------------------------
 // AUTO-CHECK & AUTO-REMARK LISTENER HELPER
 // -------------------------------------------------------------
 function attachS21AutoCheckListeners(monthIndex, m) {
+    console.log(`[S21 Debug] Initializing listener attachment for monthIndex: ${monthIndex}`, { m });
+
     const minEl = document.getElementById(`${m.id}-ministry`);
     const bsEl = document.getElementById(`${m.id}-studies`);
     const hrsEl = document.getElementById(`${m.id}-hours`);
     const remSelEl = document.getElementById(`${m.id}-select`);
+    const auxEl = document.getElementById(`${m.id}-aux`);
 
-    if (!hrsEl || !bsEl || !minEl) return;
+    if (!hrsEl || !bsEl || !minEl) {
+        console.warn(`[S21 Debug] Required elements missing for ID base: ${m.id}`, { minEl, bsEl, hrsEl });
+        return;
+    }
+
+    if (minEl.dataset.s21Bound === "true") {
+        console.log(`[S21 Debug] Listener already bound for ${m.id}. Skipping duplicate binding.`);
+        return;
+    }
+    minEl.dataset.s21Bound = "true";
+
+    const targetNumber = minEl.dataset.targetNumber 
+        ? Number(minEl.dataset.targetNumber) 
+        : (typeof getServiceMonthNumber === 'function' && typeof activeServiceYear !== 'undefined'
+            ? getServiceMonthNumber(activeServiceYear, monthIndex)
+            : Number(monthIndex));
+
+    console.log(`[S21 Debug] Bound successfully. Computed targetNumber: ${targetNumber}`);
 
     const handleAutoLogic = (e) => {
+        const startTime = performance.now();
+        const eventType = e ? e.type : 'manual';
+        const triggerElement = e ? e.target.id : 'unknown';
+
+        console.group(`⏱️ [S21 Event Triggered] Type: '${eventType}' from element: '#${triggerElement}'`);
+        console.log(`[S21 Debug] Event start time: ${new Date().toISOString()}`);
+
+        if (e && e.isTrusted === false) {
+            console.warn(`[S21 Debug] Untrusted event detected. Aborting.`);
+            console.groupEnd();
+            return;
+        }
+
         const hasHours = Number(hrsEl.value) > 0;
         const hasStudies = Number(bsEl.value) > 0;
         const hasMinistry = minEl.checked;
+        const hasAux = auxEl ? auxEl.checked : false;
         
-        const hasServiceActivity = hasMinistry || hasHours || hasStudies;
+        const hasServiceActivity = hasMinistry || hasHours || hasStudies || hasAux;
+
+        console.log(`[S21 Debug] Form state snapshot:`, {
+            hours: hrsEl.value,
+            studies: bsEl.value,
+            ministry: minEl.checked,
+            aux: hasAux,
+            hasServiceActivity
+        });
 
         if ((hasHours || hasStudies) && !minEl.checked) {
+            console.log(`[S21 Debug] Hours/Studies detected without ministry check. Auto-checking ministry.`);
             minEl.checked = true;
         }
 
         const targetPublisherId = minEl.dataset.publisherId || (typeof selectedPubId !== 'undefined' ? selectedPubId : null);
+        console.log(`[S21 Debug] Target Publisher ID: ${targetPublisherId}`);
+
         const pubDataList = (typeof publishersData !== 'undefined' && Array.isArray(publishersData)) ? publishersData : [];
         const currentPub = pubDataList.find(p => String(p.IDPub ?? p.IdPubs ?? "").trim() === String(targetPublisherId).trim());
 
@@ -1640,105 +1677,110 @@ function attachS21AutoCheckListeners(monthIndex, m) {
 
         if (currentPub && isTrueMarker(currentPub.RP)) {
             if (remSelEl && (!remSelEl.value || remSelEl.value.trim() === "")) {
+                console.log(`[S21 Debug] Publisher is Regular Pioneer (RP). Auto-setting remark dropdown.`);
                 remSelEl.value = "RP";
             }
         }
 
-        // =============================================================
-        // 👉 RECORD MANAGEMENT: NUMBER (Row) vs Date_entered (Active Sidebar Month)
-        // =============================================================
         if (targetPublisherId) {
             if (!window.recordsData) window.recordsData = [];
 
-            // Compute actual target service month number (e.g., 201) to match saveS21MonthRecord
-            const targetNumber = (typeof getServiceMonthNumber === 'function' && typeof selectedYear !== 'undefined')
-                ? getServiceMonthNumber(selectedYear, monthIndex)
-                : Number(monthIndex);
-            
-            // Strict match on publisher ID and row's NUMBER field
             let recIndex = window.recordsData.findIndex(r => 
                 String(r.IdPubs ?? r.IDPub ?? r.idpubs ?? "").trim() === String(targetPublisherId).trim() && 
                 Number(r.NUMBER) === Number(targetNumber)
             );
 
-            // Safely compute active month index from global state
             const activeMonthIndex = Number(
                 window.currentActiveMonthIndex ?? 
                 (typeof window.getMonthIndex === 'function' ? window.getMonthIndex() : targetNumber)
             );
 
-            // 🔍 LOG: Verify month values on input event
-            console.log("🔍 [S21 Record Log]:", {
-                targetNumber: targetNumber,
-                rowMonthIndex: Number(monthIndex),
-                activeMonthIndex: activeMonthIndex,
-                window_currentActiveMonthIndex: window.currentActiveMonthIndex,
-                getMonthIndex_Result: typeof getMonthIndex === 'function' ? getMonthIndex() : "N/A"
-            });
+            const isClosed = window.currentMonthClosed === true || Number(window.currentMonthClosed) === 1;
+            const computedEntryDate = minEl.checked ? (isClosed ? activeMonthIndex + 1 : activeMonthIndex) : "";
 
             if (hasServiceActivity) {
                 if (recIndex !== -1) {
+                    const existingRec = window.recordsData[recIndex];
+                    const finalDateEntered = isClosed 
+                        ? (activeMonthIndex + 1) 
+                        : (existingRec.Date_entered || computedEntryDate);
+
                     window.recordsData[recIndex].MINISTRY = minEl.checked ? 1 : 0;
+                    window.recordsData[recIndex].AUX = hasAux ? 1 : 0;
                     window.recordsData[recIndex].HRS = Number(hrsEl.value) || 0;
                     window.recordsData[recIndex].BS = Number(bsEl.value) || 0;
-                    window.recordsData[recIndex].REMARKS = remSelEl ? remSelEl.value : (window.recordsData[recIndex].REMARKS || "");
-                    window.recordsData[recIndex].NUMBER = Number(targetNumber);        // Row service month index
-                    window.recordsData[recIndex].Date_entered = activeMonthIndex;      // Active month index
-
-                    console.log("✅ [Record Updated]:", window.recordsData[recIndex]);
+                    window.recordsData[recIndex].REMARKS = remSelEl ? remSelEl.value : "";
+                    window.recordsData[recIndex].NUMBER = Number(targetNumber);
+                    window.recordsData[recIndex].Date_entered = minEl.checked ? finalDateEntered : "";
+                    console.log(`[S21 Debug] In-memory record updated at index [${recIndex}]:`, window.recordsData[recIndex]);
                 } else {
                     const newRec = {
                         IdPubs: targetPublisherId,
                         IDPub: targetPublisherId,
-                        NUMBER: Number(targetNumber),        // Row service month index
-                        Date_entered: activeMonthIndex,      // Active month index
+                        NUMBER: Number(targetNumber),
+                        Date_entered: computedEntryDate,
                         MINISTRY: minEl.checked ? 1 : 0,
+                        AUX: hasAux ? 1 : 0,
                         HRS: Number(hrsEl.value) || 0,
                         BS: Number(bsEl.value) || 0,
                         REMARKS: remSelEl ? remSelEl.value : ""
                     };
                     window.recordsData.push(newRec);
-
-                    console.log("➕ [New Record Added]:", newRec);
+                    console.log(`[S21 Debug] New record pushed to window.recordsData:`, newRec);
                 }
-                saveS21MonthRecord(monthIndex, minEl);
             } else {
                 if (recIndex !== -1) {
-                    window.recordsData[recIndex].MINISTRY = 0;
-                    window.recordsData[recIndex].HRS = 0;
-                    window.recordsData[recIndex].BS = 0;
-                    window.recordsData[recIndex].REMARKS = remSelEl ? remSelEl.value : "";
-                    window.recordsData[recIndex].NUMBER = Number(targetNumber);
-                    
-                    // ✅ ALWAYS store activeMonthIndex instead of setting null
-                    window.recordsData[recIndex].Date_entered = activeMonthIndex; 
-
-                    console.log("🧹 [Record Cleared]:", window.recordsData[recIndex]);
+                    console.log(`[S21 Debug] No service activity detected. Removing record index [${recIndex}] from memory.`);
+                    window.recordsData.splice(recIndex, 1);
                 }
-                saveS21MonthRecord(monthIndex, minEl);
             }
+
+            // Debounce handling
+            if (!window._s21SaveTimers) window._s21SaveTimers = {};
+            const timerKey = `${targetPublisherId}-${monthIndex}`;
+
+            if (window._s21SaveTimers[timerKey]) {
+                console.log(`⏳ [S21 Timer] Active timer cleared for key: '${timerKey}' (Debouncing rapid inputs).`);
+                clearTimeout(window._s21SaveTimers[timerKey]);
+            }
+
+            const timerScheduledAt = performance.now();
+            console.log(`⏳ [S21 Timer] Scheduling 200ms save timer for key: '${timerKey}'...`);
+
+            window._s21SaveTimers[timerKey] = setTimeout(() => {
+                const asyncStartTime = performance.now();
+                console.group(`💾 [S21 Async Save Executing] Key: '${timerKey}'`);
+                console.log(`[S21 Debug] Delay elapsed: ${(asyncStartTime - timerScheduledAt).toFixed(2)}ms`);
+
+                if (typeof saveS21MonthRecord === 'function') {
+                    console.log(`[S21 Debug] Calling saveS21MonthRecord(monthIndex=${monthIndex}, targetNumber=${targetNumber})...`);
+                    saveS21MonthRecord(monthIndex, minEl, targetNumber);
+                } else {
+                    console.error(`[S21 Debug] CRITICAL: saveS21MonthRecord function is NOT defined!`);
+                }
+
+                if (typeof calculateMonthlySummaryMetrics === 'function') {
+                    console.log(`[S21 Debug] Calling calculateMonthlySummaryMetrics()...`);
+                    calculateMonthlySummaryMetrics();
+                }
+
+                console.log(`[S21 Debug] Async save workflow finished in ${(performance.now() - asyncStartTime).toFixed(2)}ms`);
+                console.groupEnd();
+            }, 200);
+        } else {
+            console.warn(`[S21 Debug] targetPublisherId is missing or unresolved. Record not updated.`);
         }
 
-        if (typeof calculateMonthlySummaryMetrics === 'function') {
-            calculateMonthlySummaryMetrics();
-        }
-        
-        const searchInput = document.getElementById('publisherSearch');
-        const categorySelect = document.getElementById('categorySelect');
-        if (typeof renderListbox === 'function') {
-            renderListbox(
-                searchInput ? searchInput.value : "", 
-                categorySelect ? categorySelect.value : "ACTIVE PUBLISHERS"
-            );
-        }
+        const totalExecutionTime = (performance.now() - startTime).toFixed(2);
+        console.log(`⚡ [S21 Sync Process Complete] UI event processed in ${totalExecutionTime}ms`);
+        console.groupEnd();
     };
 
-    hrsEl.addEventListener('input', handleAutoLogic);
-    bsEl.addEventListener('input', handleAutoLogic);
+    hrsEl.addEventListener('change', handleAutoLogic);
+    bsEl.addEventListener('change', handleAutoLogic);
     minEl.addEventListener('change', handleAutoLogic);
-    if (remSelEl) {
-        remSelEl.addEventListener('change', handleAutoLogic);
-    }
+    if (auxEl) auxEl.addEventListener('change', handleAutoLogic);
+    if (remSelEl) remSelEl.addEventListener('change', handleAutoLogic);
 }
 
 // 1. Reusable calculation function
@@ -1829,52 +1871,38 @@ function cleanS21Records() {
 // ==========================================
 // Handles clicking a name in the listbox, highlighting it, 
 // filling user details, and loading their S-21 monthly table.
-function selectPublisher(p, itemElement) {
+function selectPublisher(p,itemElement) {
     if (!p) return;
 
-        // Exit ADD mode when an existing publisher is selected
-            isAddingPublisher = false;
-            window.newPublisherIDPub = null;
+    isAddingPublisher = false;
+    window.newPublisherIDPub = null;
 
-            const addBtn = document.getElementById("btnAddPublisher");
-            if (addBtn) addBtn.innerHTML = "➕ ADD PUBLISHER";
+    const addBtn = document.getElementById("btnAddPublisher");
+    if (addBtn) addBtn.innerHTML = "➕ ADD PUBLISHER";
 
-            currentSelectedPublisher = p;
-
-            // 🔒 Lock saves immediately so stray change events don't cross-contaminate
-            isSwitchingPublisher = true;
-
-
-    currentSelectedPublisher = p; // Keep track of active publisher
-
-    // 🔒 Lock saves immediately so stray change events don't cross-contaminate
+    currentSelectedPublisher = p;
     isSwitchingPublisher = true;
 
-    // ⚡ 1. Fast active class swap (Only target the previously active item instead of looping all)
     const prevActive = document.querySelector('.listbox-item.active');
     if (prevActive) prevActive.classList.remove('active');
-    
-    // ⚡ 2. Highlight and scroll instantly
+
     if (itemElement) {
         itemElement.classList.add('active');
-        itemElement.scrollIntoView({ block: 'nearest', behavior: 'auto' }); // 'auto' eliminates smooth-scroll layout thrashing
+        itemElement.scrollIntoView({block:'nearest',behavior:'auto'});
     }
 
-    // ⚡ 3. Populate primary UI fields synchronously
     loadPublisherNameIntoUI(p);
     populateForm(p);
 
-    // ⚡ 4. Defer S-21 records loading & metrics calculation slightly to let the UI paint first
     setTimeout(() => {
         loadS21RecordsForPublisher();
-        
+
         if (typeof cleanS21Records === 'function') {
             cleanS21Records();
         }
 
-        // 🔓 Unlock saves after the DOM and inputs have fully settled
         isSwitchingPublisher = false;
-    }, 0);
+    },0);
 }
 
 
@@ -2006,17 +2034,16 @@ function renderCurrentMonthData() {
 
 
 // S-21 Service Month details calculation
-function getServiceMonthDetails() {
-    let serviceYear = activeCalendarYear;
-    let NUMBER = 0;
-
-    if (activeCalendarMonth >= 8) {
-        NUMBER = activeCalendarMonth - 7; 
-    } else {
-        serviceYear = activeCalendarYear - 1;
-        NUMBER = activeCalendarMonth + 5; 
+function getServiceMonthDetails(){
+    let serviceYear=window.activeCalendarYear;
+    let NUMBER=0;
+    if(window.activeCalendarMonth>=8){
+        NUMBER=window.activeCalendarMonth-7;
+    }else{
+        serviceYear=window.activeCalendarYear-1;
+        NUMBER= window.activeCalendarMonth+5;
     }
-    return { serviceYear, NUMBER };
+    return {serviceYear,NUMBER};
 }
 
 // Update UI Sidebar Text
@@ -2025,19 +2052,19 @@ function updateMonthSidebarDisplay() {
     if (!monthNavStrong) return;
 
     const now = new Date();
-    const isThisMonth = (activeCalendarYear === now.getFullYear() && activeCalendarMonth === now.getMonth());
-    const monthName = calendarMonthNames[activeCalendarMonth];
+    const isThisMonth = (window.activeCalendarYear === now.getFullYear() &&   window.activeCalendarMonth === now.getMonth());
+    const monthName = calendarMonthNames[window.activeCalendarMonth];
 
     if (isThisMonth) {
-        monthNavStrong.textContent = `${monthName} ${activeCalendarYear} - This Month`;
+        monthNavStrong.textContent = `${monthName} ${window.activeCalendarYear} - This Month`;
     } else {
-        monthNavStrong.textContent = `${monthName} ${activeCalendarYear}`;
+        monthNavStrong.textContent = `${monthName} ${window.activeCalendarYear}`;
     }
 }
 
 // Triggered whenever month changes via arrows
 function onMonthOrYearChanged() {
-    console.log(`🔄 Calendar changed to: ${calendarMonthNames[activeCalendarMonth]} ${activeCalendarYear} (MonthIndex: ${getMonthIndex()})`);
+    console.log(`🔄 Calendar changed to: ${calendarMonthNames[window.activeCalendarMonth]} ${window.activeCalendarYear} (MonthIndex: ${window.getMonthIndex()})`);
     updateMonthSidebarDisplay();
 
     if (typeof loadS21RecordsForPublisher === 'function') {
@@ -2113,10 +2140,10 @@ function initAppSystem() {
         const leftArrow = navArrows[0];  
         leftArrow.style.cursor = 'pointer';
         leftArrow.onclick = () => {
-            if (typeof activeCalendarMonth !== 'undefined') activeCalendarMonth--;
-            if (typeof activeCalendarMonth !== 'undefined' && activeCalendarMonth < 0) {
-                activeCalendarMonth = 11; 
-                if (typeof activeCalendarYear !== 'undefined') activeCalendarYear--;    
+            if (typeof   window.activeCalendarMonth !== 'undefined')   window.activeCalendarMonth--;
+            if (typeof   window.activeCalendarMonth !== 'undefined' &&   window.activeCalendarMonth < 0) {
+                  window.activeCalendarMonth = 11; 
+                if (typeof  window.activeCalendarYear !== 'undefined')  window.activeCalendarYear--;    
             }
             if (typeof onMonthOrYearChanged === 'function') onMonthOrYearChanged();
             if (typeof calculateMonthlySummaryMetrics === 'function') calculateMonthlySummaryMetrics();
@@ -2125,10 +2152,10 @@ function initAppSystem() {
         const rightArrow = navArrows[1]; 
         rightArrow.style.cursor = 'pointer';
         rightArrow.onclick = () => {
-            if (typeof activeCalendarMonth !== 'undefined') activeCalendarMonth++;
-            if (typeof activeCalendarMonth !== 'undefined' && activeCalendarMonth > 11) {
-                activeCalendarMonth = 0;  
-                if (typeof activeCalendarYear !== 'undefined') activeCalendarYear++;    
+            if (typeof   window.activeCalendarMonth !== 'undefined')   window.activeCalendarMonth++;
+            if (typeof   window.activeCalendarMonth !== 'undefined' &&   window.activeCalendarMonth > 11) {
+                  window.activeCalendarMonth = 0;  
+                if (typeof  window.activeCalendarYear !== 'undefined')  window.activeCalendarYear++;    
             }
             if (typeof onMonthOrYearChanged === 'function') onMonthOrYearChanged();
             if (typeof calculateMonthlySummaryMetrics === 'function') calculateMonthlySummaryMetrics();
@@ -2231,7 +2258,7 @@ if (document.readyState === 'loading') {
  * @param {number|string} [overrideMonthIndex] - Optional MonthIndex override
  */
 function calculateMonthlySummaryMetrics(overrideMonthIndex) {
-    const targetMonthIndex = Number(overrideMonthIndex ?? getMonthIndex());
+    const targetMonthIndex = Number(overrideMonthIndex ?? window.getMonthIndex());
 
     if (isNaN(targetMonthIndex)) {
         console.warn("⚠️ Aborted summary calculation: Invalid month index.");
@@ -2683,12 +2710,13 @@ function getIrregularPublisherIds(targetMonthIndex) {
 
 
 //==================
+
 async function buildPublisherPayloadForGAS() {
     try {
-        console.log("🛠️ Building MULTI-PUBLISHER TWO-SERVICE-YEAR payload...");
-
         const currentYear = Number(window.selectedYear ?? selectedYear);
-        if (!Number.isFinite(currentYear)) throw new Error("selectedYear is not available.");
+        if (!Number.isFinite(currentYear)) {
+            throw new Error("selectedYear is not available.");
+        }
 
         const previousYear = currentYear - 1;
 
@@ -2699,41 +2727,163 @@ async function buildPublisherPayloadForGAS() {
             return anchorBaseNumber + (yearDiff * 12) + Number(monthIndex);
         };
 
-        const previousYearNumbers = Array.from({length:12},(_,i)=>getServiceMonthNumber(previousYear,i));
-        const currentYearNumbers = Array.from({length:12},(_,i)=>getServiceMonthNumber(currentYear,i));
+        const previousYearNumbers = Array.from(
+            {length:12},
+            (_,i) => getServiceMonthNumber(previousYear,i)
+        );
 
-        console.log("📅 Previous Service Year:", previousYear);
-        console.log("🔢 Previous NUMBERs:", previousYearNumbers);
-        console.log("📅 Current Service Year:", currentYear);
-        console.log("🔢 Current NUMBERs:", currentYearNumbers);
+        const currentYearNumbers = Array.from(
+            {length:12},
+            (_,i) => getServiceMonthNumber(currentYear,i)
+        );
 
-        const selectedItems = [...document.querySelectorAll("#publisherListbox .listbox-item.active")];
-        const selectedPublishers = selectedItems.map(item => item._pubData).filter(Boolean);
+        console.log("📅 Previous Service Year:",previousYear);
+        console.log("🔢 Previous NUMBERs:",previousYearNumbers);
+        console.log("📅 Current Service Year:",currentYear);
+        console.log("🔢 Current NUMBERs:",currentYearNumbers);
 
-        if (!selectedPublishers.length) {
-            throw new Error("No publishers are selected.");
-        }
+        // YOUR EXISTING SELECTION/BATCH CODE STARTS HERE
 
-        console.log("========================================");
-        console.log("👥 SELECTED PUBLISHERS");
-        console.log("========================================");
-        console.log("Selected count:", selectedPublishers.length);
+            const multipleSelection = document.getElementById("chkMultipleSelection");
+            const radioPublishers = document.getElementById("radioPublishers");
+            const radioUnbaptized = document.getElementById("radioUnbaptized");
+            const radioRegPioneers = document.getElementById("radioRegPioneers");
 
-        selectedPublishers.forEach((p,index) => {
-            console.log(`${index + 1}.`, p.FNAME, p.LName, "IDPub:", p.IDPub);
-        });
+            const isMultiple = multipleSelection?.checked === true;
+            const batchPublishers = radioPublishers?.checked === true;
+            const batchUnbaptized = radioUnbaptized?.checked === true;
+            const batchRegPioneers = radioRegPioneers?.checked === true;
 
-        const db = await openIndexedDB();
+            let selectedPublishers = [];
 
-        const readStore = storeName => new Promise((resolve,reject) => {
-            const tx = db.transaction(storeName,"readonly");
-            const request = tx.objectStore(storeName).getAll();
-            request.onsuccess = () => resolve(request.result || []);
-            request.onerror = () => reject(request.error);
-        });
+            // =============================================================
+            // SINGLE SELECTION
+            // =============================================================
+            if (!isMultiple) {
+                const selectedItems = [...document.querySelectorAll(
+                    "#publisherListbox .listbox-item.active"
+                )];
 
-        const records = await readStore("RECORDS");
-        db.close();
+                selectedPublishers = selectedItems
+                    .map(item => item._pubData)
+                    .filter(Boolean);
+
+                console.log("👤 SINGLE SELECTION MODE");
+            }
+
+            // =============================================================
+            // MULTIPLE SELECTION
+            // =============================================================
+            else {
+                console.log("👥 MULTIPLE SELECTION MODE");
+
+                // ---------------------------------------------------------
+                // BATCH MODE
+                // ---------------------------------------------------------
+                if (batchPublishers || batchUnbaptized || batchRegPioneers) {
+                    console.log("📦 BATCH PDF MODE");
+
+                    const dbBatch = await openIndexedDB();
+
+                    const allPublishers = await new Promise((resolve, reject) => {
+                        const tx = dbBatch.transaction("PUBLISHERS", "readonly");
+                        const request = tx.objectStore("PUBLISHERS").getAll();
+
+                        request.onsuccess = () => resolve(request.result || []);
+                        request.onerror = () => reject(request.error);
+                    });
+
+                    dbBatch.close();
+
+                    const norm = value =>
+                        String(value ?? "").trim().toUpperCase();
+
+                    const isTrue = value =>
+                        ["1", "TRUE", "YES", "Y"].includes(norm(value));
+
+                    const isFalseOrEmpty = value =>
+                        value == null ||
+                        ["", "0", "FALSE", "NO", "N"].includes(norm(value));
+
+                    const hasValue = value =>
+                        value != null && norm(value) !== "";
+
+                    if (batchRegPioneers) {
+                        selectedPublishers = allPublishers.filter(p =>
+                            isTrue(p.RP)
+                        );
+
+                        console.log("📦 BATCH: REGULAR PIONEERS");
+                    }
+
+                    else if (batchUnbaptized) {
+                        selectedPublishers = allPublishers.filter(p =>
+                            !hasValue(p.Baptism)
+                        );
+
+                        console.log("📦 BATCH: UNBAPTIZED");
+                    }
+
+                    else if (batchPublishers) {
+                        selectedPublishers = allPublishers.filter(p =>
+                            isFalseOrEmpty(p.RP) &&
+                            isFalseOrEmpty(p.SF) &&
+                            hasValue(p.Baptism)
+                        );
+
+                        console.log("📦 BATCH: PUBLISHERS");
+                    }
+
+                    console.log("📊 BATCH RESULT:", selectedPublishers.length);
+                }
+
+                // ---------------------------------------------------------
+                // MANUAL MULTI-SELECTION
+                // ---------------------------------------------------------
+                else {
+                    const selectedItems = [...document.querySelectorAll(
+                        "#publisherListbox .listbox-item.active"
+                    )];
+
+                    selectedPublishers = selectedItems
+                        .map(item => item._pubData)
+                        .filter(Boolean);
+
+                    console.log("✋ MANUAL MULTI-SELECTION");
+                    console.log("Selected count:", selectedPublishers.length);
+                }
+            }
+
+            if (!selectedPublishers.length) {
+                throw new Error("No publishers are selected.");
+            }
+
+            console.log("========================================");
+            console.log("👥 SELECTED PUBLISHERS");
+            console.log("========================================");
+            console.log("Selected count:", selectedPublishers.length);
+
+            selectedPublishers.forEach((p, index) => {
+                console.log(
+                    `${index + 1}.`,
+                    p.FNAME,
+                    p.LName,
+                    "IDPub:",
+                    p.IDPub
+                );
+            });
+
+            const db = await openIndexedDB();
+            const readStore = storeName => new Promise((resolve,reject) => {
+                const tx = db.transaction(storeName,"readonly");
+                const request = tx.objectStore(storeName).getAll();
+                request.onsuccess = () => resolve(request.result || []);
+                request.onerror = () => reject(request.error);
+            });
+            const records = await readStore("RECORDS");
+            db.close();
+
+console.log("📋 TOTAL RECORDS:",records.length);
 
         console.log("📋 TOTAL RECORDS:", records.length);
 
@@ -3165,24 +3315,25 @@ async function saveNewPublisher() {
 }
 
 
-// ----Prin PDF selection
 document.addEventListener("DOMContentLoaded", () => {
     const multipleSelection = document.getElementById("chkMultipleSelection");
-    const byFSG = document.getElementById("chkByFSG");
+    const radioPublishers = document.getElementById("radioPublishers");
+    const radioUnbaptized = document.getElementById("radioUnbaptized");
+    const radioRegPioneers = document.getElementById("radioRegPioneers");
 
-    // Both unchecked by default
+    if (!multipleSelection) return;
+
     multipleSelection.checked = false;
-    byFSG.checked = false;
+    if (radioPublishers) radioPublishers.checked = false;
+    if (radioUnbaptized) radioUnbaptized.checked = false;
+    if (radioRegPioneers) radioRegPioneers.checked = false;
 
-    // Return to single selection
     const returnToSingleSelection = () => {
         const activeItems = document.querySelectorAll("#publisherListbox .listbox-item.active");
-
         if (activeItems.length <= 1) return;
 
         let keepItem = null;
 
-        // Keep the currently selected publisher if possible
         if (currentSelectedPublisher) {
             const currentID = String(
                 currentSelectedPublisher.IDPub ??
@@ -3195,32 +3346,64 @@ document.addEventListener("DOMContentLoaded", () => {
             );
         }
 
-        // Otherwise keep the first active item
-        if (!keepItem) {
-            keepItem = activeItems[0];
-        }
+        if (!keepItem) keepItem = activeItems[0];
 
         activeItems.forEach(item => {
-            if (item !== keepItem) {
-                item.classList.remove("active");
-            }
+            if (item !== keepItem) item.classList.remove("active");
         });
     };
 
-    // Only one can be checked at a time
     multipleSelection.addEventListener("change", () => {
         if (multipleSelection.checked) {
-            byFSG.checked = false;
+            // Multiple ON → renderListbox will use multi-select behavior.
+            // Do NOT select a batch category automatically.
+            console.log("☑️ Multiple Selection ON");
         } else {
+            // Multiple OFF → return to one selected publisher.
+            if (radioPublishers) radioPublishers.checked = false;
+            if (radioUnbaptized) radioUnbaptized.checked = false;
+            if (radioRegPioneers) radioRegPioneers.checked = false;
+
             returnToSingleSelection();
+            console.log("⬜ Multiple Selection OFF");
+        }
+
+        if (typeof renderListbox === "function") {
+            renderListbox();
         }
     });
 
-    byFSG.addEventListener("change", () => {
-        if (byFSG.checked) {
-            multipleSelection.checked = false;
-            returnToSingleSelection();
+    const handleBatchOptionChange = (selectedRadio) => {
+        if (!selectedRadio.checked) return;
+
+        // Any batch option requires Multiple Selection.
+        multipleSelection.checked = true;
+
+        // Only one batch option can be selected.
+        [radioPublishers, radioUnbaptized, radioRegPioneers]
+            .forEach(radio => {
+                if (radio && radio !== selectedRadio) {
+                    radio.checked = false;
+                }
+            });
+
+        console.log("📦 Batch option selected:", selectedRadio.id);
+
+        if (typeof renderListbox === "function") {
+            renderListbox();
         }
+    };
+
+    radioPublishers?.addEventListener("change", () => {
+        handleBatchOptionChange(radioPublishers);
+    });
+
+    radioUnbaptized?.addEventListener("change", () => {
+        handleBatchOptionChange(radioUnbaptized);
+    });
+
+    radioRegPioneers?.addEventListener("change", () => {
+        handleBatchOptionChange(radioRegPioneers);
     });
 });
 
