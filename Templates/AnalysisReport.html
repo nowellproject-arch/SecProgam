@@ -705,19 +705,31 @@ async function runAiQuery() {
     const localData = typeof allPublishers !== 'undefined' ? allPublishers : [];
 
     try {
-        const response = await fetch('/api/ai-query', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                query: query,
-                publishers: localData // Send local records to backend
-            })
-        });
+    const response = await fetch('/api/ai-query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: query })
+    });
 
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    const aiData = await response.json();
 
-        const data = await response.json();
-        renderAiTableResults(data);
+    console.log("🤖 AI Query Plan:", aiData.query_plan);
+
+    if (aiData.query_plan && Object.keys(aiData.query_plan).length > 0) {
+        try {
+            const actualResults = await executeAiQueryPlan(aiData.query_plan);
+
+            console.log("📊 IndexedDB Results:", actualResults);
+
+            aiData.results = actualResults;
+        } catch (error) {
+            console.error("❌ IndexedDB AI query failed:", error);
+            aiData.results = [];
+            aiData.answer = "Unable to retrieve the requested records.";
+        }
+    }
+
+    renderAiTableResults(aiData);
 
     } catch (error) {
         console.error("AI Error:", error);
@@ -733,24 +745,46 @@ function renderAiTableResults(data) {
 
     tableBody.innerHTML = "";
 
-    // Extract records array from response
-    const records = data.results || (Array.isArray(data) ? data : []);
+    const records = data.results || [];
 
-    // If no structured records exist, display the plain answer text across the row
-    if (records.length === 0) {
+    if (!records.length) {
         const message = data.answer || "No matching records found.";
-        tableBody.innerHTML = `<tr><td colspan="3" style="text-align:center;">${message}</td></tr>`;
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="3" style="text-align:center;">
+                    ${message}
+                </td>
+            </tr>
+        `;
         return;
     }
 
-    // Render table rows when records exist
     records.forEach(publisher => {
         const tr = document.createElement("tr");
+
+        const name = [
+            publisher.FNAME,
+            publisher.MName,
+            publisher.LName
+        ].filter(value => value && String(value).trim() !== "").join(" ");
+
+        const role = [
+            publisher.Elder ? "Elder" : "",
+            publisher.MS ? "Ministerial Servant" : ""
+        ].filter(Boolean).join(", ");
+
+        const status =
+            publisher.Status ||
+            publisher.status ||
+            publisher.Remarks ||
+            "Active";
+
         tr.innerHTML = `
-            <td>${publisher.name || publisher.Name || ''}</td>
-            <td>${publisher.role || publisher.Role || ''}</td>
-            <td>${publisher.status || publisher.Status || ''}</td>
+            <td>${name}</td>
+            <td>${role}</td>
+            <td>${status}</td>
         `;
+
         tableBody.appendChild(tr);
     });
 }

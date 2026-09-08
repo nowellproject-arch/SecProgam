@@ -32,7 +32,7 @@ from datetime import datetime
 
 
 
-
+import asyncio
 from fastapi import FastAPI
 from dotenv import load_dotenv
 from google import genai
@@ -44,6 +44,209 @@ app = FastAPI()
 
 api_key = os.getenv("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
+
+
+DATABASE_SCHEMA = """
+DATABASE: CongregationDB
+DATABASE VERSION: 7
+
+========================================
+TABLE: CongInfo
+========================================
+Primary Key:
+- passcode
+
+Fields:
+- passcode
+- CongName
+- Address
+- Circuit
+- ServiceYear
+- Other congregation information fields
+
+Purpose:
+Stores congregation configuration and general congregation information.
+
+
+========================================
+TABLE: GROUPS
+========================================
+Primary Key:
+- Group
+
+Fields:
+- Group
+- Overseer
+- Assistant
+- Other group-related fields
+
+Purpose:
+Stores congregation field service groups.
+
+
+========================================
+TABLE: PUBLISHERS
+========================================
+Primary Key:
+- IDPub
+
+Fields:
+- IDPub              : Unique Publisher ID
+- FNAME              : First Name
+- LName              : Last Name
+- Gender
+- Baptism
+- BirthDate
+- Group
+- Status
+- Elder
+- MS
+- Pioneer
+- RegularPioneer
+- AuxiliaryPioneer
+- Other publisher information fields
+
+Purpose:
+Stores master publisher information.
+
+Important:
+PUBLISHERS.IDPub is linked to RECORDS.IdPubs.
+
+
+========================================
+TABLE: MonthlyRecords
+========================================
+Primary Key:
+- NUMBER
+
+Fields:
+- NUMBER             : Unique Service Month Number
+- Month
+- Year
+- Closed
+
+Purpose:
+Stores service month information.
+
+Important:
+MonthlyRecords.NUMBER is linked to RECORDS.NUMBER.
+
+
+========================================
+TABLE: RECORDS
+========================================
+Composite Primary Key:
+- IdPubs
+- NUMBER
+
+Fields:
+- IdPubs             : Publisher ID
+- NUMBER             : Service Month Number
+- Ministry
+- HRs
+- BS
+- Remarks
+- Date_Entered
+- Other monthly report fields
+
+Purpose:
+Stores monthly publisher service reports.
+
+Relationships:
+- RECORDS.IdPubs = PUBLISHERS.IDPub
+- RECORDS.NUMBER = MonthlyRecords.NUMBER
+
+
+========================================
+RELATIONSHIPS
+========================================
+
+PUBLISHERS
+    IDPub
+      |
+      | 1-to-many
+      |
+RECORDS
+    IdPubs
+
+
+MonthlyRecords
+    NUMBER
+      |
+      | 1-to-many
+      |
+RECORDS
+    NUMBER
+
+
+========================================
+IMPORTANT FIELD MEANINGS
+========================================
+
+PUBLISHERS.IDPub
+- Unique ID of a publisher.
+
+PUBLISHERS.FNAME
+- Publisher first name.
+
+PUBLISHERS.LName
+- Publisher last name.
+
+PUBLISHERS.Baptism
+- Baptism information.
+- Empty or null Baptism may indicate an unbaptized publisher.
+
+PUBLISHERS.Group
+- Field service group assignment.
+
+RECORDS.IdPubs
+- Links monthly record to PUBLISHERS.IDPub.
+
+RECORDS.NUMBER
+- Service month identifier.
+
+RECORDS.Ministry
+- Monthly ministry/service status or activity.
+
+RECORDS.HRs
+- Reported ministry hours.
+
+RECORDS.BS
+- Bible studies.
+
+RECORDS.Remarks
+- Remarks or special report information.
+- Example values may include "NEW UPB".
+
+RECORDS.Date_Entered
+- Date the monthly record was entered.
+
+MonthlyRecords.NUMBER
+- Unique month identifier.
+
+MonthlyRecords.Closed
+- Indicates whether a service month is closed.
+
+
+========================================
+QUERY RULES
+========================================
+
+1. Use ONLY tables and fields defined in this schema.
+2. Never invent table names.
+3. Never invent column names.
+4. Use PUBLISHERS.IDPub = RECORDS.IdPubs when joining publisher records.
+5. Use MonthlyRecords.NUMBER = RECORDS.NUMBER when joining month information.
+6. For publisher identity queries, start with PUBLISHERS.
+7. For monthly report queries, use RECORDS.
+8. When both publisher information and monthly report information are required,
+   join PUBLISHERS and RECORDS.
+9. When month information is required, join MonthlyRecords.
+10. NUMBER represents the service month identifier.
+"""
+
+
+
 
 
 # --- LOAD ENVIRONMENT VARIABLES ---
@@ -916,45 +1119,254 @@ def export_backup():
         }
 
 
+
 @app.post("/api/ai-query")
 async def ai_query(data: dict):
     query = str(data.get("query", "")).strip()
-    publishers = data.get("publishers", [])
-    
+
     if not query:
-        return {"answer": "Please enter a question.", "results": []}
+        return {
+            "answer": "Please enter a question.",
+            "query_plan": {},
+            "results": []
+        }
 
     try:
         prompt = f"""
-        You are a database assistant for an S-88-E publisher records system.
-        
-        Publisher Dataset:
-        {json.dumps(publishers)}
+You are an AI Query Planner for the S-88-E Congregation Database.
 
-        User Request: "{query}"
+You DO NOT have access to database rows.
 
-        Instructions:
-        1. "answer": Provide a summary response addressing the request.
-        2. "results": Filter the provided dataset based on the user request and return matching items with keys 'name', 'role', and 'status'.
-           If the query is a simple greeting, return an empty array [].
-        """
+You MUST NOT read, inspect, filter, or analyze actual publisher records.
 
-        response = client.models.generate_content(
-            model='gemini-3.6-flash',
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json"
-            )
-        )
+Your only job is to convert the user's natural language request into a structured database query plan.
 
-        return json.loads(response.text)
+The backend or browser will execute your query plan against the local database.
+
+DATABASE SCHEMA:
+{DATABASE_SCHEMA}
+
+USER REQUEST:
+"{query}"
+
+STRICT RULES:
+
+1. NEVER invent database records.
+
+2. NEVER answer questions using imaginary data.
+
+3. NEVER request the entire database.
+
+4. NEVER process database rows inside the AI prompt.
+
+5. ONLY create a query plan.
+
+6. Use ONLY table names and fields defined in DATABASE_SCHEMA.
+
+7. If multiple tables are required, specify the joins.
+
+8. Use filtering whenever possible.
+
+9. Select only fields needed for the answer.
+
+10. Use aggregation for:
+   - count
+   - total
+   - sum
+   - average
+   - minimum
+   - maximum
+
+11. Use sorting when appropriate.
+
+12. For questions about publishers, use PUBLISHERS.
+
+13. For questions about monthly reports, use RECORDS.
+
+14. For questions requiring both publisher identity and report data:
+    JOIN PUBLISHERS.IDPub = RECORDS.IdPubs
+
+15. For questions involving service months:
+    JOIN RECORDS.NUMBER = MonthlyRecords.NUMBER
+
+16. NEVER return actual database results.
+
+17. The "results" array MUST always be [].
+
+18. Return ONLY valid JSON.
+
+19. Do not use Markdown.
+
+20. Do not add explanations outside the JSON.
+
+21. If the request is unclear, create the best possible query plan based
+    only on the available DATABASE_SCHEMA.
+
+22. Never invent a field just because it sounds logical.
+
+23. If a requested field or information does not exist in DATABASE_SCHEMA,
+    return an empty query_plan and explain this in "answer".
+
+REQUIRED RESPONSE FORMAT:
+
+{{
+    "answer": "Short description of what will be searched",
+    "query_plan": {{
+        "tables": [],
+        "joins": [],
+        "select": [],
+        "filters": [],
+        "group_by": [],
+        "aggregations": [],
+        "order_by": [],
+        "limit": null
+    }},
+    "results": []
+}}
+
+QUERY PLAN FORMAT DETAILS:
+
+"tables":
+[
+    {{
+        "name": "PUBLISHERS",
+        "alias": "p"
+    }}
+]
+
+"joins":
+[
+    {{
+        "type": "INNER",
+        "table": "RECORDS",
+        "alias": "r",
+        "condition": "p.IDPub = r.IdPubs"
+    }}
+]
+
+"select":
+[
+    {{
+        "field": "p.FNAME",
+        "alias": "First Name"
+    }},
+    {{
+        "field": "p.LName",
+        "alias": "Last Name"
+    }}
+]
+
+"filters":
+[
+    {{
+        "field": "r.HRs",
+        "operator": "=",
+        "value": 0
+    }}
+]
+
+"group_by":
+[]
+
+"aggregations":
+[
+    {{
+        "function": "COUNT",
+        "field": "p.IDPub",
+        "alias": "Total"
+    }}
+]
+
+"order_by":
+[
+    {{
+        "field": "p.LName",
+        "direction": "ASC"
+    }}
+]
+"""
+
+        response = None
+        last_error = None
+
+        # Try AI request up to 3 times
+        for attempt in range(3):
+            try:
+                response = client.models.generate_content(
+                    model="gemini-3.6-flash",
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json"
+                    )
+                )
+
+                # Success - stop retrying
+                break
+
+            except Exception as retry_error:
+                last_error = retry_error
+                error_text = str(retry_error)
+
+                print(
+                    f"AI attempt {attempt + 1}/3 failed: {error_text}"
+                )
+
+                # Wait before retrying, except after final attempt
+                if attempt < 2:
+                    wait_seconds = 2 * (attempt + 1)
+                    print(f"Retrying in {wait_seconds} seconds...")
+                    await asyncio.sleep(wait_seconds)
+
+        # All attempts failed
+        if response is None:
+            raise last_error
+
+        # Parse AI JSON response
+        query_result = json.loads(response.text)
+
+        # Safety: AI must not return actual records
+        query_result["results"] = []
+
+        # Ensure required keys exist
+        if "answer" not in query_result:
+            query_result["answer"] = "Query plan created."
+
+        if "query_plan" not in query_result:
+            query_result["query_plan"] = {}
+
+        return query_result
 
     except Exception as e:
-        print(f"Gemini Error: {e}")
-        return {"answer": f"Error: {str(e)}", "results": []}
+        error_text = str(e)
+        print(f"Gemini Error: {error_text}")
+
+        if "503" in error_text or "UNAVAILABLE" in error_text:
+            return {
+                "answer": "The AI service is temporarily busy. Please try again in a few seconds.",
+                "query_plan": {},
+                "results": [],
+                "error": "AI_SERVICE_BUSY"
+            }
+
+        if "429" in error_text or "RESOURCE_EXHAUSTED" in error_text:
+            return {
+                "answer": "The AI request limit has been reached. Please wait a moment and try again.",
+                "query_plan": {},
+                "results": [],
+                "error": "AI_RATE_LIMIT"
+            }
+
+        return {
+            "answer": "Unable to process your request. Please try again.",
+            "query_plan": {},
+            "results": [],
+            "error": "AI_ERROR"
+        }
 
 
-        
+
+
+
 
 if __name__ == "__main__":
     import uvicorn

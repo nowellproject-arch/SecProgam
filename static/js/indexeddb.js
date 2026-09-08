@@ -960,3 +960,121 @@ async function globalSelectedPubID(pubID = null) {
         db.close();
     }
 }
+
+
+
+window.executeAiQueryPlan = async function(queryPlan) {
+
+    console.log("🚨 EXECUTE AI QUERY PLAN WAS CALLED", queryPlan);
+    const db = await openIndexedDB();
+    try {
+        const tables = queryPlan.tables || [];
+        const filters = queryPlan.filters || [];
+        const orderBy = queryPlan.order_by || [];
+        const limit = queryPlan.limit;
+
+        console.log("🧠 AI QUERY PLAN:", queryPlan);
+        console.log("📋 TABLES:", tables);
+        console.log("🔎 FILTERS:", filters);
+        console.log("↕️ ORDER BY:", orderBy);
+        console.log("🔢 LIMIT:", limit);
+
+        if (!tables.length) {
+            console.warn("⚠️ AI returned no tables.");
+            return [];
+        }
+
+        const tableName = tables[0].name;
+        console.log("💾 INDEXEDDB TABLE:", tableName);
+
+        const tx = db.transaction([tableName], "readonly");
+        const store = tx.objectStore(tableName);
+
+        const records = await new Promise((resolve, reject) => {
+            const request = store.getAll();
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error);
+        });
+
+        console.log("📦 TOTAL RECORDS IN TABLE:", records.length);
+        console.log("📄 FIRST RECORD:", records[0]);
+
+        let result = records.filter(record => {
+            return filters.every(filter => {
+                const field = filter.field.split(".").pop();
+                const actualValue = record[field];
+                const expectedValue = filter.value;
+
+                switch (filter.operator) {
+                    case "=":
+                    case "==":
+                        return String(actualValue ?? "").toLowerCase() ===
+                            String(expectedValue ?? "").toLowerCase();
+                    case "!=":
+                    case "<>":
+                        return String(actualValue ?? "").toLowerCase() !==
+                            String(expectedValue ?? "").toLowerCase();
+                    case ">":
+                        return Number(actualValue) > Number(expectedValue);
+                    case "<":
+                        return Number(actualValue) < Number(expectedValue);
+                    case ">=":
+                        return Number(actualValue) >= Number(expectedValue);
+                    case "<=":
+                        return Number(actualValue) <= Number(expectedValue);
+                    case "contains":
+                        return String(actualValue ?? "").toLowerCase()
+                            .includes(String(expectedValue ?? "").toLowerCase());
+                    default:
+                        console.warn("⚠️ Unknown operator:", filter.operator);
+                        return true;
+                }
+            });
+        });
+
+        console.log("🔎 FILTERED RESULTS:", result);
+        console.log("🔢 FILTERED COUNT:", result.length);
+
+        if (orderBy.length) {
+            result.sort((a, b) => {
+                for (const order of orderBy) {
+                    const field = (order.field || "").split(".").pop();
+                    const direction = String(order.direction || order.order || "asc").toLowerCase();
+                    const av = a[field];
+                    const bv = b[field];
+
+                    if (av == null && bv == null) continue;
+                    if (av == null) return direction === "desc" ? 1 : -1;
+                    if (bv == null) return direction === "desc" ? -1 : 1;
+
+                    const an = Number(av);
+                    const bn = Number(bv);
+
+                    if (!Number.isNaN(an) && !Number.isNaN(bn)) {
+                        if (an !== bn) return direction === "desc" ? bn - an : an - bn;
+                    } else {
+                        const comparison = String(av).localeCompare(String(bv));
+                        if (comparison !== 0) return direction === "desc" ? -comparison : comparison;
+                    }
+                }
+                return 0;
+            });
+        }
+
+        if (limit !== null && limit !== undefined) {
+            const n = Number(limit);
+            if (Number.isFinite(n) && n > 0) {
+                result = result.slice(0, n);
+            }
+        }
+
+        console.log("🎯 FINAL AI RESULTS:", result);
+        return result;
+
+    } catch (error) {
+        console.error("❌ AI IndexedDB Query Error:", error);
+        return [];
+    } finally {
+        db.close();
+    }
+}
