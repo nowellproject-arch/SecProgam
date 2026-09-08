@@ -31,7 +31,7 @@ from datetime import datetime
 
 
 
-
+import time
 import asyncio
 from fastapi import FastAPI
 from dotenv import load_dotenv
@@ -1120,6 +1120,7 @@ def export_backup():
 
 
 
+
 @app.post("/api/ai-query")
 async def ai_query(data: dict):
     query = str(data.get("query", "")).strip()
@@ -1130,6 +1131,14 @@ async def ai_query(data: dict):
             "query_plan": {},
             "results": []
         }
+
+    request_start = time.time()
+    print("\n" + "=" * 70)
+    print("🤖 AI REQUEST START")
+    print(f"📝 Question: {query}")
+    print(f"🧠 Model: gemini-3.6-flash")
+    print(f"⏱️ Started: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    print("=" * 70)
 
     try:
         prompt = f"""
@@ -1152,58 +1161,29 @@ USER REQUEST:
 STRICT RULES:
 
 1. NEVER invent database records.
-
 2. NEVER answer questions using imaginary data.
-
 3. NEVER request the entire database.
-
 4. NEVER process database rows inside the AI prompt.
-
 5. ONLY create a query plan.
-
 6. Use ONLY table names and fields defined in DATABASE_SCHEMA.
-
 7. If multiple tables are required, specify the joins.
-
 8. Use filtering whenever possible.
-
 9. Select only fields needed for the answer.
-
-10. Use aggregation for:
-   - count
-   - total
-   - sum
-   - average
-   - minimum
-   - maximum
-
+10. Use aggregation for count, total, sum, average, minimum, maximum.
 11. Use sorting when appropriate.
-
 12. For questions about publishers, use PUBLISHERS.
-
 13. For questions about monthly reports, use RECORDS.
-
 14. For questions requiring both publisher identity and report data:
     JOIN PUBLISHERS.IDPub = RECORDS.IdPubs
-
 15. For questions involving service months:
     JOIN RECORDS.NUMBER = MonthlyRecords.NUMBER
-
 16. NEVER return actual database results.
-
 17. The "results" array MUST always be [].
-
 18. Return ONLY valid JSON.
-
 19. Do not use Markdown.
-
 20. Do not add explanations outside the JSON.
-
-21. If the request is unclear, create the best possible query plan based
-    only on the available DATABASE_SCHEMA.
-
+21. If the request is unclear, create the best possible query plan based only on DATABASE_SCHEMA.
 22. Never invent a field just because it sounds logical.
-
 23. If a requested field or information does not exist in DATABASE_SCHEMA,
     return an empty query_plan and explain this in "answer".
 
@@ -1265,8 +1245,7 @@ QUERY PLAN FORMAT DETAILS:
     }}
 ]
 
-"group_by":
-[]
+"group_by": []
 
 "aggregations":
 [
@@ -1289,8 +1268,12 @@ QUERY PLAN FORMAT DETAILS:
         response = None
         last_error = None
 
-        # Try AI request up to 3 times
         for attempt in range(3):
+            attempt_start = time.time()
+
+            print(f"\n📤 GEMINI ATTEMPT {attempt + 1}/3")
+            print("   Sending request to Gemini...")
+
             try:
                 response = client.models.generate_content(
                     model="gemini-3.6-flash",
@@ -1300,45 +1283,65 @@ QUERY PLAN FORMAT DETAILS:
                     )
                 )
 
-                # Success - stop retrying
+                attempt_time = time.time() - attempt_start
+
+                print(f"✅ Gemini response received")
+                print(f"⏱️ Attempt time: {attempt_time:.2f}s")
+
+                if response.text:
+                    print(f"📥 Response length: {len(response.text)} characters")
+                else:
+                    print("⚠️ Gemini returned an empty response")
+
                 break
 
             except Exception as retry_error:
                 last_error = retry_error
+                attempt_time = time.time() - attempt_start
                 error_text = str(retry_error)
 
-                print(
-                    f"AI attempt {attempt + 1}/3 failed: {error_text}"
-                )
+                print(f"❌ GEMINI ATTEMPT {attempt + 1}/3 FAILED")
+                print(f"⏱️ Attempt time: {attempt_time:.2f}s")
+                print(f"⚠️ Error: {error_text}")
 
-                # Wait before retrying, except after final attempt
                 if attempt < 2:
                     wait_seconds = 2 * (attempt + 1)
-                    print(f"Retrying in {wait_seconds} seconds...")
+                    print(f"⏳ Retrying in {wait_seconds} seconds...")
                     await asyncio.sleep(wait_seconds)
 
-        # All attempts failed
         if response is None:
+            print("❌ ALL 3 GEMINI ATTEMPTS FAILED")
             raise last_error
 
-        # Parse AI JSON response
+        print("🔍 Parsing Gemini JSON response...")
+
         query_result = json.loads(response.text)
 
-        # Safety: AI must not return actual records
         query_result["results"] = []
 
-        # Ensure required keys exist
         if "answer" not in query_result:
             query_result["answer"] = "Query plan created."
 
         if "query_plan" not in query_result:
             query_result["query_plan"] = {}
 
+        total_time = time.time() - request_start
+
+        print("\n✅ AI REQUEST COMPLETE")
+        print(f"⏱️ Total time: {total_time:.2f}s")
+        print(f"📊 Query plan created: {bool(query_result.get('query_plan'))}")
+        print("=" * 70 + "\n")
+
         return query_result
 
     except Exception as e:
+        total_time = time.time() - request_start
         error_text = str(e)
-        print(f"Gemini Error: {error_text}")
+
+        print("\n❌ AI REQUEST FAILED")
+        print(f"⏱️ Total time: {total_time:.2f}s")
+        print(f"⚠️ Error: {error_text}")
+        print("=" * 70 + "\n")
 
         if "503" in error_text or "UNAVAILABLE" in error_text:
             return {
