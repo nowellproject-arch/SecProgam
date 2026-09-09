@@ -28,9 +28,16 @@ from Sync import sync_router
 
 from fastapi.responses import JSONResponse
 from datetime import datetime
+from fastapi.responses import FileResponse
+
+# PDF HTML
+
+from fastapi.responses import FileResponse, JSONResponse
 
 
 
+
+# AI
 import time
 import asyncio
 from fastapi import FastAPI
@@ -1367,6 +1374,29 @@ QUERY PLAN FORMAT DETAILS:
         }
 
 
+
+@app.get("/COReport")
+async def co_report():
+    return FileResponse("Templates/COReport.html")
+
+
+@app.get("/s21Card")
+async def s21_card():
+    return FileResponse("Templates/s21Card.html")
+
+
+
+
+# 1. Serves the HTML Page
+@app.get("/s21Card")
+async def s21_card():
+    return FileResponse("Templates/s21Card.html")
+
+# 2. Serves the Payload Data to the S-21 Page
+@app.post("/api/get-s21-data")
+async def get_s21_data(data_payload: dict):
+    # Returns the exact data_payload to the frontend template
+    return JSONResponse(content={"success": True, "payload": data_payload})
 
 
 

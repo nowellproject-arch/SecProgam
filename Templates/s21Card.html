@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Congregation's Publisher Record (S-21)</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 0;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+            font-family: Arial, Helvetica, sans-serif;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            color: #000;
+        }
+
+        .page {
+            width: 210mm;
+            height: 297mm;
+            background: #fff;
+            margin: 0 auto 20px auto;
+            padding: 6mm 10mm;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            page-break-after: always;
+            break-after: page;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+        }
+        /* Top Action Bar (Hidden during printing) */
+        .action-bar {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            gap: 10px;
+            z-index: 9999;
+        }
+
+        .action-btn {
+            padding: 10px 18px;
+            background-color: #0066cc;
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+
+        .action-btn:hover {
+            background-color: #004999;
+        }
+
+        .preview-navigation {
+            position: fixed;
+            left: 50%;
+            bottom: 18px;
+            transform: translateX(-50%);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            background: rgba(255,255,255,0.96);
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+        }
+        .find-name-input {
+            width: 180px;
+            height: 34px;
+            padding: 6px 9px;
+            border: 1px solid #999;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        .preview-nav-btn {
+            height: 34px;
+            min-width: 75px;
+            padding: 6px 12px;
+            border: 1px solid #999;
+            border-radius: 4px;
+            background: #fff;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .page-indicator {
+            min-width: 55px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .preview-nav-btn {
+            min-width: 85px;
+            padding: 8px 14px;
+            border: 1px solid #999;
+            border-radius: 4px;
+            background: #fff;
+            color: #222;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .preview-nav-btn:hover:not(:disabled) {
+            background: #eee;
+        }
+        .preview-nav-btn:disabled {
+            opacity: 0.45;
+            cursor: default;
+        }
+        .page-indicator {
+            min-width: 70px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+
+        @media print {
+            body {
+                background: none;
+            }
+
+            .page {
+                margin: 0;
+                box-shadow: none;
+                width: 100%;
+                height: 100vh;
+                padding: 6mm 8mm;
+                page-break-after: always;
+                break-after: page;
+            }
+
+            .action-bar {
+                display: none;
+            }
+
+            .preview-navigation {
+                display: none;
+            }
+        }
+
+        /* Form Card Layout */
+        .form-card {
+            height: 140mm;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .cut-line {
+            width: 100%;
+            border-top: 1px dashed #999;
+            margin: 1mm 0;
+        }
+
+        h1.form-title {
+            font-size: 12pt;
+            font-weight: bold;
+            text-align: center;
+            text-transform: uppercase;
+            margin: 0 0 6px 0;
+        }
+
+        
+        /* Container for header rows */
+        .header-section {
+            width: 100%;
+            margin-bottom: 6px;
+            font-size: 8.5pt;
+        }
+
+        /* Flex row setup */
+        .info-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 4px;
+            width: 100%;
+        }
+
+        .info-row .label {
+            font-weight: bold;
+            margin-right: 4px;
+            white-space: nowrap;
+        }
+
+        .info-row .value {
+            display: inline-block;
+            padding-left: 4px;
+        }
+
+        /* Align right-side checkbox block */
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-left: auto;
+        }
+
+        /* Standardized Checkbox Item Styling */
+        .checkbox-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px; /* Adds space between square box and text */
+            font-weight: bold;
+            font-size: 8.5pt;
+            white-space: nowrap;
+        }
+
+        /* Fixed width columns to align Male/Female with Other sheep/Anointed */
+        .col-1 {
+            width: 110px; /* Column containing "Male" and "Other sheep" */
+        }
+
+        .col-2 {
+            width: 90px;  /* Column containing "Female" and "Anointed" */
+        }
+
+     /* 1. Make checkboxes larger and match original proportions */
+        .checkbox-box {
+            width: 12px;
+            height: 12px;
+            border: 1px solid #000;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8.5pt;
+            font-weight: bold;
+            line-height: 1;
+            margin-right: 2px;
+        }
+
+        /* Privileges / Pioneer row layout */
+        .privileges-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 6px;
+            margin-bottom: 8px;
+            width: 100%;
+        }
+
+        /* Update table styles */
+        table.record-table {
+            border-collapse: collapse;
+            width: 100%;
+            table-layout: fixed;
+            font-size: 8pt; /* Slightly smaller for tight spacing */
+        }
+
+       /* Update header height and line height */
+            table.record-table th {
+                border: 1px solid #000;
+                text-align: center;
+                padding: 4px 2px; /* Increased vertical padding */
+                vertical-align: middle;
+                font-weight: bold;
+                height: 38px; /* Fixed taller height for the header row */
+                line-height: 1.15;
+            }
+
+        /* Reduced row height to match standard S-21 density */
+        /* Increase data row height to stretch the table down */
+            table.record-table td {
+                border: 1px solid #000;
+                text-align: center;
+                padding: 2px 4px;
+                vertical-align: middle;
+                height: 24px; /* Increased from 16px/20px to match standard S-21 vertical length */
+            }
+
+        /* Left-align month names with proper margin */
+        table.record-table td.text-left {
+            text-align: left;
+            padding-left: 6px;
+            font-weight: bold;
+            font-size: 8pt;
+        }
+
+        .total-label {
+            text-align: right;
+            font-weight: bold;
+            padding-right: 8px;
+            border: none !important;
+        }
+
+        .form-footer {
+            font-size: 7pt;
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+
+<div class="action-bar">
+    <button class="action-btn" onclick="printS21()">Print / Save PDF</button>
+</div>
+
+<div id="container"></div>
+
+<div class="preview-navigation">
+    <input id="findNameInput" class="find-name-input" type="text" placeholder="Find name..." onkeydown="if(event.key==='Enter') findPublisher()">
+    <button class="preview-nav-btn" onclick="findPublisher()">Find</button>
+    <button id="prevPage" class="preview-nav-btn" onclick="previousPage()">‹ Previous</button>
+    <span id="pageIndicator" class="page-indicator">0 / 0</span>
+    <button id="nextPage" class="preview-nav-btn" onclick="nextPage()">Next ›</button>
+</div>
+
+<script>
+const MONTH_NAMES = [
+    "September", "October", "November", "December",
+    "January", "February", "March", "April",
+    "May", "June", "July", "August"
+];
+
+/**
+ * Universal Boolean Matcher
+ * Flexible check for truthy values (booleans, strings "true", 1, "✓", "Y", etc.)
+ */
+function isTrue(val) {
+    if (val === null || val === undefined) return false;
+    if (typeof val === 'boolean') return val;
+    if (typeof val === 'number') return val !== 0;
+    const str = String(val).trim().toUpperCase();
+    return ["1", "TRUE","?", "YES", "Y", "✓", "-1"].includes(str);
+}
+
+/**
+ * Robust Record Lookup
+ * Matches records by NUMBER or Month property string/number
+ */
+function getRecordByNumber(records, number) {
+    if (!records || !Array.isArray(records)) return {};
+    const target = String(number).trim();
+    return records.find(r => {
+        const rNum = String(r.NUMBER !== undefined ? r.NUMBER : (r.number !== undefined ? r.number : "")).trim();
+        return rNum === target;
+    }) || {};
+}
+
+/**
+ * Formats date fields securely
+ */
+function formatDate(dateStr) {
+    if (!dateStr) return '';
+    if (typeof dateStr === 'string' && dateStr.includes('T')) {
+        return dateStr.split('T')[0];
+    }
+    return String(dateStr);
+}
+
+/**
+ * Renders a single 1/2 page S-21 Card for one service year
+ */
+function renderCardHTML(pub, serviceYear, monthNumbers, records) {
+    let totalHours = 0;
+    let rowsHTML = "";
+
+    for (let i = 0; i < 12; i++) {
+        const monthName = MONTH_NAMES[i];
+        const monthNum = (monthNumbers && monthNumbers[i]) ? monthNumbers[i] : (i + 1);
+        const rec = getRecordByNumber(records, monthNum);
+
+        // Map ministry fields (supports uppercase/lowercase keys)
+        const shared = isTrue(rec.MINISTRY || rec.ministry || rec.SHARED || rec.shared) ? "✓" : "";
+        const bs = rec.BS !== undefined ? rec.BS : (rec.bs !== undefined ? rec.bs : "");
+        const aux = isTrue(rec.AUX || rec.aux || rec.AUXILIARY || rec.auxiliary) ? "✓" : "";
+        
+        const rawHrs = rec.HRS !== undefined ? rec.HRS : (rec.hrs !== undefined ? rec.hrs : (rec.HOURS || rec.hours));
+        const hrsNum = parseFloat(rawHrs) || 0;
+        
+        totalHours += hrsNum;
+        const hrsDisplay = hrsNum > 0 ? hrsNum : "";
+        const note = rec.Note || rec.note || "";
+
+        rowsHTML += `
+            <tr>
+                <td class="text-left">${monthName}</td>
+                <td><span class="checkbox-box">${shared}</span></td>
+                <td>${bs}</td>
+                <td><span class="checkbox-box">${aux}</span></td>
+                <td>${hrsDisplay}</td>
+                <td>${note}</td>
+            </tr>
+        `;
+    }
+
+    // Comprehensive Publisher Field Extraction
+    const name = pub.Fullname 
+        || pub.fullName 
+        || pub.fullname 
+        || `${pub.LName || pub.lname || pub.LNAME || ''}, ${pub.FNAME || pub.fname || pub.FName || ''}`.replace(/^,\s*|,\s*$/g, '') 
+        || 'Unknown Publisher';
+
+    const dob = formatDate(pub.Birthdate || pub.birthdate || pub.DOB || pub.dob);
+    const baptism = formatDate(pub.Baptism || pub.baptism || pub.BAPTISM);
+
+    const isMale = isTrue(pub.Male || pub.male || pub.MALE || (pub.SEX === "M") || (pub.sex === "M"));
+    const isFemale = isTrue(pub.Female || pub.female || pub.FEMALE || (pub.SEX === "F") || (pub.sex === "F"));
+
+    const isElder = isTrue(pub.Elder || pub.elder || pub.ELDER);
+    const isMS = isTrue(pub.MS || pub.ms || pub.ministerialServant);
+    const isRP = isTrue(pub.RP || pub.rp || pub.regularPioneer);
+    const isSF = isTrue(pub.SF || pub.sf || pub.SP || pub.sp || pub.specialPioneer);
+
+    const totalHrsDisplay = totalHours > 0 ? totalHours : 0;
+
+    return `
+        <div class="form-card">
+            <div>
+                <h1 class="form-title">Congregation's Publisher Record</h1>
+                
+                <div class="header-section">
+                    <!-- Row 1: Name -->
+                    <div class="info-row">
+                        <span class="label">Name:</span>
+                        <span class="value" style="flex-grow: 1;">${name}</span>
+                    </div>
+
+                    <!-- Row 2: Date of birth + Male / Female -->
+                    <div class="info-row">
+                        <span class="label">Date of birth:</span>
+                        <span class="value" style="width: 160px;">${dob}</span>
+                        <div class="checkbox-group">
+                            <div class="checkbox-item col-1">
+                                <span class="checkbox-box">${isMale ? '✓' : ''}</span>
+                                <span>Male</span>
+                            </div>
+                            <div class="checkbox-item col-2">
+                                <span class="checkbox-box">${isFemale ? '✓' : ''}</span>
+                                <span>Female</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Row 3: Date of baptism + Other sheep / Anointed -->
+                    <div class="info-row">
+                        <span class="label">Date of baptism:</span>
+                        <span class="value" style="width: 160px;">${baptism}</span>
+                        <div class="checkbox-group">
+                            <div class="checkbox-item col-1">
+                                <span class="checkbox-box">✓</span>
+                                <span>Other sheep</span>
+                            </div>
+                            <div class="checkbox-item col-2">
+                                <span class="checkbox-box"></span>
+                                <span>Anointed</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Row 4: Privileges & Pioneer Roles -->
+                    <div class="privileges-row">
+                        <div class="checkbox-item">
+                            <span class="checkbox-box">${isElder ? '✓' : ''}</span>
+                            <span>Elder</span>
+                        </div>
+                        <div class="checkbox-item">
+                            <span class="checkbox-box">${isMS ? '✓' : ''}</span>
+                            <span>Ministerial servant</span>
+                        </div>
+                        <div class="checkbox-item">
+                            <span class="checkbox-box">${isRP ? '✓' : ''}</span>
+                            <span>Regular pioneer</span>
+                        </div>
+                        <div class="checkbox-item">
+                            <span class="checkbox-box">${isSF ? '✓' : ''}</span>
+                            <span>Special pioneer</span>
+                        </div>
+                        <div class="checkbox-item">
+                            <span class="checkbox-box"></span>
+                            <span>Field missionary</span>
+                        </div>
+                    </div>
+                </div>
+
+                <table class="record-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 16%;">Service Year<br><span>${serviceYear || ''}</span></th>
+                                <th style="width: 12%;">Shared in<br>Ministry</th>
+                                <th style="width: 12%;">Bible<br>Studies</th>
+                                <th style="width: 12%;">Auxiliary<br>Pioneer</th>
+                                <th style="width: 18%;">Hours<br><span style="font-weight: normal; font-size: 7.5pt;">(If pioneer or field missionary)</span></th>
+                                <th style="width: 30%;">Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHTML}
+                            <tr>
+                                <td colspan="4" class="total-label">Total</td>
+                                <td>${totalHrsDisplay}</td>
+                                <td></td>
+                            </tr>
+                        </tbody>
+                    </table>
+            </div>
+            <div class="form-footer">S-21-E 11/23</div>
+        </div>
+    `;
+}
+
+
+let currentPage = 0;
+let totalPages = 0;
+let publisherNames = [];
+
+function updatePageNavigation() {
+    const pages = document.querySelectorAll("#container .page");
+    totalPages = pages.length;
+
+    const indicator = document.getElementById("pageIndicator");
+    const prevBtn = document.getElementById("prevPage");
+    const nextBtn = document.getElementById("nextPage");
+
+    if (!totalPages) {
+        indicator.textContent = "0 / 0";
+        prevBtn.disabled = true;
+        nextBtn.disabled = true;
+        return;
+    }
+
+    indicator.textContent = `${currentPage + 1} / ${totalPages}`;
+    prevBtn.disabled = currentPage === 0;
+    nextBtn.disabled = currentPage === totalPages - 1;
+}
+
+function showPage(index) {
+    const pages = document.querySelectorAll("#container .page");
+    if (!pages.length) return;
+
+    if (index < 0) index = 0;
+    if (index >= pages.length) index = pages.length - 1;
+
+    currentPage = index;
+
+    pages[currentPage].scrollIntoView({
+        behavior: "smooth",
+        block: "center"
+    });
+
+    updatePageNavigation();
+}
+
+function previousPage() {
+    showPage(currentPage - 1);
+}
+
+function nextPage() {
+    showPage(currentPage + 1);
+}
+
+function findPublisher() {
+    const input = document.getElementById("findNameInput");
+    const search = input.value.trim().toLowerCase();
+    if (!search) return;
+
+    const index = publisherNames.findIndex(name =>
+        String(name).toLowerCase().includes(search)
+    );
+
+    if (index === -1) {
+        alert(`Publisher "${input.value}" was not found.`);
+        return;
+    }
+
+    showPage(index);
+}
+
+/**
+ * Builds and mounts all publisher pages into the HTML container
+ */
+function buildPublisherPages(payload) {
+    const container = document.getElementById("container");
+
+    const publishers = [...(payload.publishers || payload.Publishers || [])];
+
+            publishers.sort((a, b) => {
+                const nameA = String(
+                    a.Fullname || a.fullName || a.fullname ||
+                    `${a.LName || a.lname || a.LNAME || ''}, ${a.FNAME || a.fname || a.FName || ''}`
+                ).trim().toLowerCase();
+
+                const nameB = String(
+                    b.Fullname || b.fullName || b.fullname ||
+                    `${b.LName || b.lname || b.LNAME || ''}, ${b.FNAME || b.fname || b.FName || ''}`
+                ).trim().toLowerCase();
+
+                return nameA.localeCompare(nameB);
+            });
+
+
+    const serviceYears = payload.serviceYears || payload.ServiceYears || {};
+
+    const prevYear = serviceYears.previous?.year || serviceYears.previousYear || "";
+    const prevNumbers = serviceYears.previous?.monthNumbers || [];
+    const currYear = serviceYears.current?.year || serviceYears.currentYear || "";
+    const currNumbers = serviceYears.current?.monthNumbers || [];
+
+    let fullHTML = "";
+    publisherNames = [];
+
+    publishers.forEach(pub => {
+        const name = pub.Fullname
+            || pub.fullName
+            || pub.fullname
+            || `${pub.LName || pub.lname || pub.LNAME || ''}, ${pub.FNAME || pub.fname || pub.FName || ''}`.replace(/^,\s*|,\s*$/g, '')
+            || 'Unknown Publisher';
+
+        publisherNames.push(name);
+
+        const prevRecords = pub.previousYearRecords || pub.previousRecords || [];
+        const currRecords = pub.currentYearRecords || pub.currentRecords || [];
+
+        const topCard = renderCardHTML(pub, prevYear, prevNumbers, prevRecords);
+        const bottomCard = renderCardHTML(pub, currYear, currNumbers, currRecords);
+
+        fullHTML += `
+            <div class="page">
+                ${topCard}
+                <div class="cut-line"></div>
+                ${bottomCard}
+            </div>
+        `;
+    });
+
+    container.innerHTML = fullHTML;
+    currentPage = 0;
+    updatePageNavigation();
+}
+
+// Execution Entry Point
+window.addEventListener("DOMContentLoaded", () => {
+    const storedData = sessionStorage.getItem("s21_payload_data");
+
+    if (storedData) {
+        try {
+            const payload = JSON.parse(storedData);
+            buildPublisherPages(payload);
+            return;
+        } catch (err) {
+            console.error("❌ Failed to parse stored payload data:", err);
+        }
+    }
+
+    console.warn("⚠️ No sessionStorage data found. Check if s21_payload_data was set before opening.");
+});
+
+
+let findMatches = [];
+let findMatchIndex = -1;
+let lastFindSearch = "";
+
+function findPublisher() {
+    const input = document.getElementById("findNameInput");
+    const search = input.value.trim().toLowerCase();
+    if (!search) return;
+
+    if (search !== lastFindSearch) {
+        findMatches = publisherNames
+            .map((name, index) => ({
+                name: String(name),
+                index: index
+            }))
+            .filter(item => item.name.toLowerCase().includes(search));
+
+        findMatchIndex = -1;
+        lastFindSearch = search;
+    }
+
+    if (!findMatches.length) {
+        alert(`Publisher "${input.value}" was not found.`);
+        return;
+    }
+
+    findMatchIndex++;
+
+    if (findMatchIndex >= findMatches.length) {
+        findMatchIndex = 0;
+    }
+
+    const match = findMatches[findMatchIndex];
+
+    showPage(match.index);
+
+    console.log(
+        `🔎 Found ${match.name} (${findMatchIndex + 1} of ${findMatches.length})`
+    );
+}
+
+
+function printS21() {
+    const originalTitle = document.title;
+    const publishers = JSON.parse(sessionStorage.getItem("s21_payload_data") || "{}").publishers || [];
+
+    let fileName = "S-21_Publisher_Records";
+
+    if (publishers.length === 1) {
+        const pub = publishers[0];
+        const name = pub.Fullname
+            || pub.fullName
+            || pub.fullname
+            || `${pub.LName || pub.lname || pub.LNAME || ''}, ${pub.FNAME || pub.fname || pub.FName || ''}`.replace(/^,\s*|,\s*$/g, '');
+
+        fileName = `S-21_${name}_${new Date().getFullYear()}`;
+    } else if (publishers.length > 1) {
+        fileName = `S-21_Publisher_Records_${new Date().getFullYear()}`;
+    }
+
+    document.title = fileName;
+    window.print();
+
+    setTimeout(() => {
+        document.title = originalTitle;
+    }, 1000);
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Report Summary and Meeting Attendance Record</title>
+    <style>
+        /* Page and Print Setup */
+        @page {
+            size: A4 portrait;
+            margin: 0;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+            font-family: Arial, Helvetica, sans-serif;
+            -webkit-print-color-adjust: exact;
+            color: #000;
+        }
+
+        .page {
+            width: 210mm;
+            height: 297mm;
+            background: #fff;
+            margin: 0 auto;
+            position: relative;
+            padding: 15mm 12mm;
+            overflow: hidden;
+        }
+
+        /* Floating Download Button */
+        .download-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 18px;
+            background-color: #0066cc;
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            z-index: 9999;
+            transition: background-color 0.2s ease;
+        }
+
+        .download-btn:hover {
+            background-color: #004999;
+        }
+
+        @media print {
+            body {
+                background: none;
+            }
+            .page {
+                margin: 0;
+                box-shadow: none;
+                width: 100%;
+                height: 100vh;
+                padding: 12mm 10mm;
+            }
+            .download-btn {
+                display: none;
+            }
+        }
+
+        /* Main Section Titles (Kept same size, reduced weight) */
+        h1.section-title {
+            font-family: Georgia, "Times New Roman", Times, serif;
+            font-size: 15pt;
+            letter-spacing: 0.5px;
+            text-align: center;
+            text-transform: uppercase;
+            margin: 0 0 12px 0;
+            font-weight: bold; /* Normal bold weight */
+        }
+
+        /* Table Base Styling */
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 9pt;
+            table-layout: fixed;
+        }
+
+        th, td {
+            border: 1px solid #000;
+            text-align: center;
+            padding: 4px 2px;
+            vertical-align: middle;
+            word-break: break-word;
+            line-height: 1.2;
+        }
+
+        .bold {
+            font-weight: bold;
+        }
+
+        .text-left {
+            text-align: left;
+            padding-left: 6px;
+        }
+
+        /* Top Table Header Fixes */
+        .summary-table {
+            margin-bottom: 30px;
+        }
+
+        .summary-table th {
+            font-size: 8pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            padding: 5px 2px;
+        }
+
+        .summary-table .main-header-month {
+            font-family: Georgia, "Times New Roman", Times, serif;
+            font-size: 15pt;
+            font-weight: bold; /* Normal bold weight */
+            letter-spacing: 0.5px;
+            padding: 4px;
+        }
+
+        .summary-table td {
+            height: 24px;
+            font-size: 8.5pt;
+        }
+
+        .summary-table .row-header {
+            font-size: 8.5pt;
+        }
+
+        /* Bottom Section Title Fixes */
+        .attendance-section {
+            margin-top: 15px;
+        }
+
+        .meeting-titles {
+            width: 100%;
+            margin-bottom: 6px;
+        }
+
+        .meeting-titles td {
+            border: none;
+            font-family: Georgia, "Times New Roman", Times, serif;
+            font-size: 13pt;
+            font-weight: bold; /* Normal bold weight */
+            text-align: left;
+            padding: 0;
+        }
+
+        .attendance-table th {
+            font-size: 8pt;
+            font-weight: bold;
+            line-height: 1.2;
+            padding: 4px 3px;
+        }
+
+        .attendance-table td {
+            height: 22px;
+            font-size: 8.5pt;
+        }
+
+        .attendance-table .footer-label {
+            font-size: 8.5pt;
+            font-weight: bold;
+            text-align: right;
+            padding-right: 6px;
+        }
+
+        .percentage-row {
+            margin-top: 6px;
+            width: 100%;
+            font-size: 8.5pt;
+            color: #333;
+        }
+
+        .percentage-row td {
+            border: none;
+            padding: 0;
+        }
+
+        .percentage-row .label {
+            text-align: right;
+            padding-right: 6px;
+        }
+
+        .percentage-row .value {
+            text-align: left;
+            color: #000;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<button class="download-btn" onclick="window.print()">Download PDF</button>
+
+<div class="page">
+
+    <!-- TOP SECTION: REPORT SUMMARY -->
+    <h1 class="section-title">Report Summary for the Past 6 Months</h1>
+
+    <table class="summary-table">
+        <thead>
+            <tr>
+                <th rowspan="2" class="main-header-month" style="width: 18%;">MONTH</th>
+                <th colspan="2" style="width: 22%;">PUBLISHERS</th>
+                <th colspan="3" style="width: 30%;">AUXILIARY PIONEERS</th>
+                <th colspan="3" style="width: 30%;">REGULAR PIONEERS</th>
+            </tr>
+            <tr>
+                <th style="width: 12%;">REPORTING</th>
+                <th style="width: 10%;">BS</th>
+                <th style="width: 12%;">REPORTING</th>
+                <th style="width: 8%;">BS</th>
+                <th style="width: 10%;">HOURS</th>
+                <th style="width: 12%;">REPORTING</th>
+                <th style="width: 8%;">BS</th>
+                <th style="width: 10%;">HOURS</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="text-left row-header">{{MONTH_1}}</td>
+                <td>{{M1_PUB_REP}}</td>
+                <td>{{M1_PUB_BS}}</td>
+                <td>{{M1_AUX_REP}}</td>
+                <td>{{M1_AUX_BS}}</td>
+                <td>{{M1_AUX_HRS}}</td>
+                <td>{{M1_REG_REP}}</td>
+                <td>{{M1_REG_BS}}</td>
+                <td>{{M1_REG_HRS}}</td>
+            </tr>
+            <tr>
+                <td class="text-left row-header">{{MONTH_2}}</td>
+                <td>{{M2_PUB_REP}}</td>
+                <td>{{M2_PUB_BS}}</td>
+                <td>{{M2_AUX_REP}}</td>
+                <td>{{M2_AUX_BS}}</td>
+                <td>{{M2_AUX_HRS}}</td>
+                <td>{{M2_REG_REP}}</td>
+                <td>{{M2_REG_BS}}</td>
+                <td>{{M2_REG_HRS}}</td>
+            </tr>
+            <tr>
+                <td class="text-left row-header">{{MONTH_3}}</td>
+                <td>{{M3_PUB_REP}}</td>
+                <td>{{M3_PUB_BS}}</td>
+                <td>{{M3_AUX_REP}}</td>
+                <td>{{M3_AUX_BS}}</td>
+                <td>{{M3_AUX_HRS}}</td>
+                <td>{{M3_REG_REP}}</td>
+                <td>{{M3_REG_BS}}</td>
+                <td>{{M3_REG_HRS}}</td>
+            </tr>
+            <tr>
+                <td class="text-left row-header">{{MONTH_4}}</td>
+                <td>{{M4_PUB_REP}}</td>
+                <td>{{M4_PUB_BS}}</td>
+                <td>{{M4_AUX_REP}}</td>
+                <td>{{M4_AUX_BS}}</td>
+                <td>{{M4_AUX_HRS}}</td>
+                <td>{{M4_REG_REP}}</td>
+                <td>{{M4_REG_BS}}</td>
+                <td>{{M4_REG_HRS}}</td>
+            </tr>
+            <tr>
+                <td class="text-left row-header">{{MONTH_5}}</td>
+                <td>{{M5_PUB_REP}}</td>
+                <td>{{M5_PUB_BS}}</td>
+                <td>{{M5_AUX_REP}}</td>
+                <td>{{M5_AUX_BS}}</td>
+                <td>{{M5_AUX_HRS}}</td>
+                <td>{{M5_REG_REP}}</td>
+                <td>{{M5_REG_BS}}</td>
+                <td>{{M5_REG_HRS}}</td>
+            </tr>
+            <tr>
+                <td class="text-left row-header">{{MONTH_6}}</td>
+                <td>{{M6_PUB_REP}}</td>
+                <td>{{M6_PUB_BS}}</td>
+                <td>{{M6_AUX_REP}}</td>
+                <td>{{M6_AUX_BS}}</td>
+                <td>{{M6_AUX_HRS}}</td>
+                <td>{{M6_REG_REP}}</td>
+                <td>{{M6_REG_BS}}</td>
+                <td>{{M6_REG_HRS}}</td>
+            </tr>
+            <tr>
+                <td class="bold text-left row-header">TOTAL</td>
+                <td>{{TOTAL_PUB_REP}}</td>
+                <td>{{TOTAL_PUB_BS}}</td>
+                <td>{{TOTAL_AUX_REP}}</td>
+                <td>{{TOTAL_AUX_BS}}</td>
+                <td>{{TOTAL_AUX_HRS}}</td>
+                <td>{{TOTAL_REG_REP}}</td>
+                <td>{{TOTAL_REG_BS}}</td>
+                <td>{{TOTAL_REG_HRS}}</td>
+            </tr>
+            <tr>
+                <td class="bold text-left row-header">AVERAGE</td>
+                <td>{{AVG_PUB_REP}}</td>
+                <td>{{AVG_PUB_BS}}</td>
+                <td>{{AVG_AUX_REP}}</td>
+                <td>{{AVG_AUX_BS}}</td>
+                <td>{{AVG_AUX_HRS}}</td>
+                <td>{{AVG_REG_REP}}</td>
+                <td>{{AVG_REG_BS}}</td>
+                <td>{{AVG_REG_HRS}}</td>
+            </tr>
+            <tr>
+                <td class="bold text-left row-header">PER PERSON AVERAGE</td>
+                <td></td>
+                <td>{{PPA_PUB_BS}}</td>
+                <td></td>
+                <td>{{PPA_AUX_BS}}</td>
+                <td>{{PPA_AUX_HRS}}</td>
+                <td></td>
+                <td>{{PPA_REG_BS}}</td>
+                <td>{{PPA_REG_HRS}}</td>
+            </tr>
+        </tbody>
+    </table>
+
+
+    <!-- BOTTOM SECTION: CONGREGATION MEETING ATTENDANCE RECORD -->
+    <div class="attendance-section">
+        <h1 class="section-title">Congregation Meeting Attendance Record</h1>
+
+        <table class="meeting-titles">
+            <tr>
+                <td style="width: 49.5%; padding-left: 2px;">Midweek Meeting</td>
+                <td style="width: 1%;"></td>
+                <td style="width: 49.5%; padding-left: 8px;">Weekend Meeting</td>
+            </tr>
+        </table>
+
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <!-- Midweek Table Column -->
+                <td style="width: 49.5%; vertical-align: top; border: none; padding: 0;">
+                    <table class="attendance-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 25%;">Service Year</th>
+                                <th style="width: 25%;">Number of Meetings</th>
+                                <th style="width: 25%;">Total Attendance</th>
+                                <th style="width: 25%;">Average Attendance Each Week</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="text-left">{{MW_MONTH_1}}</td>
+                                <td>{{MW_M1_MEETINGS}}</td>
+                                <td>{{MW_M1_ATTENDANCE}}</td>
+                                <td>{{MW_M1_AVG}}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-left">{{MW_MONTH_2}}</td>
+                                <td>{{MW_M2_MEETINGS}}</td>
+                                <td>{{MW_M2_ATTENDANCE}}</td>
+                                <td>{{MW_M2_AVG}}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-left">{{MW_MONTH_3}}</td>
+                                <td>{{MW_M3_MEETINGS}}</td>
+                                <td>{{MW_M3_ATTENDANCE}}</td>
+                                <td>{{MW_M3_AVG}}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-left">{{MW_MONTH_4}}</td>
+                                <td>{{MW_M4_MEETINGS}}</td>
+                                <td>{{MW_M4_ATTENDANCE}}</td>
+                                <td>{{MW_M4_AVG}}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-left">{{MW_MONTH_5}}</td>
+                                <td>{{MW_M5_MEETINGS}}</td>
+                                <td>{{MW_M5_ATTENDANCE}}</td>
+                                <td>{{MW_M5_AVG}}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-left">{{MW_MONTH_6}}</td>
+                                <td>{{MW_M6_MEETINGS}}</td>
+                                <td>{{MW_M6_ATTENDANCE}}</td>
+                                <td>{{MW_M6_AVG}}</td>
+                            </tr>
+                            <tr>
+                                <td colspan="3" class="footer-label">Average Attendance Each Month</td>
+                                <td>{{MW_MONTHLY_AVG}}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </td>
+
+                <td style="width: 1%; border: none;"></td>
+
+                <!-- Weekend Table Column -->
+                <td style="width: 49.5%; vertical-align: top; border: none; padding: 0;">
+                    <table class="attendance-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 25%;">Service Year</th>
+                                <th style="width: 25%;">Number of Meetings</th>
+                                <th style="width: 25%;">Total Attendance</th>
+                                <th style="width: 25%;">Average Attendance Each Week</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="text-left">{{WE_MONTH_1}}</td>
+                                <td>{{WE_M1_MEETINGS}}</td>
+                                <td>{{WE_M1_ATTENDANCE}}</td>
+                                <td>{{WE_M1_AVG}}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-left">{{WE_MONTH_2}}</td>
+                                <td>{{WE_M2_MEETINGS}}</td>
+                                <td>{{WE_M2_ATTENDANCE}}</td>
+                                <td>{{WE_M2_AVG}}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-left">{{WE_MONTH_3}}</td>
+                                <td>{{WE_M3_MEETINGS}}</td>
+                                <td>{{WE_M3_ATTENDANCE}}</td>
+                                <td>{{WE_M3_AVG}}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-left">{{WE_MONTH_4}}</td>
+                                <td>{{WE_M4_MEETINGS}}</td>
+                                <td>{{WE_M4_ATTENDANCE}}</td>
+                                <td>{{WE_M4_AVG}}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-left">{{WE_MONTH_5}}</td>
+                                <td>{{WE_M5_MEETINGS}}</td>
+                                <td>{{WE_M5_ATTENDANCE}}</td>
+                                <td>{{WE_M5_AVG}}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-left">{{WE_MONTH_6}}</td>
+                                <td>{{WE_M6_MEETINGS}}</td>
+                                <td>{{WE_M6_ATTENDANCE}}</td>
+                                <td>{{WE_M6_AVG}}</td>
+                            </tr>
+                            <tr>
+                                <td colspan="3" class="footer-label">Average Attendance Each Month</td>
+                                <td>{{WE_MONTHLY_AVG}}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </td>
+            </tr>
+        </table>
+
+        <!-- Percentage Footnotes -->
+        <table class="percentage-row">
+            <tr>
+                <td class="label" style="width: 38%;">Percentage of Increase Over Previous 6 Month</td>
+                <td class="value" style="width: 11.5%;">{{MW_PERCENT_INCREASE}}</td>
+                <td class="label" style="width: 38.5%;">Percentage of Increase Over Previous 6 Month</td>
+                <td class="value" style="width: 12%;">{{WE_PERCENT_INCREASE}}</td>
+            </tr>
+        </table>
+    </div>
+
+</div>
+
+</body>
+</html>

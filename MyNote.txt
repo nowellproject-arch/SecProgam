@@ -37,7 +37,7 @@ document.getElementById("search-input")                         // e.g. "Filter 
 
 
 git add .
-git commit -m "Ai 1st Phase "
+git commit -m "Ai 2nd  Phase "
 git push origin main
 
 

@@ -2987,72 +2987,51 @@ console.log("📋 TOTAL RECORDS:",records.length);
 // -------------------------------------------------------------------
 // Button Click Event Listener for Print Preview
 // -------------------------------------------------------------------
-document.getElementById('btnPrintPreview').addEventListener('click', async () => {    
-    console.log("🔘 [DEBUG] 1. Print Preview button clicked!");
+document.getElementById('btnPrintPreview').addEventListener('click', async () => {
+    console.log("🔘 Print Preview clicked");
+
     const btn = document.getElementById('btnPrintPreview');
-    
 
-    const payload = await buildPublisherPayloadForGAS();
-        if (!payload) return;
+    try {
+        btn.disabled = true;
+        btn.textContent = "Loading...";
 
+        // 1. Build the existing payload
+        const payload = await buildPublisherPayloadForGAS();
 
-
-    // 1. Open a blank tab IMMEDIATELY during the user click event (bypasses popup blocker!)
-    const newWindow = window.open('', '_blank');
-    if (!newWindow) {
-        alert("Popup blocked! Please allow popups for this site.");
-        return;
-    }
-    newWindow.document.write("<html><body style='font-family:sans-serif; text-align:center; padding-top:50px;'><h2>Generating PDF preview, please wait...</h2></body></html>");
-
-    btn.disabled = true;
-    btn.textContent = "Generating...";
-
-    console.log("🚀 [DEBUG] Sending fetch request to /api/generate-pdf...");
-
-    fetch('/api/generate-pdf', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload)
-    })
-    .then(response => {
-        console.log("📥 Received response status:", response.status);
-        return response.json();
-    })
-    .then(result => {
-        btn.disabled = false;
-        btn.textContent = "PRINT PREVIEW";
-
-        if (result && result.success) {
-            console.log("✅ Success! Loading PDF into the pre-opened tab.");
-            
-            // Convert base64 dataUrl to a Blob
-            const byteCharacters = atob(result.dataUrl.split(',')[1]);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-                byteNumbers[i] = byteCharacters.charCodeAt(i);
-            }
-            const byteArray = new Uint8Array(byteNumbers);
-            const blob = new Blob([byteArray], { type: 'application/pdf' });
-
-            // Create blob URL and redirect the pre-opened window to it
-            const blobUrl = URL.createObjectURL(blob);
-            newWindow.location.href = blobUrl;
-        } else {
-            console.error("❌ Server returned error:", result);
-            newWindow.close();
-            alert("Error generating PDF: " + (result?.detail || result?.error || "Unknown error"));
+        if (!payload) {
+            console.error("❌ No payload generated.");
+            return;
         }
-    })
-    .catch(err => {
-        console.error("🚨 Network error caught:", err);
-        newWindow.close();
+
+        console.log("✅ Payload ready");
+        console.log("👥 Publishers:", payload.publishers?.length || 0);
+
+        // 2. Store the payload for the S-21 page
+        sessionStorage.setItem(
+            "s21_payload_data",
+            JSON.stringify(payload)
+        );
+
+        console.log("💾 S-21 payload stored");
+
+        // 3. Open the S-21 HTML
+        const s21Window = window.open('/s21Card', '_blank');
+
+        if (!s21Window) {
+            alert("Popup blocked! Please allow popups for this site.");
+            return;
+        }
+
+        console.log("✅ S-21 tab opened");
+
+    } catch (err) {
+        console.error("❌ Print Preview error:", err);
+        alert("Error opening S-21:\n\n" + err.message);
+    } finally {
         btn.disabled = false;
         btn.textContent = "PRINT PREVIEW";
-        alert("Server connection error: " + err.message);
-    });
+    }
 });
 
 // ====================delete/add publisher
