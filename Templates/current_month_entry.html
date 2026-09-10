@@ -12,10 +12,18 @@
         align-items: flex-start;
     }
 
+    @media screen and (max-width: 1024px) {
+        .s21-listbox-pane {
+            flex: 1 1 auto;
+            width: 100%; /* Spans full width when stacked on small screens */
+        }
+    }
+
     /* LEFT LANE: Narrowed Publisher Listbox / Navigation */
     .s21-listbox-pane {
-        flex: 0.8;
-        min-width: 160px;
+        flex: 0 0 220px; /* Prevents auto-stretching on zoom */
+        width: 220px;    /* Fixed base width */
+        box-sizing: border-box;
         background: #fff;
         border: 2px solid #222;
         padding: 8px;
@@ -26,11 +34,23 @@
         gap: 8px;
     }
 
+    /* Container enabling horizontal scroll for listbox contents on small screens */
+    .listbox-scroll-container {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-width: 140px; /* Ensures controls don't shrink past a readable width */
+    }
+
     .listbox-header-title {
         font-weight: bold;
         font-size: 11px;
         border-bottom: 1px solid #ccc;
         padding-bottom: 4px;
+        white-space: nowrap;
     }
 
     .listbox-container {
@@ -38,6 +58,7 @@
         background: #fafafa;
         height: 330px;
         overflow-y: auto;
+        overflow-x: auto; /* Handles long publisher names horizontally */
         border-radius: 2px;
         padding: 2px;
     }
@@ -49,6 +70,7 @@
         border-bottom: 1px solid #eee;
         background-color: transparent !important;
         user-select: none;
+        white-space: nowrap; /* Prevents names from wrapping awkwardly */
     }
 
     /* Customize what happens on hover (e.g., a subtle grey instead of blue, or transparent to remove it entirely) */
@@ -69,6 +91,7 @@
         color: #555;
         text-align: right;
         font-weight: bold;
+        white-space: nowrap;
     }
 
     /* MID: Widened Publisher Record Card (Emphasis on Remarks) */
@@ -138,12 +161,20 @@
         align-items: center;
     }
 
-    /* Exact Form-Fitting Table Styling with Widened Remarks Column */
-    .s21-table {
-        table-layout: fixed;
+    /* Container enabling horizontal scroll on mobile/small screens */
+    .table-scroll-container {
         width: 100%;
-        border-collapse: collapse;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
+
+    .s21-table {
+    width: 100% !important;
+    table-layout: fixed !important; /* Forces strict adherence to width percentages */
+    border-collapse: collapse;
+    }
+
+
 
     .s21-table th, .s21-table td {
         border: 1px solid #222;
@@ -153,21 +184,21 @@
         height: var(--row-height);
     }
 
+   /* Prevents long header text from breaking the small column widths */
     .s21-table th {
-        background-color: #aeabab;
-        text-align: center;
-        font-weight: bold;
-        line-height: 1.1;
-        padding: 2px;
+        word-wrap: break-word;
+        white-space: normal;
     }
 
-    /* Column Width Allocations (Remarks widened substantially) */
-    .s21-table th:nth-child(1), .s21-table td:nth-child(1) { width: 13%; }
-    .s21-table th:nth-child(2), .s21-table td:nth-child(2) { width: 6%; }
-    .s21-table th:nth-child(3), .s21-table td:nth-child(3) { width: 6%; }
-    .s21-table th:nth-child(4), .s21-table td:nth-child(4) { width: 8%; }
-    .s21-table th:nth-child(5), .s21-table td:nth-child(5) { width: 6%; }
-    .s21-table th:nth-child(6), .s21-table td:nth-child(6) { width: 100%; }
+
+/* Column Width Allocations (Must sum to 100%) */
+.s21-table th:nth-child(1), .s21-table td:nth-child(1) { width: 35%; } /* Month/Year */
+.s21-table th:nth-child(2), .s21-table td:nth-child(2) { width: 25%;  } /* Shared */
+.s21-table th:nth-child(3), .s21-table td:nth-child(3) { width: 25%;  } /* Bible Studies */
+.s21-table th:nth-child(4), .s21-table td:nth-child(4) { width: 25%; } /* Aux Pioneer */
+.s21-table th:nth-child(5), .s21-table td:nth-child(5) { width: 25%;  } /* Hours */
+.s21-table th:nth-child(6), .s21-table td:nth-child(6) { width: 100%; } /* Remarks (Widened) */
+
 
     .sub-text {
         font-size: 9px;
@@ -185,7 +216,7 @@
         margin: 0 !important;
         font-size: 11px !important;
         box-shadow: none !important;
-        text-align: inherit;
+        text-align: center;
     }
 
     .s21-table select {
@@ -207,8 +238,6 @@
         border-bottom: 2px solid #e0a800 !important;
     }
 
-
-
     .text-center { text-align: center; }
     .text-right { text-align: right; }
     .font-bold { font-weight: bold; }
@@ -220,15 +249,16 @@
         display: block;
         margin: 0 auto;
     }
-.remarks-container {
-    display: flex;
-    gap: 4px;
-    align-items: center;
-    height: 100%;
-    padding: 0 4px;
-    width: 100%;
-    box-sizing: border-box;
-}
+
+    .remarks-container {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+        height: 100%;
+        padding: 0 4px;
+        width: 100%;
+        box-sizing: border-box;
+    }
 
     .remark-text { 
         flex: 1; 
@@ -236,42 +266,43 @@
         min-width: 0;
     }
 
-        .remark-select { 
-            flex: 0 0 75px !important;
-            width: 75px !important;
-            min-width: 75px;
-            
-            /* 1. Remove native browser arrow and controls */
-            -webkit-appearance: none !important;
-            -moz-appearance: none !important;
-            appearance: none !important;
-            
-            /* 2. Transparent background */
-            background: transparent !important;
-            background-color: transparent !important;
-            
-            /* 3. Text Alignment & Padding */
-            text-align: right !important;
-            text-align-last: right !important;
-            padding-right: 12px !important; /* Spacing from right edge */
-            padding-left: 2px !important;
-            
-            /* 4. Ensure padding stays within 75px width */
-            box-sizing: border-box !important;
-            
-            color: inherit;
-            border: 1px solid #ccc;
-            outline: none;
-        }
+    .remark-select { 
+        flex: 0 0 75px !important;
+        width: 75px !important;
+        min-width: 75px;
+        
+        /* 1. Remove native browser arrow and controls */
+        -webkit-appearance: none !important;
+        -moz-appearance: none !important;
+        appearance: none !important;
+        
+        /* 2. Transparent background */
+        background: transparent !important;
+        background-color: transparent !important;
+        
+        /* 3. Text Alignment & Padding */
+        text-align: right !important;
+        text-align-last: right !important;
+        padding-right: 12px !important; /* Spacing from right edge */
+        padding-left: 2px !important;
+        
+        /* 4. Ensure padding stays within 75px width */
+        box-sizing: border-box !important;
+        
+        color: inherit;
+        border: 1px solid #ccc;
+        outline: none;
+    }
 
-        /* Ensure dropdown option items also stay padded when expanded */
-        .remark-select option {
-            text-align: right;
-            direction: rtl; /* Forces right alignment padding on open options list */
-            padding-right: 10px;
-            background-color: #ffffff;
-            color: #333333;
-        }
+    /* Ensure dropdown option items also stay padded when expanded */
+    .remark-select option {
+        text-align: right;
+        direction: rtl; /* Forces right alignment padding on open options list */
+        padding-right: 10px;
+        background-color: #ffffff;
+        color: #333333;
+    }
+
     .total-row { background-color: #f9f9f9; }
 
     /* RIGHT SIDE: Extra Narrowed Service Year Summary Sidebar */
@@ -291,6 +322,7 @@
         border: 1px solid #ccc;
         border-radius: 3px;
     }
+
     .nav-arrow-month { cursor: pointer; color: #007bff; font-weight: bold; padding: 0 4px; }
 
     .side-box {
@@ -332,70 +364,68 @@
         grid-template-columns: 1fr 1fr 1fr;
         gap: 3px;
     }
+
     .mt-1 { margin-top: 2px; }
-
-
-
 </style>
-
-
 
 <div class="s21-app-container">
     <!-- Global Year Navigation Header spanning the top of the entire workspace -->
-        <!-- Narrower Minimal Year Navigation hidded -->
-                <div class="year-nav-header" style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; color: #5b3d88; font-size: 14px; max-width: 280px; margin: 0 auto 8px auto;">
-                    <span id="prevYearBtn" class="nav-arrow-year" style="cursor: pointer; font-weight: bold; user-select: none; font-size: 16px;">&lt;</span>
-                    <strong id="yearDisplayText">Loading...</strong>
-                    <span id="nextYearBtn" class="nav-arrow-year" style="cursor: pointer; font-weight: bold; user-select: none; font-size: 16px;">&gt;</span>
-                </div>
+    <!-- Narrower Minimal Year Navigation hidded -->
+    <div class="year-nav-header" style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; color: #5b3d88; font-size: 14px; max-width: 280px; margin: 0 auto 8px auto;">
+        <span id="prevYearBtn" class="nav-arrow-year" style="cursor: pointer; font-weight: bold; user-select: none; font-size: 16px;">&lt;</span>
+        <strong id="yearDisplayText">Loading...</strong>
+        <span id="nextYearBtn" class="nav-arrow-year" style="cursor: pointer; font-weight: bold; user-select: none; font-size: 16px;">&gt;</span>
+    </div>
+
     <!-- Main Workspace Wrapper -->
     <div class="s21-wrapper">
         <!-- LEFT LANE: Publisher Listbox, Dropdown Category & Search -->
         <div class="s21-listbox-pane">
-            <div class="listbox-header-title">Publishers List</div>
-            <div>
-                <label class="side-label">Category:</label>
-                <select id="categorySelect" class="form-control" style="height: 24px; font-size: 11px;">
-                    <option value="ALL">All</option>
-                    <option value="ACTIVE PUBLISHERS">ACTIVE PUBLISHERS</option>
-                    <option value="By Group">BY GROUP</option>
-                    <!-- ADDED HERE: "ALL REPORTED" OPTIONS -->
-                    <option value="ALL PUBLISHERS REPORTED">ALL PUBLISHERS REPORTED</option>
-                    <option value="ALL AUX REPORTED">ALL AUX REPORTED</option>
-                    <option value="ALL RP REPORTED">ALL RP REPORTED</option>
-                    <option value="REGULAR PIONEERS">REGULAR PIONEERS</option>
-                    <option value="INACTIVES">INACTIVES</option>
-                </select>
+            <div class="listbox-scroll-container">
+                <div class="listbox-header-title">Publishers List</div>
+                <div>
+                    <label class="side-label">Category:</label>
+                    <select id="categorySelect" class="form-control" style="height: 24px; font-size: 11px;">
+                        <option value="ALL">All</option>
+                        <option value="ACTIVE PUBLISHERS">ACTIVE PUBLISHERS</option>
+                        <option value="By Group">BY GROUP</option>
+                        <!-- ADDED HERE: "ALL REPORTED" OPTIONS -->
+                        <option value="ALL PUBLISHERS REPORTED">ALL PUBLISHERS REPORTED</option>
+                        <option value="ALL AUX REPORTED">ALL AUX REPORTED</option>
+                        <option value="ALL RP REPORTED">ALL RP REPORTED</option>
+                        <option value="REGULAR PIONEERS">REGULAR PIONEERS</option>
+                        <option value="INACTIVES">INACTIVES</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="side-label">Search:</label>
+                    <input type="text" id="publisherSearch" placeholder="Type to search..." class="form-control" style="height: 24px;">
+                </div>
+                <div class="listbox-container" id="publisherListbox">
+                    <!-- Populated via script -->
+                </div>
+                <div class="listbox-count" id="listboxCount">Count: 0</div>
             </div>
-            <div>
-                <label class="side-label">Search:</label>
-                <input type="text" id="publisherSearch" placeholder="Type to search..." class="form-control" style="height: 24px;">
-            </div>
-            <div class="listbox-container" id="publisherListbox">
-                <!-- Populated via script -->
-            </div>
-            <div class="listbox-count" id="listboxCount">Count: 0</div>
         </div>
 
         <!-- MID: Snug S-21 Record Card -->
         <div class="s21-card">
             <div class="s21-header">
-                                        <!-- The Hidden Separate Edit Fields (Revealed on click) -->
-                      <div class="row-group name-row">
-                            <label><strong>Name:</strong></label>
-                            
-                            <!-- The Single Display Box -->
-                            <input type="text" id="pubNameDisplay" readonly class="form-control" placeholder="Click to edit name" style="border: 1px solid #aaa !important; background: #fff !important; max-width: 210px; cursor: pointer;" title="Click to edit name parts">
+                <!-- The Hidden Separate Edit Fields (Revealed on click) -->
+                <div class="row-group name-row">
+                    <label><strong>Name:</strong></label>
+                    
+                    <!-- The Single Display Box -->
+                    <input type="text" id="pubNameDisplay" readonly class="form-control" placeholder="Click to edit name" style="border: 1px solid #aaa !important; background: #fff !important; max-width: 210px; cursor: pointer;" title="Click to edit name parts">
 
-                            <!-- The Hidden Separate Edit Fields (Revealed on click) -->
-                            <div id="nameEditContainer" style="display: none; gap: 5px; align-items: center;">
-                                <input type="text" id="editLName" placeholder="Last Name" class="form-control" style="width: 150px;" title="Last Name">
-                                <input type="text" id="editFName" placeholder="First Name" class="form-control" style="width: 150px;" title="First Name">
-                                <input type="text" id="editMName" placeholder="Middle" class="form-control" style="width: 150px;" title="Middle Name">
-                            </div>
-                        </div>
-               
-                                                
+                    <!-- The Hidden Separate Edit Fields (Revealed on click) -->
+                    <div id="nameEditContainer" style="display: none; gap: 5px; align-items: center;">
+                        <input type="text" id="editLName" placeholder="Last Name" class="form-control" style="width: 150px;" title="Last Name">
+                        <input type="text" id="editFName" placeholder="First Name" class="form-control" style="width: 150px;" title="First Name">
+                        <input type="text" id="editMName" placeholder="Middle" class="form-control" style="width: 150px;" title="Middle Name">
+                    </div>
+                </div>
+       
                 <div class="row-group grid-4">
                     <div>
                         <label>Date of birth:</label>
@@ -417,18 +447,18 @@
 
                 <div class="row-group status-spiritual-row">
                     <div>
-                       <div>
-                        <label>Status:</label>
-                        <select id="pubStatus" class="form-control" style="border: 1px solid #aaa !important; background: #fff !important; height: 26px; font-size: 12px;">
-                            <option value="">Active</option>
-                            <option value="Inactive">Inactive</option>
-                            <option value="Moved Out">Moved Out</option>
-                            <option value="Removed">Removed</option>
-                            <option value="Disqualified">Disqualified</option>
-                        </select>
+                        <div>
+                            <label>Status:</label>
+                            <select id="pubStatus" class="form-control" style="border: 1px solid #aaa !important; background: #fff !important; height: 26px; font-size: 12px;">
+                                <option value="">Active</option>
+                                <option value="Inactive">Inactive</option>
+                                <option value="Moved Out">Moved Out</option>
+                                <option value="Removed">Removed</option>
+                                <option value="Disqualified">Disqualified</option>
+                            </select>
+                        </div>
                     </div>
-                    </div>
-                     <div class="privileges-inline">
+                    <div class="privileges-inline">
                         <label><input type="checkbox" id="isElder"> Elder</label>
                         <label><input type="checkbox" id="isMS"> MS</label>
                         <label><input type="checkbox" id="isRP"> RP</label>
@@ -437,107 +467,108 @@
                 </div>
             </div>
 
-            <table class="s21-table">
-                <thead>
-                    <tr>
-                        <th style="width: 15%;">Service Year<br><span class="sub-text" id="serviceYearDisplay">2026</span></th>
-                        <th style="width: 11%;">Shared in Ministry</th>
-                        <th style="width: 10%;">Bible Studies</th>
-                        <th style="width: 11%;">Auxiliary Pioneer</th>
-                        <th style="width: 11%;">Hours <span class="sub-text">(Pioneer)</span></th>
-                        <th style="width: 35%;">Remarks</th>
-                    </tr>
-                </thead>
-                <tbody id="s21TableBody">
-                    <!-- Populated dynamically via script with individual month IDs -->
-                </tbody>
-                <tfoot>
-                    <tr class="total-row">
-                        <td colspan="4" class="text-right" style="padding-right: 8px;"><strong>Total</strong></td>
-                        <td><input type="text" id="totalHours" value="0" readonly class="text-center font-bold"></td>
-                        <td></td>
-                    </tr>
-                </tfoot>
-            </table>
+            <div class="table-scroll-container">
+                <table class="s21-table">
+                    <thead>
+                        <tr>
+                            <th>Service Year<br><span class="sub-text" id="serviceYearDisplay">2026</span></th>
+                            <th>Shared in Ministry</th>
+                            <th>Bible Studies</th>
+                            <th>Auxiliary Pioneer</th>
+                            <th>Hours <span class="sub-text">(Pioneer)</span></th>
+                            <th>Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody id="s21TableBody">
+                        <!-- Populated dynamically via script with individual month IDs -->
+                    </tbody>
+                    <tfoot>
+                        <tr class="total-row">
+                            <td colspan="4" class="text-right" style="padding-right: 8px;"><strong>Total</strong></td>
+                            <td><input type="text" id="totalHours" value="0" readonly class="text-center font-bold"></td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
         </div>
 
         <!-- MONTHLY REPORT -->
         <div class="s21-sidebar">
-                <div class="Month-sidebar-nav" style="display: flex; align-items: center; gap: 10px; justify-content: center;">
-                    <!-- Single Status Button -->
-                    <button id="monthStatusBtn" onclick="closeCurrentMonthReport()" class="status-btn active" style="cursor: pointer; padding: 2px 8px; border-radius: 12px; border: 1px solid #4caf50; background-color: #e8f5e9; color: #2e7d32; font-size: 12px; font-weight: bold;">
-                        Active
-                    </button>
-                    
-                    <!-- Retained Month / Year Display -->
-                    <strong id="monthDisplayText">--</strong>
+            <div class="Month-sidebar-nav" style="display: flex; align-items: center; gap: 10px; justify-content: center;">
+                <!-- Single Status Button -->
+                <button id="monthStatusBtn" onclick="closeCurrentMonthReport()" class="status-btn active" style="cursor: pointer; padding: 2px 8px; border-radius: 12px; border: 1px solid #4caf50; background-color: #e8f5e9; color: #2e7d32; font-size: 12px; font-weight: bold;">
+                    Active
+                </button>
+                
+                <!-- Retained Month / Year Display -->
+                <strong id="monthDisplayText">--</strong>
+            </div>
+
+            <div class="side-box">
+                <div class="side-title">All Active Publishers</div>
+                <div class="side-desc">Count all persons in congregation reporting in last 6 months.</div>
+                <input type="number" id="activePublishersInput" class="form-control text-center" style="background: #fff; height: 22px;" readonly>
+            </div>
+
+            <div class="side-box" id="attendanceSideBox" style="cursor: pointer; padding: 8px; border: 1px solid #ccc; border-radius: 4px; background: #f9f9f9;">
+                <!-- Header / Title -->
+                <div class="side-title" style="font-weight: bold; font-size: 13px; display: flex; justify-content: space-between; align-items: center;">
+                    <span>Average Weekend Attendance</span>
+                    <span id="attendanceToggleIcon" style="font-size: 10px;">▼</span>
                 </div>
 
-          <div class="side-box">
-            <div class="side-title">All Active Publishers</div>
-            <div class="side-desc">Count all persons in congregation reporting in last 6 months.</div>
-            <input type="number" id="activePublishersInput" class="form-control text-center" style="background: #fff; height: 22px;" readonly>
-         </div>
-
-
-
-           <div class="side-box" id="attendanceSideBox" style="cursor: pointer; padding: 8px; border: 1px solid #ccc; border-radius: 4px; background: #f9f9f9;">
-            <!-- Header / Title -->
-            <div class="side-title" style="font-weight: bold; font-size: 13px; display: flex; justify-content: space-between; align-items: center;">
-                <span>Average Weekend Attendance</span>
-                <span id="attendanceToggleIcon" style="font-size: 10px;">▼</span>
-            </div>
-
-            <!-- Collapsed View (Shows only the computed average) -->
-            <div id="collapsedAttendanceView" class="mt-1">
-                <input type="text" id="avgWeekendDisplay" class="form-control text-center" style="background: #fff; height: 22px;" readonly placeholder="0.0">
-            </div>
-
-            <!-- Expanded View (2 rows / 2 columns layout, hidden by default) -->
-            <div id="expandedAttendanceView" style="display: none; margin-top: 8px;" onclick="event.stopPropagation()">
-                <!-- Midweek Row -->
-                <div style="font-size: 11px; font-weight: bold; margin-bottom: 2px; color: #555;">Midweek</div>
-                <div style="display: flex; gap: 5px; margin-bottom: 6px;">
-                    <input type="number" id="noMtgs1" class="form-control text-center" placeholder="Mtgs" style="height: 22px; width: 50%;" title="Midweek Meetings Count">
-                    <input type="number" id="attendcMidweekTotal" class="form-control text-center" placeholder="Total Att." style="height: 22px; width: 50%;" title="Total Midweek Attendance">
+                <!-- Collapsed View (Shows only the computed average) -->
+                <div id="collapsedAttendanceView" class="mt-1">
+                    <input type="text" id="avgWeekendDisplay" class="form-control text-center" style="background: #fff; height: 22px;" readonly placeholder="0.0">
                 </div>
 
-                <!-- Weekend Row -->
-                <div style="font-size: 11px; font-weight: bold; margin-bottom: 2px; color: #555;">Weekend</div>
-                <div style="display: flex; gap: 5px;">
-                    <input type="number" id="noMtgs2" class="form-control text-center" placeholder="Mtgs" style="height: 22px; width: 50%;" title="Weekend Meetings Count">
-                    <input type="number" id="attendcPublickTotal" class="form-control text-center" placeholder="Total Att." style="height: 22px; width: 50%;" title="Total Weekend Attendance">
+                <!-- Expanded View (2 rows / 2 columns layout, hidden by default) -->
+                <div id="expandedAttendanceView" style="display: none; margin-top: 8px;" onclick="event.stopPropagation()">
+                    <!-- Midweek Row -->
+                    <div style="font-size: 11px; font-weight: bold; margin-bottom: 2px; color: #555;">Midweek</div>
+                    <div style="display: flex; gap: 5px; margin-bottom: 6px;">
+                        <input type="number" id="noMtgs1" class="form-control text-center" placeholder="Mtgs" style="height: 22px; width: 50%;" title="Midweek Meetings Count">
+                        <input type="number" id="attendcMidweekTotal" class="form-control text-center" placeholder="Total Att." style="height: 22px; width: 50%;" title="Total Midweek Attendance">
+                    </div>
+
+                    <!-- Weekend Row -->
+                    <div style="font-size: 11px; font-weight: bold; margin-bottom: 2px; color: #555;">Weekend</div>
+                    <div style="display: flex; gap: 5px;">
+                        <input type="number" id="noMtgs2" class="form-control text-center" placeholder="Mtgs" style="height: 22px; width: 50%;" title="Weekend Meetings Count">
+                        <input type="number" id="attendcPublickTotal" class="form-control text-center" placeholder="Total Att." style="height: 22px; width: 50%;" title="Total Weekend Attendance">
+                    </div>
+                </div>
+            </div>
+
+            <div class="side-box">
+                <div class="side-title">Publishers</div>
+                <div class="grid-sub-inputs mt-1">
+                    <div><label class="side-label">Reports</label><input type="number" id="pub-reports" class="form-control text-center" style="background: #fff; height: 22px;" readonly></div>
+                    <div><label class="side-label">Studies</label><input type="number" id="pub-studies" class="form-control text-center" style="background: #fff; height: 22px;" readonly></div>
+                </div>
+            </div>
+
+            <div class="side-box">
+                <div class="side-title">Auxiliary Pioneers</div>
+                <div class="grid-sub-inputs-3 mt-1">
+                    <div><label class="side-label">Reports</label><input type="number" id="aux-reports" class="form-control text-center" style="background: #fff; height: 22px;" readonly></div>
+                    <div><label class="side-label">Hours</label><input type="number" id="aux-hours" class="form-control text-center" style="background: #fff; height: 22px;" readonly></div>
+                    <div><label class="side-label">Studies</label><input type="number" id="aux-studies" class="form-control text-center" style="background: #fff; height: 22px;" readonly></div>
+                </div>
+            </div>
+
+            <div class="side-box">
+                <div class="side-title">Regular Pioneers</div>
+                <div class="grid-sub-inputs-3 mt-1">
+                    <div><label class="side-label">Reports</label><input type="number" id="rp-reports" class="form-control text-center" style="background: #fff; height: 22px;" readonly></div>
+                    <div><label class="side-label">Hours</label><input type="number" id="rp-hours" class="form-control text-center" style="background: #fff; height: 22px;" readonly></div>
+                    <div><label class="side-label">Studies</label><input type="number" id="rp-studies" class="form-control text-center" style="background: #fff; height: 22px;" readonly></div>
                 </div>
             </div>
         </div>
-
-        <div class="side-box">
-            <div class="side-title">Publishers</div>
-            <div class="grid-sub-inputs mt-1">
-                <div><label class="side-label">Reports</label><input type="number" id="pub-reports" class="form-control text-center" style="background: #fff; height: 22px;" readonly></div>
-                <div><label class="side-label">Studies</label><input type="number" id="pub-studies" class="form-control text-center" style="background: #fff; height: 22px;" readonly></div>
-            </div>
-        </div>
-
-        <div class="side-box">
-            <div class="side-title">Auxiliary Pioneers</div>
-            <div class="grid-sub-inputs-3 mt-1">
-                <div><label class="side-label">Reports</label><input type="number" id="aux-reports" class="form-control text-center" style="background: #fff; height: 22px;" readonly></div>
-                <div><label class="side-label">Hours</label><input type="number" id="aux-hours" class="form-control text-center" style="background: #fff; height: 22px;" readonly></div>
-                <div><label class="side-label">Studies</label><input type="number" id="aux-studies" class="form-control text-center" style="background: #fff; height: 22px;" readonly></div>
-            </div>
-        </div>
-
-        <div class="side-box">
-            <div class="side-title">Regular Pioneers</div>
-            <div class="grid-sub-inputs-3 mt-1">
-                <div><label class="side-label">Reports</label><input type="number" id="rp-reports" class="form-control text-center" style="background: #fff; height: 22px;" readonly></div>
-                <div><label class="side-label">Hours</label><input type="number" id="rp-hours" class="form-control text-center" style="background: #fff; height: 22px;" readonly></div>
-                <div><label class="side-label">Studies</label><input type="number" id="rp-studies" class="form-control text-center" style="background: #fff; height: 22px;" readonly></div>
-            </div>
-        </div>
-
-        
+    </div>
+</div>
 
 <script src="/static/js/indexeddb.js"></script>
 <script>

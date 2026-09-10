@@ -3,7 +3,7 @@
         --row-height: 22px; /* Easily adjust overall table row height here */
     }
 
-    .s21-wrapper {
+       .s21-wrapper {
         display: flex;
         gap: 10px;
         max-width: 1650px;
@@ -12,10 +12,19 @@
         align-items: flex-start;
     }
 
+    @media screen and (max-width: 1024px) {
+        .s21-listbox-pane {
+            flex: 1 1 auto;
+            width: 100%; /* Spans full width when stacked on small screens */
+        }
+    }
+
+
     /* LEFT LANE: Narrowed Publisher Listbox / Navigation */
-    .s21-listbox-pane {
-        flex: 0.8;
-        min-width: 160px;
+     .s21-listbox-pane {
+        flex: 0 0 220px; /* Prevents auto-stretching on zoom */
+        width: 220px;    /* Fixed base width */
+        box-sizing: border-box;
         background: #fff;
         border: 2px solid #222;
         padding: 8px;
@@ -38,6 +47,7 @@
         background: #fafafa;
         height: 330px;
         overflow-y: auto;
+        overflow-x: auto; /* Handles long publisher names horizontally */
         border-radius: 2px;
         padding: 2px;
     }
@@ -185,7 +195,7 @@
         margin: 0 !important;
         font-size: 11px !important;
         box-shadow: none !important;
-        text-align: inherit;
+        text-align: center;
     }
 
     .s21-table select {

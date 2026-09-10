@@ -36,9 +36,6 @@ document.getElementById("search-input")                         // e.g. "Filter 
 """
 
 
-git add .
-git commit -m "Ai 2nd  Phase "
-git push origin main
 
 
 
@@ -110,3 +107,7 @@ https://platform.openai.com/?utm_source=chatgpt.com
 
 uvicorn main:app --reload
 taskkill /F /IM python.exe
+
+git add .
+git commit -m "New CO report Option"
+git push origin main

@@ -22,61 +22,64 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
-    body {
+    html, body {
+      height: 100%;
+      overflow: hidden; /* Stops browser viewport scrollbar */
       background-color: var(--bg-body);
       color: var(--text-main);
-      padding: 10px 14px;
-      height: 100vh;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
     }
 
-    .dashboard-grid {
-      display: grid;
-      grid-template-columns: 1.1fr 1fr;
-      grid-template-rows: auto 1fr;
-      gap: 10px;
-      height: 100%;
-      width: 100%;
-      max-width: 1400px;
-      margin: 0 auto;
+    body {
+      padding: 8px 12px;
     }
 
-        /* Update .card to allow the right side card to fill available height */
-        .card {
+   .dashboard-grid {
+        display: grid;
+        grid-template-columns: 1.1fr 1fr;
+        grid-template-rows: auto 1fr;
+        gap: 8px;
+        height: calc(100vh - 100px); /* Changed from -16px to -100px */
+        width: 100%;
+        max-width: 1400px;
+        margin: 0 auto;
+        }
+   .card {
         background: var(--card-bg);
         border: 1px solid var(--border-color);
         border-radius: 6px;
-        padding: 10px 12px;
+        padding: 8px 10px;
         display: flex;
         flex-direction: column;
-        min-height: 0;
-        height: 100%; /* Force card to stretch full height of grid */
+        height: 89%;          /* Lock card height to the grid cell */
+        max-height: 100%;      /* Prevent expanding past the screen */
+        overflow: hidden;      /* Keep AI box fixed inside the card boundary */
         }
 
-    .card-title {
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--text-main);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      border-bottom: 1px solid var(--border-color);
-      padding-bottom: 4px;
-      margin-bottom: 6px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
+        .card-title {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--text-main);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 4px;
+        margin-bottom: 6px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-shrink: 0;
+        }
 
-    /* COMPACT STATS */
-    .stats-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 3px 0;
-      font-size: 11px;
-    }
+/* COMPACT STATS */
+        .stats-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 2px 0;
+        font-size: 11px;
+        min-height: 25px; /* Force minimum row height so it never collapses */
+        flex-shrink: 0;   /* Prevent flex layout from squeezing this row */
+        }
 
     .val-highlight { font-weight: 700; color: var(--primary); }
     .val-sec { color: var(--text-muted); font-style: italic; }
@@ -85,7 +88,7 @@
     .analysis-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 4px;
+      gap: 3px;
     }
 
     .dash-link {
@@ -93,7 +96,7 @@
       border: 1px solid transparent;
       color: var(--accent-blue);
       text-align: left;
-      padding: 3px 6px;
+      padding: 2px 5px;
       border-radius: 4px;
       font-size: 11px;
       cursor: pointer;
@@ -126,34 +129,33 @@
       color: #fff;
     }
 
-    /* DUAL COLUMN STATS FOR COMPARISON SECTION */
-    .dual-stat-row {
-      display: flex;
+    /* SERVICE YEAR & RECORDS ALIGNMENT GRID */
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: 1fr 110px;
+      row-gap: 2px;
+      column-gap: 8px;
       align-items: center;
-      gap: 8px;
-    }
-
-    .dual-stat-row .dash-link {
-      flex: 1;
+      margin-top: 6px;
     }
 
     .badge-year {
       font-size: 11px;
       font-weight: 700;
       color: var(--accent-blue);
-      width: 45px;
       text-align: right;
-      padding-right: 12px;
+      padding-right: 6px;
     }
 
-    /* AI QUERY BOX (MATCHED TO PRIMARY ORANGE BRANDING) */
+    /* AI QUERY BOX */
     .ai-box-container {
       margin-top: auto;
       border-top: 1px dashed var(--border-color);
-      padding-top: 8px;
+      padding-top: 6px;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 3px;
+      flex-shrink: 0;
     }
 
     .ai-label {
@@ -172,7 +174,7 @@
 
     .ai-input {
       flex: 1;
-      padding: 5px 8px;
+      padding: 4px 6px;
       font-size: 11px;
       border: 1px solid var(--border-color);
       border-radius: 4px;
@@ -188,7 +190,7 @@
       background: var(--primary);
       color: white;
       border: none;
-      padding: 5px 12px;
+      padding: 4px 10px;
       font-size: 11px;
       font-weight: bold;
       border-radius: 4px;
@@ -202,25 +204,24 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
       gap: 8px;
+      flex-shrink: 0;
     }
 
     .search-input {
-      padding: 3px 6px;
+      padding: 2px 6px;
       font-size: 11px;
       border: 1px solid var(--border-color);
       border-radius: 4px;
       width: 140px;
     }
 
-
-    /* listbox */
     .data-table-container {
         flex: 1;
-        height: 300px; /* Extends height to near the bottom of the viewport */
-        max-height: 300px;            /* Fills all available vertical room in the card */
-        overflow-y: auto;            /* Enables vertical scrolling for long lists */
+        min-height: 0;
+        max-height: 370px; /* <--- ADD THIS: Change 400px to whatever height limit you prefer (e.g., 350px, 300px, 50vh) */
+        overflow-y: auto;   /* Keeps scrolling inside this box when table rows exceed max-height */
         overflow-x: hidden;
         }
 
@@ -235,27 +236,19 @@
       position: sticky;
       top: 0;
       background: #f1f5f9;
-      padding: 4px 6px;
+      padding: 3px 6px;
       font-weight: bold;
       color: var(--text-muted);
       border-bottom: 1px solid var(--border-color);
+      z-index: 1;
     }
 
     .data-table td {
-      padding: 4px 6px;
+      padding: 3px 6px;
       border-bottom: 1px solid #f1f5f9;
     }
 
     .data-table tr:hover { background-color: #f8fafc; }
-
-    .tag-role {
-      font-size: 9px;
-      background: #fef3c7;
-      color: #92400e;
-      padding: 1px 4px;
-      border-radius: 3px;
-      font-weight: 600;
-    }
   </style>
 </head>
 <body>
@@ -289,11 +282,11 @@
     </div>
   </div>
 
-  <!-- UPDATED PUBLISHER ANALYSIS CARD WITH FULL COMPARISON DATA -->
+  <!-- PUBLISHER ANALYSIS CARD -->
   <div class="card">
     <div class="card-title">Publisher Analysis</div>
     
-    <div style="overflow-y: auto; flex: 1; padding-right: 2px;">
+    <div style="overflow-y: auto; flex: 1; min-height: 0; padding-right: 2px;">
       <!-- SECTION 1: BASED ON PUBLISHER RECORDS -->
       <div style="font-weight: bold; font-size: 10px; color: var(--text-main); margin-bottom: 4px;">
         Analysis based on Publisher Records:
@@ -302,95 +295,81 @@
       <div class="analysis-grid">
         <button class="dash-link active" onclick="filterData('Active', event)">
           <span>Active publishers</span>
-          <span class="badge" id="ActivePubs-count">0</span>
+          <span class="badge" id="ActivePubs-count">93</span>
         </button>
 
         <button class="dash-link" onclick="filterData('Active Baptized', event)">
           <span>Active Baptized</span>
-          <span class="badge" id="ActiveBaptized-count">0</span>
+          <span class="badge" id="ActiveBaptized-count">89</span>
         </button>
 
-     <button class="dash-link" onclick="filterData('Unbaptized', event)">
-            <span>Unbaptized Publishers</span>
-            <span class="badge" id="unbaptized-count">0</span>
+        <button class="dash-link" onclick="filterData('Unbaptized', event)">
+          <span>Unbaptized Publishers</span>
+          <span class="badge" id="unbaptized-count">6</span>
         </button>
         <button class="dash-link" onclick="filterData('Elders', event)">
-          <span>Elders</span> <span class="badge" id="Elders-count">0</span>
+          <span>Elders</span> <span class="badge" id="Elders-count">9</span>
         </button>
         <button class="dash-link" onclick="filterData('Ministerial Servants', event)">
           <span>Ministerial servants</span> 
-          <span class="badge" id="MS-count">0</span>
+          <span class="badge" id="MS-count">5</span>
         </button>
         <button class="dash-link" onclick="filterData('Regular Pioneers', event)">
           <span>Regular Pioneers</span> 
-          <span class="badge" id="RP-count">0</span>
+          <span class="badge" id="RP-count">25</span>
         </button>
         <button class="dash-link" onclick="filterData('Regular Publishers', event)">
           <span>Regular publishers</span>
-           <span class="badge" id="RPubs-count">0</span>
+          <span class="badge" id="RPubs-count">0</span>
         </button>
         <button class="dash-link" onclick="filterData('Special Pioneers', event)">
           <span>Special Pioneers / Missionaries</span> <span class="badge" id="SP-count">0</span>
         </button>
       </div>
 
-      <!-- SECTION 2: SIX-MONTH VS YEARLY COMPARISON -->
-      <div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0 4px 0;">
-    <span id="records-period-label" style="font-weight:bold;font-size:10px;color:var(--text-main);">Records from ... to ...:</span>
-    <span id="records-service-year-label" style="font-weight:bold;font-size:10px;color:var(--text-main);padding-right:8px;">( 2026 Service Year )</span>
-</div>
+      <!-- SECTION 2: SIX-MONTH VS YEARLY COMPARISON GRID -->
+      <div class="comparison-grid">
+        <!-- HEADER ROW -->
+        <span id="records-period-label" style="font-weight:bold; font-size:10px; color:var(--text-main);">Records from February to July:</span>
+        <span id="records-service-year-label" style="font-weight:bold; font-size:10px; color:var(--text-main); text-align:right; padding-right:6px;">( 2026 Service Year )</span>
 
-      <div style="display: flex; flex-direction: column; gap: 3px;">
-        <div class="dual-stat-row">
-          <button class="dash-link" onclick="filterData('Auxiliary Pioneers', event)">
-            <span>Auxiliary Pioneers</span> 
-            <span class="badge" id="AUX-count">0</span>
-          </button>
-          <span class="badge-year" id="AUX-year-count">0</span>
-        </div>
+        <!-- ITEM ROWS -->
+        <button class="dash-link" onclick="filterData('Auxiliary Pioneers', event)">
+          <span>Auxiliary Pioneers</span> 
+          <span class="badge" id="AUX-count">0</span>
+        </button>
+        <span class="badge-year" id="AUX-year-count">0</span>
 
-        <div class="dual-stat-row">
-          <button class="dash-link" onclick="filterData('New Publishers', event)">
-            <span>New publishers</span>
-            <span class="badge" id="UPB-count">0</span>
-          </button>
-          <span class="badge-year" id="UPB-year-count">0</span>
-        </div>
+        <button class="dash-link" onclick="filterData('New Publishers', event)">
+          <span>New publishers</span>
+          <span class="badge" id="UPB-count">0</span>
+        </button>
+        <span class="badge-year" id="UPB-year-count">0</span>
 
-        <div class="dual-stat-row">
-          <button class="dash-link" onclick="filterData('Inactive', event)">
-            <span>Inactive publishers</span> <span class="badge" id="Inactive-count">16</span>
-          </button>
-          <span class="badge-year" id="Inactive-year-count">16</span>
-        </div>
+        <button class="dash-link" onclick="filterData('Inactive', event)">
+          <span>Inactive publishers</span> <span class="badge" id="Inactive-count">16</span>
+        </button>
+        <span class="badge-year" id="Inactive-year-count">16</span>
 
-        <div class="dual-stat-row">
-          <button class="dash-link" onclick="filterData('Reactivated', event)">
-            <span>Reactivated publishers</span> <span class="badge" id="Reactivated-count">0</span>
-          </button>
-          <span class="badge-year" id="Reactivated-year-count">0</span>
-        </div>
+        <button class="dash-link" onclick="filterData('Reactivated', event)">
+          <span>Reactivated publishers</span> <span class="badge" id="Reactivated-count">0</span>
+        </button>
+        <span class="badge-year" id="Reactivated-year-count">0</span>
 
-        <div class="dual-stat-row">
-          <button class="dash-link" onclick="filterData('Irregular', event)">
-            <span>Irregular Publishers</span> <span class="badge" id="Irregular-count">75</span>
-          </button>
-          <span class="badge-year" id="Irregular-year-count">98</span>
-        </div>
+        <button class="dash-link" onclick="filterData('Irregular', event)">
+          <span>Irregular Publishers</span> <span class="badge" id="Irregular-count">3</span>
+        </button>
+        <span class="badge-year" id="Irregular-year-count">98</span>
 
-        <div class="dual-stat-row">
-          <button class="dash-link" onclick="filterData('Moved In', event)">
-            <span>Moved In</span> <span class="badge" id="Moved-In-count">0</span>
-          </button>
-          <span class="badge-year" id="Moved-In-year-count">3</span>
-        </div>
+        <button class="dash-link" onclick="filterData('Moved In', event)">
+          <span>Moved In</span> <span class="badge" id="Moved-In-count">0</span>
+        </button>
+        <span class="badge-year" id="Moved-In-year-count">3</span>
 
-        <div class="dual-stat-row">
-          <button class="dash-link" onclick="filterData('Moved Out', event)">
-            <span>Moved Out</span> <span class="badge" id="Moved-Out-count">0</span>
-          </button>
-          <span class="badge-year" id="Moved-Out-year-count">0</span>
-        </div>
+        <button class="dash-link" onclick="filterData('Moved Out', event)">
+          <span>Moved Out</span> <span class="badge" id="Moved-Out-count">0</span>
+        </button>
+        <span class="badge-year" id="Moved-Out-year-count">0</span>
       </div>
     </div>
 
@@ -409,26 +388,30 @@
   <div class="card">
     <div class="table-toolbar">
       <div class="card-title" style="border:none; padding:0; margin:0;">
-        <span id="list-title">ACTIVE PUBLISHERS</span>
+        <span id="list-title">ACTIVE PUBLISHERS (93)</span>
       </div>
       <input type="text" id="search-input" class="search-input" placeholder="Filter names..." onkeyup="filterTableBySearch()">
     </div>
 
     <div class="data-table-container">
-    <table class="data-table">
+      <table class="data-table">
         <thead>
-                <tr>
-                    <th id="col-name">Name</th>
-                    <th id="col-role">Role</th>
-                    <th id="col-status">Status</th>
-                </tr>
-            </thead>
-            <tbody id="publishers-table-body"></tbody>
-        </table>
+          <tr>
+            <th id="col-name">Name</th>
+            <th id="col-role">Privileges</th>
+            <th id="col-status">Years in the Truth</th>
+          </tr>
+        </thead>
+        <tbody id="publishers-table-body"></tbody>
+      </table>
     </div>
   </div>
 
 </div>
+
+
+
+
 
 <script src="/static/js/indexeddb.js"></script>
 <script>
