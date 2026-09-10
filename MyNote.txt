@@ -109,3 +109,4 @@ Create new YOUR_NEW_KEY
 https://platform.openai.com/?utm_source=chatgpt.com
 
 uvicorn main:app --reload
+taskkill /F /IM python.exe

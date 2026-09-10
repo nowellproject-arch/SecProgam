@@ -209,270 +209,557 @@
     <h1 class="section-title">Report Summary for the Past 6 Months</h1>
 
     <table class="summary-table">
-        <thead>
-            <tr>
-                <th rowspan="2" class="main-header-month" style="width: 18%;">MONTH</th>
-                <th colspan="2" style="width: 22%;">PUBLISHERS</th>
-                <th colspan="3" style="width: 30%;">AUXILIARY PIONEERS</th>
-                <th colspan="3" style="width: 30%;">REGULAR PIONEERS</th>
-            </tr>
-            <tr>
-                <th style="width: 12%;">REPORTING</th>
-                <th style="width: 10%;">BS</th>
-                <th style="width: 12%;">REPORTING</th>
-                <th style="width: 8%;">BS</th>
-                <th style="width: 10%;">HOURS</th>
-                <th style="width: 12%;">REPORTING</th>
-                <th style="width: 8%;">BS</th>
-                <th style="width: 10%;">HOURS</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td class="text-left row-header">{{MONTH_1}}</td>
-                <td>{{M1_PUB_REP}}</td>
-                <td>{{M1_PUB_BS}}</td>
-                <td>{{M1_AUX_REP}}</td>
-                <td>{{M1_AUX_BS}}</td>
-                <td>{{M1_AUX_HRS}}</td>
-                <td>{{M1_REG_REP}}</td>
-                <td>{{M1_REG_BS}}</td>
-                <td>{{M1_REG_HRS}}</td>
-            </tr>
-            <tr>
-                <td class="text-left row-header">{{MONTH_2}}</td>
-                <td>{{M2_PUB_REP}}</td>
-                <td>{{M2_PUB_BS}}</td>
-                <td>{{M2_AUX_REP}}</td>
-                <td>{{M2_AUX_BS}}</td>
-                <td>{{M2_AUX_HRS}}</td>
-                <td>{{M2_REG_REP}}</td>
-                <td>{{M2_REG_BS}}</td>
-                <td>{{M2_REG_HRS}}</td>
-            </tr>
-            <tr>
-                <td class="text-left row-header">{{MONTH_3}}</td>
-                <td>{{M3_PUB_REP}}</td>
-                <td>{{M3_PUB_BS}}</td>
-                <td>{{M3_AUX_REP}}</td>
-                <td>{{M3_AUX_BS}}</td>
-                <td>{{M3_AUX_HRS}}</td>
-                <td>{{M3_REG_REP}}</td>
-                <td>{{M3_REG_BS}}</td>
-                <td>{{M3_REG_HRS}}</td>
-            </tr>
-            <tr>
-                <td class="text-left row-header">{{MONTH_4}}</td>
-                <td>{{M4_PUB_REP}}</td>
-                <td>{{M4_PUB_BS}}</td>
-                <td>{{M4_AUX_REP}}</td>
-                <td>{{M4_AUX_BS}}</td>
-                <td>{{M4_AUX_HRS}}</td>
-                <td>{{M4_REG_REP}}</td>
-                <td>{{M4_REG_BS}}</td>
-                <td>{{M4_REG_HRS}}</td>
-            </tr>
-            <tr>
-                <td class="text-left row-header">{{MONTH_5}}</td>
-                <td>{{M5_PUB_REP}}</td>
-                <td>{{M5_PUB_BS}}</td>
-                <td>{{M5_AUX_REP}}</td>
-                <td>{{M5_AUX_BS}}</td>
-                <td>{{M5_AUX_HRS}}</td>
-                <td>{{M5_REG_REP}}</td>
-                <td>{{M5_REG_BS}}</td>
-                <td>{{M5_REG_HRS}}</td>
-            </tr>
-            <tr>
-                <td class="text-left row-header">{{MONTH_6}}</td>
-                <td>{{M6_PUB_REP}}</td>
-                <td>{{M6_PUB_BS}}</td>
-                <td>{{M6_AUX_REP}}</td>
-                <td>{{M6_AUX_BS}}</td>
-                <td>{{M6_AUX_HRS}}</td>
-                <td>{{M6_REG_REP}}</td>
-                <td>{{M6_REG_BS}}</td>
-                <td>{{M6_REG_HRS}}</td>
-            </tr>
-            <tr>
-                <td class="bold text-left row-header">TOTAL</td>
-                <td>{{TOTAL_PUB_REP}}</td>
-                <td>{{TOTAL_PUB_BS}}</td>
-                <td>{{TOTAL_AUX_REP}}</td>
-                <td>{{TOTAL_AUX_BS}}</td>
-                <td>{{TOTAL_AUX_HRS}}</td>
-                <td>{{TOTAL_REG_REP}}</td>
-                <td>{{TOTAL_REG_BS}}</td>
-                <td>{{TOTAL_REG_HRS}}</td>
-            </tr>
-            <tr>
-                <td class="bold text-left row-header">AVERAGE</td>
-                <td>{{AVG_PUB_REP}}</td>
-                <td>{{AVG_PUB_BS}}</td>
-                <td>{{AVG_AUX_REP}}</td>
-                <td>{{AVG_AUX_BS}}</td>
-                <td>{{AVG_AUX_HRS}}</td>
-                <td>{{AVG_REG_REP}}</td>
-                <td>{{AVG_REG_BS}}</td>
-                <td>{{AVG_REG_HRS}}</td>
-            </tr>
-            <tr>
-                <td class="bold text-left row-header">PER PERSON AVERAGE</td>
-                <td></td>
-                <td>{{PPA_PUB_BS}}</td>
-                <td></td>
-                <td>{{PPA_AUX_BS}}</td>
-                <td>{{PPA_AUX_HRS}}</td>
-                <td></td>
-                <td>{{PPA_REG_BS}}</td>
-                <td>{{PPA_REG_HRS}}</td>
-            </tr>
-        </tbody>
+    <thead>
+        <tr>
+            <th rowspan="2" class="main-header-month" style="width: 18%;">MONTH</th>
+            <th colspan="2" style="width: 22%;">PUBLISHERS</th>
+            <th colspan="3" style="width: 30%;">AUXILIARY PIONEERS</th>
+            <th colspan="3" style="width: 30%;">REGULAR PIONEERS</th>
+        </tr>
+        <tr>
+            <th style="width: 12%;">REPORTING</th>
+            <th style="width: 10%;">BS</th>
+            <th style="width: 12%;">REPORTING</th>
+            <th style="width: 8%;">BS</th>
+            <th style="width: 10%;">HOURS</th>
+            <th style="width: 12%;">REPORTING</th>
+            <th style="width: 8%;">BS</th>
+            <th style="width: 10%;">HOURS</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td class="text-left row-header" id="MONTH_1"></td>
+            <td id="M1_PUB_REP"></td>
+            <td id="M1_PUB_BS"></td>
+            <td id="M1_AUX_REP"></td>
+            <td id="M1_AUX_BS"></td>
+            <td id="M1_AUX_HRS"></td>
+            <td id="M1_REG_REP"></td>
+            <td id="M1_REG_BS"></td>
+            <td id="M1_REG_HRS"></td>
+        </tr>
+        <tr>
+            <td class="text-left row-header" id="MONTH_2"></td>
+            <td id="M2_PUB_REP"></td>
+            <td id="M2_PUB_BS"></td>
+            <td id="M2_AUX_REP"></td>
+            <td id="M2_AUX_BS"></td>
+            <td id="M2_AUX_HRS"></td>
+            <td id="M2_REG_REP"></td>
+            <td id="M2_REG_BS"></td>
+            <td id="M2_REG_HRS"></td>
+        </tr>
+        <tr>
+            <td class="text-left row-header" id="MONTH_3"></td>
+            <td id="M3_PUB_REP"></td>
+            <td id="M3_PUB_BS"></td>
+            <td id="M3_AUX_REP"></td>
+            <td id="M3_AUX_BS"></td>
+            <td id="M3_AUX_HRS"></td>
+            <td id="M3_REG_REP"></td>
+            <td id="M3_REG_BS"></td>
+            <td id="M3_REG_HRS"></td>
+        </tr>
+        <tr>
+            <td class="text-left row-header" id="MONTH_4"></td>
+            <td id="M4_PUB_REP"></td>
+            <td id="M4_PUB_BS"></td>
+            <td id="M4_AUX_REP"></td>
+            <td id="M4_AUX_BS"></td>
+            <td id="M4_AUX_HRS"></td>
+            <td id="M4_REG_REP"></td>
+            <td id="M4_REG_BS"></td>
+            <td id="M4_REG_HRS"></td>
+        </tr>
+        <tr>
+            <td class="text-left row-header" id="MONTH_5"></td>
+            <td id="M5_PUB_REP"></td>
+            <td id="M5_PUB_BS"></td>
+            <td id="M5_AUX_REP"></td>
+            <td id="M5_AUX_BS"></td>
+            <td id="M5_AUX_HRS"></td>
+            <td id="M5_REG_REP"></td>
+            <td id="M5_REG_BS"></td>
+            <td id="M5_REG_HRS"></td>
+        </tr>
+        <tr>
+            <td class="text-left row-header" id="MONTH_6"></td>
+            <td id="M6_PUB_REP"></td>
+            <td id="M6_PUB_BS"></td>
+            <td id="M6_AUX_REP"></td>
+            <td id="M6_AUX_BS"></td>
+            <td id="M6_AUX_HRS"></td>
+            <td id="M6_REG_REP"></td>
+            <td id="M6_REG_BS"></td>
+            <td id="M6_REG_HRS"></td>
+        </tr>
+        <tr>
+            <td class="bold text-left row-header">TOTAL</td>
+            <td id="TOTAL_PUB_REP"></td>
+            <td id="TOTAL_PUB_BS"></td>
+            <td id="TOTAL_AUX_REP"></td>
+            <td id="TOTAL_AUX_BS"></td>
+            <td id="TOTAL_AUX_HRS"></td>
+            <td id="TOTAL_REG_REP"></td>
+            <td id="TOTAL_REG_BS"></td>
+            <td id="TOTAL_REG_HRS"></td>
+        </tr>
+        <tr>
+            <td class="bold text-left row-header">AVERAGE</td>
+            <td id="AVG_PUB_REP"></td>
+            <td id="AVG_PUB_BS"></td>
+            <td id="AVG_AUX_REP"></td>
+            <td id="AVG_AUX_BS"></td>
+            <td id="AVG_AUX_HRS"></td>
+            <td id="AVG_REG_REP"></td>
+            <td id="AVG_REG_BS"></td>
+            <td id="AVG_REG_HRS"></td>
+        </tr>
+        <tr>
+            <td class="bold text-left row-header">PER PERSON AVERAGE</td>
+            <td></td>
+            <td id="PPA_PUB_BS"></td>
+            <td></td>
+            <td id="PPA_AUX_BS"></td>
+            <td id="PPA_AUX_HRS"></td>
+            <td></td>
+            <td id="PPA_REG_BS"></td>
+            <td id="PPA_REG_HRS"></td>
+        </tr>
+    </tbody>
+</table>
+
+<!-- BOTTOM SECTION: CONGREGATION MEETING ATTENDANCE RECORD -->
+<div class="attendance-section">
+    <h1 class="section-title">Congregation Meeting Attendance Record</h1>
+
+    <table class="meeting-titles">
+        <tr>
+            <td style="width: 49.5%; padding-left: 2px;">Midweek Meeting</td>
+            <td style="width: 1%;"></td>
+            <td style="width: 49.5%; padding-left: 8px;">Weekend Meeting</td>
+        </tr>
     </table>
 
+    <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <!-- Midweek Table Column -->
+            <td style="width: 49.5%; vertical-align: top; border: none; padding: 0;">
+                <table class="attendance-table">
+                    <thead>
+                        <tr>
+                             <th style="width:25%;">Service Year<br><span id="MW_SERVICE_YEAR"></span></th>
+                            <th style="width: 25%;">Number of Meetings</th>
+                            <th style="width: 25%;">Total Attendance</th>
+                            <th style="width: 25%;">Average Attendance Each Week</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="text-left" id="MW_MONTH_1"></td>
+                            <td id="MW_M1_MEETINGS"></td>
+                            <td id="MW_M1_ATTENDANCE"></td>
+                            <td id="MW_M1_AVG"></td>
+                        </tr>
+                        <tr>
+                            <td class="text-left" id="MW_MONTH_2"></td>
+                            <td id="MW_M2_MEETINGS"></td>
+                            <td id="MW_M2_ATTENDANCE"></td>
+                            <td id="MW_M2_AVG"></td>
+                        </tr>
+                        <tr>
+                            <td class="text-left" id="MW_MONTH_3"></td>
+                            <td id="MW_M3_MEETINGS"></td>
+                            <td id="MW_M3_ATTENDANCE"></td>
+                            <td id="MW_M3_AVG"></td>
+                        </tr>
+                        <tr>
+                            <td class="text-left" id="MW_MONTH_4"></td>
+                            <td id="MW_M4_MEETINGS"></td>
+                            <td id="MW_M4_ATTENDANCE"></td>
+                            <td id="MW_M4_AVG"></td>
+                        </tr>
+                        <tr>
+                            <td class="text-left" id="MW_MONTH_5"></td>
+                            <td id="MW_M5_MEETINGS"></td>
+                            <td id="MW_M5_ATTENDANCE"></td>
+                            <td id="MW_M5_AVG"></td>
+                        </tr>
+                        <tr>
+                            <td class="text-left" id="MW_MONTH_6"></td>
+                            <td id="MW_M6_MEETINGS"></td>
+                            <td id="MW_M6_ATTENDANCE"></td>
+                            <td id="MW_M6_AVG"></td>
+                        </tr>
+                        <tr>
+                            <td colspan="3" class="footer-label">Average Attendance Each Month</td>
+                            <td id="MW_MONTHLY_AVG"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </td>
 
-    <!-- BOTTOM SECTION: CONGREGATION MEETING ATTENDANCE RECORD -->
-    <div class="attendance-section">
-        <h1 class="section-title">Congregation Meeting Attendance Record</h1>
+            <td style="width: 1%; border: none;"></td>
 
-        <table class="meeting-titles">
-            <tr>
-                <td style="width: 49.5%; padding-left: 2px;">Midweek Meeting</td>
-                <td style="width: 1%;"></td>
-                <td style="width: 49.5%; padding-left: 8px;">Weekend Meeting</td>
-            </tr>
-        </table>
+            <!-- Weekend Table Column -->
+            <td style="width: 49.5%; vertical-align: top; border: none; padding: 0;">
+                <table class="attendance-table">
+                    <thead>
+                        <tr>
+                            <th style="width:25%;">Service Year<br><span id="WE_SERVICE_YEAR"></span></th>                            <th style="width: 25%;">Number of Meetings</th>
+                            <th style="width: 25%;">Total Attendance</th>
+                            <th style="width: 25%;">Average Attendance Each Week</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="text-left" id="WE_MONTH_1"></td>
+                            <td id="WE_M1_MEETINGS"></td>
+                            <td id="WE_M1_ATTENDANCE"></td>
+                            <td id="WE_M1_AVG"></td>
+                        </tr>
+                        <tr>
+                            <td class="text-left" id="WE_MONTH_2"></td>
+                            <td id="WE_M2_MEETINGS"></td>
+                            <td id="WE_M2_ATTENDANCE"></td>
+                            <td id="WE_M2_AVG"></td>
+                        </tr>
+                        <tr>
+                            <td class="text-left" id="WE_MONTH_3"></td>
+                            <td id="WE_M3_MEETINGS"></td>
+                            <td id="WE_M3_ATTENDANCE"></td>
+                            <td id="WE_M3_AVG"></td>
+                        </tr>
+                        <tr>
+                            <td class="text-left" id="WE_MONTH_4"></td>
+                            <td id="WE_M4_MEETINGS"></td>
+                            <td id="WE_M4_ATTENDANCE"></td>
+                            <td id="WE_M4_AVG"></td>
+                        </tr>
+                        <tr>
+                            <td class="text-left" id="WE_MONTH_5"></td>
+                            <td id="WE_M5_MEETINGS"></td>
+                            <td id="WE_M5_ATTENDANCE"></td>
+                            <td id="WE_M5_AVG"></td>
+                        </tr>
+                        <tr>
+                            <td class="text-left" id="WE_MONTH_6"></td>
+                            <td id="WE_M6_MEETINGS"></td>
+                            <td id="WE_M6_ATTENDANCE"></td>
+                            <td id="WE_M6_AVG"></td>
+                        </tr>
+                        <tr>
+                            <td colspan="3" class="footer-label">Average Attendance Each Month</td>
+                            <td id="WE_MONTHLY_AVG"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </td>
+        </tr>
+    </table>
 
-        <table style="width: 100%; border-collapse: collapse;">
-            <tr>
-                <!-- Midweek Table Column -->
-                <td style="width: 49.5%; vertical-align: top; border: none; padding: 0;">
-                    <table class="attendance-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 25%;">Service Year</th>
-                                <th style="width: 25%;">Number of Meetings</th>
-                                <th style="width: 25%;">Total Attendance</th>
-                                <th style="width: 25%;">Average Attendance Each Week</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td class="text-left">{{MW_MONTH_1}}</td>
-                                <td>{{MW_M1_MEETINGS}}</td>
-                                <td>{{MW_M1_ATTENDANCE}}</td>
-                                <td>{{MW_M1_AVG}}</td>
-                            </tr>
-                            <tr>
-                                <td class="text-left">{{MW_MONTH_2}}</td>
-                                <td>{{MW_M2_MEETINGS}}</td>
-                                <td>{{MW_M2_ATTENDANCE}}</td>
-                                <td>{{MW_M2_AVG}}</td>
-                            </tr>
-                            <tr>
-                                <td class="text-left">{{MW_MONTH_3}}</td>
-                                <td>{{MW_M3_MEETINGS}}</td>
-                                <td>{{MW_M3_ATTENDANCE}}</td>
-                                <td>{{MW_M3_AVG}}</td>
-                            </tr>
-                            <tr>
-                                <td class="text-left">{{MW_MONTH_4}}</td>
-                                <td>{{MW_M4_MEETINGS}}</td>
-                                <td>{{MW_M4_ATTENDANCE}}</td>
-                                <td>{{MW_M4_AVG}}</td>
-                            </tr>
-                            <tr>
-                                <td class="text-left">{{MW_MONTH_5}}</td>
-                                <td>{{MW_M5_MEETINGS}}</td>
-                                <td>{{MW_M5_ATTENDANCE}}</td>
-                                <td>{{MW_M5_AVG}}</td>
-                            </tr>
-                            <tr>
-                                <td class="text-left">{{MW_MONTH_6}}</td>
-                                <td>{{MW_M6_MEETINGS}}</td>
-                                <td>{{MW_M6_ATTENDANCE}}</td>
-                                <td>{{MW_M6_AVG}}</td>
-                            </tr>
-                            <tr>
-                                <td colspan="3" class="footer-label">Average Attendance Each Month</td>
-                                <td>{{MW_MONTHLY_AVG}}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </td>
-
-                <td style="width: 1%; border: none;"></td>
-
-                <!-- Weekend Table Column -->
-                <td style="width: 49.5%; vertical-align: top; border: none; padding: 0;">
-                    <table class="attendance-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 25%;">Service Year</th>
-                                <th style="width: 25%;">Number of Meetings</th>
-                                <th style="width: 25%;">Total Attendance</th>
-                                <th style="width: 25%;">Average Attendance Each Week</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td class="text-left">{{WE_MONTH_1}}</td>
-                                <td>{{WE_M1_MEETINGS}}</td>
-                                <td>{{WE_M1_ATTENDANCE}}</td>
-                                <td>{{WE_M1_AVG}}</td>
-                            </tr>
-                            <tr>
-                                <td class="text-left">{{WE_MONTH_2}}</td>
-                                <td>{{WE_M2_MEETINGS}}</td>
-                                <td>{{WE_M2_ATTENDANCE}}</td>
-                                <td>{{WE_M2_AVG}}</td>
-                            </tr>
-                            <tr>
-                                <td class="text-left">{{WE_MONTH_3}}</td>
-                                <td>{{WE_M3_MEETINGS}}</td>
-                                <td>{{WE_M3_ATTENDANCE}}</td>
-                                <td>{{WE_M3_AVG}}</td>
-                            </tr>
-                            <tr>
-                                <td class="text-left">{{WE_MONTH_4}}</td>
-                                <td>{{WE_M4_MEETINGS}}</td>
-                                <td>{{WE_M4_ATTENDANCE}}</td>
-                                <td>{{WE_M4_AVG}}</td>
-                            </tr>
-                            <tr>
-                                <td class="text-left">{{WE_MONTH_5}}</td>
-                                <td>{{WE_M5_MEETINGS}}</td>
-                                <td>{{WE_M5_ATTENDANCE}}</td>
-                                <td>{{WE_M5_AVG}}</td>
-                            </tr>
-                            <tr>
-                                <td class="text-left">{{WE_MONTH_6}}</td>
-                                <td>{{WE_M6_MEETINGS}}</td>
-                                <td>{{WE_M6_ATTENDANCE}}</td>
-                                <td>{{WE_M6_AVG}}</td>
-                            </tr>
-                            <tr>
-                                <td colspan="3" class="footer-label">Average Attendance Each Month</td>
-                                <td>{{WE_MONTHLY_AVG}}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </td>
-            </tr>
-        </table>
-
-        <!-- Percentage Footnotes -->
-        <table class="percentage-row">
-            <tr>
-                <td class="label" style="width: 38%;">Percentage of Increase Over Previous 6 Month</td>
-                <td class="value" style="width: 11.5%;">{{MW_PERCENT_INCREASE}}</td>
-                <td class="label" style="width: 38.5%;">Percentage of Increase Over Previous 6 Month</td>
-                <td class="value" style="width: 12%;">{{WE_PERCENT_INCREASE}}</td>
-            </tr>
-        </table>
+    <!-- Percentage Footnotes -->
+    <table class="percentage-row">
+        <tr>
+            <td class="label" style="width: 38%;">Percentage of Increase Over Previous 6 Month</td>
+            <td class="value" style="width: 11.5%;" id="MW_PERCENT_INCREASE"></td>
+            <td class="label" style="width: 38.5%;">Percentage of Increase Over Previous 6 Month</td>
+            <td class="value" style="width: 12%;" id="WE_PERCENT_INCREASE"></td>
+        </tr>
+    </table>
+</div>
     </div>
 
 </div>
+
+<script src="/static/js/indexeddb.js"></script>
+<script>
+
+   
+
+window.loadCOReport=async function(){
+    try{
+        const period=await window.getSixMonthReportingPeriod();
+        if(!period||!period.sixMonths?.length){
+            console.warn("⚠️ CO Report reporting period unavailable");
+            return;
+        }
+
+        const db=await openIndexedDB();
+        const records=await new Promise((resolve,reject)=>{
+            const req=db.transaction("RECORDS","readonly")
+                .objectStore("RECORDS").getAll();
+            req.onsuccess=()=>resolve(req.result||[]);
+            req.onerror=()=>reject(req.error);
+        });
+        db.close();
+
+        const reported=r=>{
+            const m=String(r.MINISTRY??"").trim();
+            return m==="1"||m==="?";
+        };
+
+        const isAux=r=>{
+            const v=String(r.AUX??"").trim();
+            return v==="?"||v==="1";
+        };
+
+        const isRP=r=>{
+            return String(r.REMARKS??"").toUpperCase().includes("RP");
+        };
+
+        const num=v=>{
+            const n=Number(v);
+            return Number.isFinite(n)?n:0;
+        };
+
+        const monthly=period.sixMonths.map(month=>{
+            const number=Number(month.NUMBER);
+            const rows=records.filter(r=>Number(r.NUMBER)===number);
+
+            const publishers=rows.filter(r=>
+                reported(r)&&
+                !isAux(r)&&
+                !isRP(r)
+            );
+
+            const auxiliary=rows.filter(r=>
+                reported(r)&&
+                isAux(r)
+            );
+
+            const regular=rows.filter(r=>
+                reported(r)&&
+                isRP(r)
+            );
+
+            return{
+                NUMBER:number,
+                MONTH:month.MONTH_||"",
+                pubReporting:publishers.length,
+                pubBS:publishers.reduce((s,r)=>s+num(r.BS),0),
+                auxReporting:auxiliary.length,
+                auxBS:auxiliary.reduce((s,r)=>s+num(r.BS),0),
+                auxHours:auxiliary.reduce((s,r)=>s+num(r.HRS),0),
+                rpReporting:regular.length,
+                rpBS:regular.reduce((s,r)=>s+num(r.BS),0),
+                rpHours:regular.reduce((s,r)=>s+num(r.HRS),0)
+            };
+        });
+
+        const fields=[
+            "pubReporting","pubBS",
+            "auxReporting","auxBS","auxHours",
+            "rpReporting","rpBS","rpHours"
+        ];
+
+        const totals={};
+        fields.forEach(f=>{
+            totals[f]=monthly.reduce((s,r)=>s+num(r[f]),0);
+        });
+
+        const averages={};
+        fields.forEach(f=>{
+            averages[f]=monthly.length
+                ?Math.round(totals[f]/monthly.length)
+                :"";
+        });
+
+        const perPerson={
+            pubBS:totals.pubReporting>0
+                ?Math.round(totals.pubBS/totals.pubReporting)
+                :"",
+            auxBS:totals.auxReporting>0
+                ?Math.round(totals.auxBS/totals.auxReporting)
+                :"",
+            auxHours:totals.auxReporting>0
+                ?Math.round(totals.auxHours/totals.auxReporting)
+                :"",
+            rpBS:totals.rpReporting>0
+                ?Math.round(totals.rpBS/totals.rpReporting)
+                :"",
+            rpHours:totals.rpReporting>0
+                ?Math.round(totals.rpHours/totals.rpReporting)
+                :""
+        };
+
+        const set=(id,value)=>{
+            const el=document.getElementById(id);
+            if(el)el.textContent=value??"";
+        };
+
+        monthly.forEach((r,i)=>{
+            const n=i+1;
+            set(`MONTH_${n}`,r.MONTH);
+            set(`M${n}_PUB_REP`,r.pubReporting);
+            set(`M${n}_PUB_BS`,r.pubBS);
+            set(`M${n}_AUX_REP`,r.auxReporting);
+            set(`M${n}_AUX_BS`,r.auxBS);
+            set(`M${n}_AUX_HRS`,r.auxHours);
+            set(`M${n}_REG_REP`,r.rpReporting);
+            set(`M${n}_REG_BS`,r.rpBS);
+            set(`M${n}_REG_HRS`,r.rpHours);
+        });
+
+        set("TOTAL_PUB_REP",totals.pubReporting);
+        set("TOTAL_PUB_BS",totals.pubBS);
+        set("TOTAL_AUX_REP",totals.auxReporting);
+        set("TOTAL_AUX_BS",totals.auxBS);
+        set("TOTAL_AUX_HRS",totals.auxHours);
+        set("TOTAL_REG_REP",totals.rpReporting);
+        set("TOTAL_REG_BS",totals.rpBS);
+        set("TOTAL_REG_HRS",totals.rpHours);
+
+        set("AVG_PUB_REP",averages.pubReporting);
+        set("AVG_PUB_BS",averages.pubBS);
+        set("AVG_AUX_REP",averages.auxReporting);
+        set("AVG_AUX_BS",averages.auxBS);
+        set("AVG_AUX_HRS",averages.auxHours);
+        set("AVG_REG_REP",averages.rpReporting);
+        set("AVG_REG_BS",averages.rpBS);
+        set("AVG_REG_HRS",averages.rpHours);
+
+        set("PPA_PUB_BS",perPerson.pubBS);
+        set("PPA_AUX_BS",perPerson.auxBS);
+        set("PPA_AUX_HRS",perPerson.auxHours);
+        set("PPA_REG_BS",perPerson.rpBS);
+        set("PPA_REG_HRS",perPerson.rpHours);
+
+        console.log("✅ CO Report loaded");
+        console.log("📅 Reporting months:",monthly.map(r=>`${r.NUMBER} ${r.MONTH}`).join(", "));
+        console.table(monthly);
+        console.log("📊 TOTALS:",totals);
+        console.log("📊 AVERAGES:",averages);
+        console.log("📊 PER PERSON AVERAGE:",perPerson);
+
+
+        console.log("📊 TOTALS:",totals);
+        console.log("📊 AVERAGES:",averages);
+        console.log("📊 PER PERSON AVERAGE:",perPerson);
+
+
+
+
+        const dbAttendance=await openIndexedDB();
+
+        const attendanceRecords=await new Promise((resolve,reject)=>{
+            const req=dbAttendance
+                .transaction("MonthlyRecords","readonly")
+                .objectStore("MonthlyRecords")
+                .getAll();
+
+            req.onsuccess=()=>resolve(req.result||[]);
+            req.onerror=()=>reject(req.error);
+        });
+
+        dbAttendance.close();
+
+        console.log("📅 MonthlyRecords for attendance:",attendanceRecords);
+
+        // ===== 6-MONTH MEETING ATTENDANCE =====
+        const attendanceMonthly=period.sixMonths.map(month=>{
+            const number=Number(month.NUMBER);
+
+            const record=attendanceRecords.find(
+                r=>Number(r.NUMBER)===number
+            )||{};
+
+            const mwMeetings=Number(record.NoMtgs1||0);
+            const mwAttendance=Number(record.AttendcMidweekTotal||0);
+
+            const weMeetings=Number(record.NoMtgs2||0);
+            const weAttendance=Number(record.AttendcPublickTotal||0);
+
+            console.log(`📊 Attendance NUMBER ${number}:`,{
+                month:month.MONTH_,
+                NoMtgs1:record.NoMtgs1,
+                AttendcMidweekTotal:record.AttendcMidweekTotal,
+                NoMtgs2:record.NoMtgs2,
+                AttendcPublickTotal:record.AttendcPublickTotal
+            });
+
+            return{
+                NUMBER:number,
+                MONTH:month.MONTH_||"",
+                mwMeetings,
+                mwAttendance,
+                mwAverage:mwMeetings>0&&mwAttendance>0
+                    ?Math.round(mwAttendance/mwMeetings)
+                    :"",
+                weMeetings,
+                weAttendance,
+                weAverage:weMeetings>0&&weAttendance>0
+                    ?Math.round(weAttendance/weMeetings)
+                    :""
+            };
+        });
+
+        attendanceMonthly.forEach((r,i)=>{
+            const n=i+1;
+            set("MW_SERVICE_YEAR",period.lastMonth?.ServiceYear||""); 
+            set("WE_SERVICE_YEAR",period.lastMonth?.ServiceYear||"");   
+            set(`MW_MONTH_${n}`,r.MONTH);
+            set(`MW_M${n}_MEETINGS`,r.mwMeetings);
+            set(`MW_M${n}_ATTENDANCE`,r.mwAttendance);
+            set(`MW_M${n}_AVG`,r.mwAverage);
+
+            set(`WE_MONTH_${n}`,r.MONTH);
+            set(`WE_M${n}_MEETINGS`,r.weMeetings);
+            set(`WE_M${n}_ATTENDANCE`,r.weAttendance);
+            set(`WE_M${n}_AVG`,r.weAverage);
+        });
+
+        const mwTotalMeetings=attendanceMonthly.reduce(
+            (sum,r)=>sum+r.mwMeetings,0
+        );
+
+        const mwTotalAttendance=attendanceMonthly.reduce(
+            (sum,r)=>sum+r.mwAttendance,0
+        );
+
+        const weTotalMeetings=attendanceMonthly.reduce(
+            (sum,r)=>sum+r.weMeetings,0
+        );
+
+        const weTotalAttendance=attendanceMonthly.reduce(
+            (sum,r)=>sum+r.weAttendance,0
+        );
+
+        set(
+            "MW_MONTHLY_AVG",
+            mwTotalMeetings>0
+                ?Math.round(mwTotalAttendance/mwTotalMeetings)
+                :""
+        );
+
+        set(
+            "WE_MONTHLY_AVG",
+            weTotalMeetings>0
+                ?Math.round(weTotalAttendance/weTotalMeetings)
+                :""
+        );
+
+        console.log("📊 FINAL 6-MONTH ATTENDANCE:",attendanceMonthly);
+
+
+
+        return monthly;
+
+    
+
+
+    }catch(err){
+        console.error("❌ loadCOReport error:",err);
+        return [];
+    }
+};
+
+window.addEventListener("DOMContentLoaded",()=>{
+    window.loadCOReport();
+});
+</script>
+
 
 </body>
 </html>

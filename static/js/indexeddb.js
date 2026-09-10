@@ -1078,3 +1078,88 @@ window.executeAiQueryPlan = async function(queryPlan) {
         db.close();
     }
 }
+
+
+window.getSixMonthReportingPeriod=async function(){
+    const db=await openIndexedDB();
+    const months=await new Promise((resolve,reject)=>{
+        const req=db.transaction("MonthlyRecords","readonly").objectStore("MonthlyRecords").getAll();
+        req.onsuccess=()=>resolve(req.result||[]);
+        req.onerror=()=>reject(req.error);
+    });
+    db.close();
+
+    months.sort((a,b)=>Number(a.NUMBER)-Number(b.NUMBER));
+
+    // Current service month runs from the 21st to the 20th
+    const today=new Date();
+    const day=today.getDate();
+    const serviceDate=new Date(
+        today.getFullYear(),
+        today.getMonth()-(day<21?1:0),
+        1
+    );
+    const baseDate=new Date(2025,8,1); // Sep 2025 = NUMBER 194
+    const monthDiff=
+        (serviceDate.getFullYear()-baseDate.getFullYear())*12+
+        (serviceDate.getMonth()-baseDate.getMonth());
+    const ActualNumber=194+monthDiff;
+
+    const actualMonth=months.find(r=>Number(r.NUMBER)===ActualNumber)||null;
+
+    const latestClosed=["1","TRUE","YES"].includes(
+        String(actualMonth?.Closed??"").trim().toUpperCase()
+    );
+
+    const activeNumber=ActualNumber;
+    const activeMonth=actualMonth;
+
+    const lastNumber=latestClosed?ActualNumber:ActualNumber-1;
+    const firstNumber=lastNumber-5;
+
+    const firstMonth=months.find(r=>Number(r.NUMBER)===firstNumber);
+    const lastMonth=months.find(r=>Number(r.NUMBER)===lastNumber);
+
+    const sixMonths=months
+        .filter(r=>{
+            const n=Number(r.NUMBER);
+            return n>=firstNumber&&n<=lastNumber;
+        })
+        .sort((a,b)=>Number(a.NUMBER)-Number(b.NUMBER));
+
+    console.log("🔎 CHECK REPORTING PERIOD",{
+        ActualNumber,
+        ActualMonth:actualMonth?.MONTH_||"(not entered yet)",
+        LatestClosed:latestClosed,
+        ActiveNumber:activeNumber,
+        ActiveMonth:activeMonth?.MONTH_||"(not entered yet)",
+        FirstNumber:firstNumber,
+        FirstMonth:firstMonth?.MONTH_,
+        LastNumber:lastNumber,
+        LastMonth:lastMonth?.MONTH_,
+        ServiceYear:lastMonth?.ServiceYear,
+        SixMonths:sixMonths
+    });
+
+    const periodLabel=document.getElementById("records-period-label");
+    const serviceYearLabel=document.getElementById("records-service-year-label");
+
+    if(periodLabel&&firstMonth&&lastMonth){
+        periodLabel.textContent=`Records from ${firstMonth.MONTH_} to ${lastMonth.MONTH_}:`;
+    }
+
+    if(serviceYearLabel&&lastMonth){
+        serviceYearLabel.textContent=`( ${lastMonth.ServiceYear} Service Year )`;
+    }
+
+    return{
+        activeNumber,
+        activeMonth,
+        isClosed:latestClosed,
+        firstNumber,
+        firstMonth:firstMonth||null,
+        lastNumber,
+        lastMonth:lastMonth||null,
+        sixMonths
+    };
+};
