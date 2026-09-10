@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <title>Report Summary and Meeting Attendance Record</title>
     <style>
+        /* Import Professional Sans-Serif Font */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
         /* Page and Print Setup */
         @page {
             size: A4 portrait;
@@ -18,9 +21,9 @@
             margin: 0;
             padding: 0;
             background-color: #f0f0f0;
-            font-family: Arial, Helvetica, sans-serif;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
             -webkit-print-color-adjust: exact;
-            color: #000;
+            color: #1e293b;
         }
 
         .page {
@@ -39,20 +42,20 @@
             top: 20px;
             right: 20px;
             padding: 10px 18px;
-            background-color: #0066cc;
+            background-color: #0284c7;
             color: #ffffff;
-            font-weight: bold;
+            font-weight: 600;
             font-size: 14px;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
             z-index: 9999;
             transition: background-color 0.2s ease;
         }
 
         .download-btn:hover {
-            background-color: #004999;
+            background-color: #0369a1;
         }
 
         @media print {
@@ -71,36 +74,43 @@
             }
         }
 
-        /* Main Section Titles (Kept same size, reduced weight) */
+        /* Main Section Titles */
         h1.section-title {
-            font-family: Georgia, "Times New Roman", Times, serif;
-            font-size: 15pt;
+            font-size: 13pt;
             letter-spacing: 0.5px;
             text-align: center;
             text-transform: uppercase;
             margin: 0 0 12px 0;
-            font-weight: bold; /* Normal bold weight */
+            font-weight: 700;
+            color: #0f172a;
         }
 
         /* Table Base Styling */
         table {
             border-collapse: collapse;
             width: 100%;
-            font-size: 9pt;
+            font-size: 8.5pt;
             table-layout: fixed;
         }
 
         th, td {
-            border: 1px solid #000;
-            text-align: center;
-            padding: 4px 2px;
+            border: 1px solid #94a3b8;
+            text-align: right; /* Right align numbers by default for cleaner readability */
+            padding: 5px 4px;
             vertical-align: middle;
             word-break: break-word;
             line-height: 1.2;
+            font-variant-numeric: tabular-nums; /* Monospaced digit width for neat alignment */
+        }
+
+        th {
+            background-color: #f1f5f9;
+            color: #334155;
+            text-align: center;
         }
 
         .bold {
-            font-weight: bold;
+            font-weight: 600;
         }
 
         .text-left {
@@ -108,36 +118,44 @@
             padding-left: 6px;
         }
 
-        /* Top Table Header Fixes */
+        /* Summary Table Styling */
         .summary-table {
-            margin-bottom: 30px;
+            margin-bottom: 24px;
         }
 
         .summary-table th {
-            font-size: 8pt;
-            font-weight: bold;
+            font-size: 7.5pt;
+            font-weight: 600;
             text-transform: uppercase;
-            padding: 5px 2px;
+            letter-spacing: 0.3px;
         }
 
         .summary-table .main-header-month {
-            font-family: Georgia, "Times New Roman", Times, serif;
-            font-size: 15pt;
-            font-weight: bold; /* Normal bold weight */
+            font-size: 11pt;
+            font-weight: 700;
             letter-spacing: 0.5px;
             padding: 4px;
         }
 
         .summary-table td {
             height: 24px;
-            font-size: 8.5pt;
         }
 
         .summary-table .row-header {
             font-size: 8.5pt;
         }
 
-        /* Bottom Section Title Fixes */
+        /* Highlight Totals / Averages */
+        .summary-table tr:nth-last-child(-n+3) {
+            background-color: #f8fafc;
+            font-weight: 600;
+        }
+
+        .summary-table tr:nth-last-child(3) td {
+            border-top: 2px solid #64748b; /* Stronger top border for Total row */
+        }
+
+        /* Attendance Section Styling */
         .attendance-section {
             margin-top: 15px;
         }
@@ -149,37 +167,42 @@
 
         .meeting-titles td {
             border: none;
-            font-family: Georgia, "Times New Roman", Times, serif;
-            font-size: 13pt;
-            font-weight: bold; /* Normal bold weight */
+            font-size: 11pt;
+            font-weight: 700;
             text-align: left;
             padding: 0;
+            color: #1e293b;
         }
 
         .attendance-table th {
-            font-size: 8pt;
-            font-weight: bold;
+            font-size: 7.5pt;
+            font-weight: 600;
             line-height: 1.2;
             padding: 4px 3px;
         }
 
         .attendance-table td {
             height: 22px;
-            font-size: 8.5pt;
         }
 
         .attendance-table .footer-label {
-            font-size: 8.5pt;
-            font-weight: bold;
+            font-size: 8pt;
+            font-weight: 600;
             text-align: right;
             padding-right: 6px;
+            background-color: #f8fafc;
+        }
+
+        .attendance-table tr:last-child td {
+            font-weight: 600;
+            border-top: 2px solid #64748b;
         }
 
         .percentage-row {
-            margin-top: 6px;
+            margin-top: 8px;
             width: 100%;
             font-size: 8.5pt;
-            color: #333;
+            color: #334155;
         }
 
         .percentage-row td {
@@ -194,8 +217,9 @@
 
         .percentage-row .value {
             text-align: left;
-            color: #000;
-            font-weight: bold;
+            color: #0f172a;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
         }
     </style>
 </head>
@@ -349,7 +373,7 @@
                 <table class="attendance-table">
                     <thead>
                         <tr>
-                             <th style="width:25%;">Service Year<br><span id="MW_SERVICE_YEAR"></span></th>
+                            <th style="width:25%;">Service Year<br><span id="MW_SERVICE_YEAR"></span></th>
                             <th style="width: 25%;">Number of Meetings</th>
                             <th style="width: 25%;">Total Attendance</th>
                             <th style="width: 25%;">Average Attendance Each Week</th>
@@ -407,7 +431,8 @@
                 <table class="attendance-table">
                     <thead>
                         <tr>
-                            <th style="width:25%;">Service Year<br><span id="WE_SERVICE_YEAR"></span></th>                            <th style="width: 25%;">Number of Meetings</th>
+                            <th style="width:25%;">Service Year<br><span id="WE_SERVICE_YEAR"></span></th>
+                            <th style="width: 25%;">Number of Meetings</th>
                             <th style="width: 25%;">Total Attendance</th>
                             <th style="width: 25%;">Average Attendance Each Week</th>
                         </tr>
@@ -469,15 +494,11 @@
         </tr>
     </table>
 </div>
-    </div>
 
 </div>
 
 <script src="/static/js/indexeddb.js"></script>
 <script>
-
-   
-
 window.loadCOReport=async function(){
     try{
         const period=await window.getSixMonthReportingPeriod();
@@ -626,21 +647,6 @@ window.loadCOReport=async function(){
         set("PPA_REG_BS",perPerson.rpBS);
         set("PPA_REG_HRS",perPerson.rpHours);
 
-        console.log("✅ CO Report loaded");
-        console.log("📅 Reporting months:",monthly.map(r=>`${r.NUMBER} ${r.MONTH}`).join(", "));
-        console.table(monthly);
-        console.log("📊 TOTALS:",totals);
-        console.log("📊 AVERAGES:",averages);
-        console.log("📊 PER PERSON AVERAGE:",perPerson);
-
-
-        console.log("📊 TOTALS:",totals);
-        console.log("📊 AVERAGES:",averages);
-        console.log("📊 PER PERSON AVERAGE:",perPerson);
-
-
-
-
         const dbAttendance=await openIndexedDB();
 
         const attendanceRecords=await new Promise((resolve,reject)=>{
@@ -655,9 +661,6 @@ window.loadCOReport=async function(){
 
         dbAttendance.close();
 
-        console.log("📅 MonthlyRecords for attendance:",attendanceRecords);
-
-        // ===== 6-MONTH MEETING ATTENDANCE =====
         const attendanceMonthly=period.sixMonths.map(month=>{
             const number=Number(month.NUMBER);
 
@@ -670,14 +673,6 @@ window.loadCOReport=async function(){
 
             const weMeetings=Number(record.NoMtgs2||0);
             const weAttendance=Number(record.AttendcPublickTotal||0);
-
-            console.log(`📊 Attendance NUMBER ${number}:`,{
-                month:month.MONTH_,
-                NoMtgs1:record.NoMtgs1,
-                AttendcMidweekTotal:record.AttendcMidweekTotal,
-                NoMtgs2:record.NoMtgs2,
-                AttendcPublickTotal:record.AttendcPublickTotal
-            });
 
             return{
                 NUMBER:number,
@@ -710,45 +705,15 @@ window.loadCOReport=async function(){
             set(`WE_M${n}_AVG`,r.weAverage);
         });
 
-        const mwTotalMeetings=attendanceMonthly.reduce(
-            (sum,r)=>sum+r.mwMeetings,0
-        );
+        const mwTotalMeetings=attendanceMonthly.reduce((sum,r)=>sum+r.mwMeetings,0);
+        const mwTotalAttendance=attendanceMonthly.reduce((sum,r)=>sum+r.mwAttendance,0);
+        const weTotalMeetings=attendanceMonthly.reduce((sum,r)=>sum+r.weMeetings,0);
+        const weTotalAttendance=attendanceMonthly.reduce((sum,r)=>sum+r.weAttendance,0);
 
-        const mwTotalAttendance=attendanceMonthly.reduce(
-            (sum,r)=>sum+r.mwAttendance,0
-        );
-
-        const weTotalMeetings=attendanceMonthly.reduce(
-            (sum,r)=>sum+r.weMeetings,0
-        );
-
-        const weTotalAttendance=attendanceMonthly.reduce(
-            (sum,r)=>sum+r.weAttendance,0
-        );
-
-        set(
-            "MW_MONTHLY_AVG",
-            mwTotalMeetings>0
-                ?Math.round(mwTotalAttendance/mwTotalMeetings)
-                :""
-        );
-
-        set(
-            "WE_MONTHLY_AVG",
-            weTotalMeetings>0
-                ?Math.round(weTotalAttendance/weTotalMeetings)
-                :""
-        );
-
-        console.log("📊 FINAL 6-MONTH ATTENDANCE:",attendanceMonthly);
-
-
+        set("MW_MONTHLY_AVG", mwTotalMeetings>0 ? Math.round(mwTotalAttendance/mwTotalMeetings) : "");
+        set("WE_MONTHLY_AVG", weTotalMeetings>0 ? Math.round(weTotalAttendance/weTotalMeetings) : "");
 
         return monthly;
-
-    
-
-
     }catch(err){
         console.error("❌ loadCOReport error:",err);
         return [];
@@ -759,7 +724,5 @@ window.addEventListener("DOMContentLoaded",()=>{
     window.loadCOReport();
 });
 </script>
-
-
 </body>
 </html>
