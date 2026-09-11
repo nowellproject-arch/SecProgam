@@ -169,22 +169,22 @@
       </div>
 
       <div class="form-group">
-        <label for="password">Create Passcode</label>
-       <input type="password" id="passcode" name="passcode" required>
+        <label for="passcode">Create Passcode</label>
+        <input type="password" id="passcode" name="passcode" required>
       </div>
 
       <div class="form-group">
-        <label for="confirm-password">Confirm Passcode</label>
+        <label for="confirmPassword">Confirm Passcode</label>
         <input type="password" id="confirmPassword" name="confirmPassword" required>
       </div>
 
       <div class="form-group">
-          <label for="crbFile">Import Backup File (.crb)</label>
-          <input type="file" id="crbFile" name="crbFile" accept=".crb,.json" required>
-          <small style="color: #666; display: block; margin-top: 5px;">
-            Select your exported .crb backup file.
-          </small>
-        </div>
+        <label for="crbFile">Import Backup File (.crb)</label>
+        <input type="file" id="crbFile" name="crbFile" accept=".crb,.json">
+        <small style="color: #666; display: block; margin-top: 5px;">
+          Select your exported .crb backup file.
+        </small>
+      </div>
 
       <div id="statusMsg" class="status-msg"></div>
 
@@ -201,190 +201,338 @@
   <div class="bottom-section">
     Do you already have an account? <a href="login.html">Log In</a>
   </div>
-<script src="/static/js/indexeddb.js"></script>
+
+  <script src="/static/js/indexeddb.js"></script>
   <script>
-   document.addEventListener('DOMContentLoaded', () => {
-    const createAccountForm = document.getElementById('createAccountForm');
-    const passwordInput = document.getElementById('passcode');          
-    const confirmPasswordInput = document.getElementById('confirmPassword'); 
-    const fileInput = document.getElementById('csvFiles');
-    const submitBtn = document.getElementById('submitBtn');
-    const statusMsg = document.getElementById('statusMsg');
+    document.addEventListener('DOMContentLoaded', () => {
+      const createAccountForm = document.getElementById('createAccountForm');
+      const passwordInput = document.getElementById('passcode');
+      const confirmPasswordInput = document.getElementById('confirmPassword');
+      const submitBtn = document.getElementById('submitBtn');
+      const statusMsg = document.getElementById('statusMsg');
+      let passcodeUnique = false;
+      let checkingPasscode = false;
+      let checkTimer = null;
 
-    // ==========================================
-    // 1. CREATE ACCOUNT & CSV IMPORT SUBMISSION
-    // ==========================================
-   if (createAccountForm) {
-    createAccountForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
+      // 1. CHECK PASSCODE AVAILABILITY
+      if (passwordInput && submitBtn) {
+        submitBtn.disabled = true;
 
-        const username = document.getElementById('username').value.trim();
-        const congregation = document.getElementById('congregation').value.trim();
-        const passcode = passwordInput.value.trim();          
-        const confirmPassword = confirmPasswordInput.value.trim(); 
-        const fileInput = document.getElementById('crbFile');
+        const checkPasscode = async () => {
+          const passcode = passwordInput.value.trim();
+          passcodeUnique = false;
+          submitBtn.disabled = true;
 
-        statusMsg.textContent = '';
-        statusMsg.className = 'status-msg';
+          if (!passcode) {
+            statusMsg.textContent = '';
+            statusMsg.className = 'status-msg';
+            return;
+          }
 
-        // Check if passcodes match
-        if (passcode !== confirmPassword) {
+          checkingPasscode = true;
+          statusMsg.textContent = "Checking code...";
+          statusMsg.className = "status-msg";
+
+          try {
+            const response = await fetch(`/api/check-passcode?passcode=${encodeURIComponent(passcode)}`);
+            const result = await response.json();
+
+            if (!response.ok) {
+              throw new Error(result.detail || "Unable to check code.");
+            }
+
+            if (result.available) {
+              passcodeUnique = true;
+              statusMsg.textContent = "Code is available.";
+              statusMsg.className = "status-msg status-success";
+              submitBtn.disabled = false;
+            } else {
+              passcodeUnique = false;
+              statusMsg.textContent = result.message || "This code already exists. Please use Login.";
+              statusMsg.className = "status-msg status-error";
+              submitBtn.disabled = true;
+            }
+          } catch (err) {
+            passcodeUnique = false;
+            submitBtn.disabled = true;
+            statusMsg.textContent = "Error checking code: " + err.message;
+            statusMsg.className = "status-msg status-error";
+          } finally {
+            checkingPasscode = false;
+          }
+        };
+
+        passwordInput.addEventListener('input', () => {
+          passcodeUnique = false;
+          submitBtn.disabled = true;
+          clearTimeout(checkTimer);
+
+          if (!passwordInput.value.trim()) {
+            statusMsg.textContent = '';
+            statusMsg.className = 'status-msg';
+            return;
+          }
+
+          checkTimer = setTimeout(checkPasscode, 400);
+        });
+
+        passwordInput.addEventListener('blur', () => {
+          clearTimeout(checkTimer);
+          checkPasscode();
+        });
+      }
+
+      // 2. CREATE ACCOUNT SUBMISSION
+      if (createAccountForm) {
+        createAccountForm.addEventListener('submit', async function (e) {
+          e.preventDefault();
+
+          const username = document.getElementById('username').value.trim();
+          const congregation = document.getElementById('congregation').value.trim();
+          const passcode = passwordInput.value.trim();
+          const confirmPassword = confirmPasswordInput.value.trim();
+          const fileInput = document.getElementById('crbFile');
+
+          statusMsg.textContent = '';
+          statusMsg.className = 'status-msg';
+
+          if (!passcodeUnique) {
+            statusMsg.textContent = "This code is not available. Please use another code.";
+            statusMsg.className = "status-msg status-error";
+            submitBtn.disabled = true;
+            return;
+          }
+
+          if (passcode !== confirmPassword) {
             statusMsg.textContent = "Passcodes do not match.";
             statusMsg.className = "status-msg status-error";
             return;
-        }
+          }
 
-        // Validate that exactly 1 .crb file is selected
-        if (!fileInput.files || fileInput.files.length !== 1) {
-            statusMsg.textContent = "Error: Please select a valid .crb backup file.";
-            statusMsg.className = "status-msg status-error";
-            return;
-        }
+          submitBtn.disabled = true;
+          submitBtn.textContent = "PROCESSING...";
 
-        const formData = new FormData();
-        formData.append('passcode', passcode);
-        formData.append('username', username);
-        formData.append('congregation', congregation);
-        formData.append('file', fileInput.files[0]); // Attach single .crb file
+          try {
+            let result = {};
 
-        submitBtn.disabled = true;
-        submitBtn.textContent = "PROCESSING...";
+            statusMsg.textContent = fileInput.files && fileInput.files.length > 0
+              ? "Importing backup..."
+              : "Creating congregation database...";
 
-        try {
+            const formData = new FormData();
+            formData.append("passcode", passcode);
+            formData.append("username", username);
+            formData.append("congregation", congregation);
+
+            if (fileInput.files && fileInput.files.length > 0) {
+              if (fileInput.files.length !== 1) {
+                throw new Error("Please select only one .crb backup file.");
+              }
+
+              const file = fileInput.files[0];
+
+              if (!file.name.toLowerCase().endsWith(".crb")) {
+                throw new Error("Please select a valid .crb backup file.");
+              }
+
+              formData.append("file", file);
+            }
+
             const response = await fetch('/api/import-crb', {
-                method: 'POST',
-                body: formData
+              method: 'POST',
+              body: formData
             });
 
-            const result = await response.json().catch(() => ({}));
+            result = await response.json().catch(() => ({}));
 
-            if (response.ok) {
-                // Save credentials locally
-                localStorage.setItem('user_passcode', passcode);
-                localStorage.setItem('username', username);
-
-                // --- SAVE CRB DATA TO LOCAL INDEXEDDB ---
-                if (result.data) {
-                    statusMsg.textContent = "Saving records to local storage...";
-                    // Wipes existing IndexedDB tables and writes the new payload
-                    await saveAllTablesToIndexedDB(result.data);
-                }
-                
-                statusMsg.textContent = result.action === "login" 
-                    ? "Logged in successfully! Loading dashboard..." 
-                    : "Account created successfully! Loading dashboard...";
-                statusMsg.className = "status-msg status-success";
-                
-                setTimeout(() => {
-                    window.location.href = '/';
-                }, 1500);
-            } else {
-                throw new Error(result.detail || result.message || `Server returned status ${response.status}`);
+            if (!response.ok) {
+              throw new Error(
+                result.detail ||
+                result.message ||
+                `Server returned status ${response.status}`
+              );
             }
-        } catch (err) {
+
+            if (result.data) {
+              statusMsg.textContent = "Saving congregation database...";
+              await saveImportedDataToIndexedDB(result.data, passcode);
+            }
+
+            localStorage.setItem('user_passcode', passcode);
+            localStorage.setItem('username', username);
+
+            statusMsg.textContent = "Account created successfully! Loading dashboard...";
+            statusMsg.className = "status-msg status-success";
+
+            setTimeout(() => {
+              window.location.href = '/';
+            }, 1500);
+
+          } catch (err) {
+            console.error("❌ Account creation error:", err);
             statusMsg.textContent = "Error: " + err.message;
             statusMsg.className = "status-msg status-error";
             submitBtn.disabled = false;
             submitBtn.textContent = "CREATE";
-        }
-    });
-}
+          }
+        });
+      }
 
-// --- HELPER FUNCTION: WRITE ALL RETURNED TABLES TO INDEXEDDB ---
-function saveImportedDataToIndexedDB(payloadData, passcode) {
-    return new Promise((resolve, reject) => {
-        const request = indexedDB.open('CongregationDB', 10);
+      // HELPER: WRITE ALL RETURNED TABLES TO INDEXEDDB
+      function saveImportedDataToIndexedDB(payloadData, passcode) {
+        return new Promise((resolve, reject) => {
+          const request = indexedDB.open('CongregationDB', 10);
 
-        request.onupgradeneeded = (event) => {
+          request.onupgradeneeded = (event) => {
             const db = event.target.result;
             if (!db.objectStoreNames.contains('CongInfo')) db.createObjectStore('CongInfo', { keyPath: 'passcode' });
-            if (!db.objectStoreNames.contains('GROUPS')) db.createObjectStore('GROUPS', { keyPath: 'id', autoIncrement: true });
-            if (!db.objectStoreNames.contains('PUBLISHERS')) db.createObjectStore('PUBLISHERS', { keyPath: ['IDPub', 'passcode'] });
-            if (!db.objectStoreNames.contains('MonthlyRecords')) db.createObjectStore('MonthlyRecords', { keyPath: 'ID', autoIncrement: true });
-            if (!db.objectStoreNames.contains('RECORDS')) db.createObjectStore('RECORDS', { keyPath: ['NUMBER','IdPubs','passcode'] });
-        };
+            if (!db.objectStoreNames.contains('GROUPS')) db.createObjectStore('GROUPS', { keyPath: 'Group', autoIncrement: true });
+            if (!db.objectStoreNames.contains('PUBLISHERS')) db.createObjectStore('PUBLISHERS', { keyPath: ['IDPub'] });
+            if (!db.objectStoreNames.contains('MonthlyRecords')) db.createObjectStore('MonthlyRecords', { keyPath: 'NUMBER', autoIncrement: true });
+            if (!db.objectStoreNames.contains('RECORDS')) db.createObjectStore('RECORDS', { keyPath: ['NUMBER', 'IdPubs'] });
+          };
 
-        request.onsuccess = (event) => {
+          request.onsuccess = (event) => {
             const db = event.target.result;
             const stores = ['CongInfo', 'GROUPS', 'PUBLISHERS', 'MonthlyRecords', 'RECORDS'];
             const transaction = db.transaction(stores, 'readwrite');
 
             stores.forEach(storeName => {
-                if (payloadData[storeName] && Array.isArray(payloadData[storeName])) {
-                    const store = transaction.objectStore(storeName);
-                    payloadData[storeName].forEach(item => {
-                        item.passcode = passcode; // Ensure passcode key exists
-                        store.put(item);
-                    });
-                }
+              if (payloadData[storeName] && Array.isArray(payloadData[storeName])) {
+                const store = transaction.objectStore(storeName);
+                payloadData[storeName].forEach(item => {
+                  item.passcode = passcode;
+                  store.put(item);
+                });
+              }
             });
 
             transaction.oncomplete = () => resolve();
             transaction.onerror = (err) => reject(err);
-        };
+          };
 
-        request.onerror = (err) => reject(err);
-    });
-}
+          request.onerror = (err) => reject(err);
+        });
+      }
 
-
-
-    // ==========================================
-    // 2. REAL-TIME PASSCODE MATCHING WIDGET
-    // ==========================================
-    let matchMsg = document.getElementById('passcodeMatchMsg');
-    if (!matchMsg && confirmPasswordInput) {
+      // 3. REAL-TIME PASSCODE MATCHING WIDGET
+      let matchMsg = document.getElementById('passcodeMatchMsg');
+      if (!matchMsg && confirmPasswordInput) {
         matchMsg = document.createElement('div');
         matchMsg.id = 'passcodeMatchMsg';
         matchMsg.style.fontSize = '13px';
         matchMsg.style.marginTop = '5px';
         confirmPasswordInput.insertAdjacentElement('afterend', matchMsg);
-    }
+      }
 
-    function checkPasscodeMatch() {
+      function checkPasscodeMatch() {
         if (!passwordInput || !confirmPasswordInput || !matchMsg) return;
 
         const pwd = passwordInput.value;
         const confirmPwd = confirmPasswordInput.value;
 
         if (confirmPwd === "") {
-            matchMsg.textContent = "";
-            confirmPasswordInput.style.borderColor = "";
-            return;
+          matchMsg.textContent = "";
+          confirmPasswordInput.style.borderColor = "";
+          return;
         }
 
-        // Do not trigger errors while still typing shorter inputs
-        if (confirmPwd.length < pwd.length) {
-            matchMsg.textContent = "";
-            confirmPasswordInput.style.borderColor = "";
-            return;
+        if (pwd.startsWith(confirmPwd) && confirmPwd.length < pwd.length) {
+          matchMsg.textContent = "";
+          confirmPasswordInput.style.borderColor = "";
+          return;
         }
 
-        // Compare equality once lengths match or exceed
         if (pwd !== confirmPwd) {
-            matchMsg.style.color = "#c62828";
-            matchMsg.textContent = "❌ Passcodes do not match.";
-            confirmPasswordInput.style.borderColor = "#c62828";
+          matchMsg.style.color = "#c62828";
+          matchMsg.textContent = "❌ Passcodes do not match.";
+          confirmPasswordInput.style.borderColor = "#c62828";
         } else {
-            matchMsg.style.color = "#2e7d32";
-            matchMsg.textContent = "✅ Passcodes match.";
-            confirmPasswordInput.style.borderColor = "#2e7d32";
+          matchMsg.style.color = "#2e7d32";
+          matchMsg.textContent = "✅ Passcodes match.";
+          confirmPasswordInput.style.borderColor = "#2e7d32";
         }
-    }
+      }
 
-    if (passwordInput && confirmPasswordInput) {
+      if (passwordInput && confirmPasswordInput) {
         passwordInput.addEventListener('input', () => {
-            if (confirmPasswordInput.value !== "") {
-                checkPasscodeMatch();
-            } else {
-                matchMsg.textContent = "";
-                confirmPasswordInput.style.borderColor = "";
-            }
+          if (confirmPasswordInput.value !== "") {
+            checkPasscodeMatch();
+          } else {
+            matchMsg.textContent = "";
+            confirmPasswordInput.style.borderColor = "";
+          }
         });
 
         confirmPasswordInput.addEventListener('input', checkPasscodeMatch);
-    }
-});
+      }
+    });
+
+   async function createBlankIndexedDB(){
+    const request=indexedDB.open("CongregationDB",10);
+
+    request.onupgradeneeded=event=>{
+        const db=event.target.result;
+
+        if(!db.objectStoreNames.contains("CongInfo")){
+            db.createObjectStore("CongInfo",{keyPath:"passcode"});
+        }
+
+        if(!db.objectStoreNames.contains("GROUPS")){
+            db.createObjectStore("GROUPS",{keyPath:"Group"});
+        }
+
+        if(!db.objectStoreNames.contains("PUBLISHERS")){
+            db.createObjectStore("PUBLISHERS",{keyPath:"IDPub"});
+        }
+
+        if(!db.objectStoreNames.contains("MonthlyRecords")){
+            db.createObjectStore("MonthlyRecords",{keyPath:"NUMBER"});
+        }
+
+        if(!db.objectStoreNames.contains("RECORDS")){
+            db.createObjectStore("RECORDS",{keyPath:["NUMBER","IdPubs"]});
+        }
+    };
+
+    const db=await new Promise((resolve,reject)=>{
+        request.onsuccess=()=>resolve(request.result);
+        request.onerror=()=>reject(request.error);
+    });
+
+    const passcode=passwordInput?.value?.trim()||"";
+    const username=document.getElementById("username")?.value?.trim()||"";
+    const congregation=document.getElementById("congregation")?.value?.trim()||"";
+
+    const tx=db.transaction("CongInfo","readwrite");
+
+    tx.objectStore("CongInfo").put({
+        Address:"",
+        CBOE:"",
+        CongNumber:"",
+        Congregation:congregation,
+        Link:" ",
+        Province:"",
+        SEC:"",
+        SO:"",
+        SelectedPubID:"",
+        passcode:passcode,
+        user:username
+    });
+
+    await new Promise((resolve,reject)=>{
+        tx.oncomplete=resolve;
+        tx.onerror=()=>reject(tx.error);
+        tx.onabort=()=>reject(tx.error);
+    });
+
+    db.close();
+
+    console.log("✅ CongregationDB created with all 5 stores");
+}
+
+
+
   </script>
 
 </body>

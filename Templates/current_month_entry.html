@@ -437,7 +437,7 @@
                     </div>
                     <div>
                         <label>Group:</label>
-                        <input type="text" id="pubGroup" value="2" class="form-control text-center" style="border: 1px solid #aaa !important; background: #fff !important;">
+                        <input type="text" id="pubGroup" value="" class="form-control text-center" style="border: 1px solid #aaa !important; background: #fff !important;">
                     </div>
                     <div class="gender-box">
                         <label><input type="checkbox" id="isMale"> M</label>
@@ -842,37 +842,47 @@ function syncGlobalsFromMonthNumber(targetNumber) {
    
 
 // 6. Main Listbox Renderer & Filter (Default category changed to ACTIVE PUBLISHERS)
-// 6. Main Listbox Renderer & Filter (Default category changed to ACTIVE PUBLISHERS)
 function renderListbox(filter = "", category = "ACTIVE PUBLISHERS") {
     const listbox = document.getElementById('publisherListbox');
     if (!listbox) return;
 
-    // -------------------------------------------------------------
-    // AUTO-FETCH FROM INDEXEDDB IF GLOBAL CACHE IS EMPTY
-    // -------------------------------------------------------------
-    if ((!window.recordsData || window.recordsData.length === 0) && typeof openCongregationDB === 'function') {
+    if (!Array.isArray(window.recordsData)) window.recordsData = [];
+
+    if (!window._recordsLoaded && !window._recordsFetchStarted && typeof openCongregationDB === 'function') {
+        window._recordsFetchStarted = true;
         openCongregationDB((db) => {
-            const storeNames = Array.from(db.objectStoreNames);
-            const targetStore = storeNames.find(name => 
-                name.toUpperCase() === "RECORDS" || name.toUpperCase() === "S21RECORDS"
-            ) || "RECORDS";
+            const targetStore = Array.from(db.objectStoreNames).find(name =>
+                name.toUpperCase() === "RECORDS" ||
+                name.toUpperCase() === "S21RECORDS"
+            );
 
-            if (db.objectStoreNames.contains(targetStore)) {
-                const tx = db.transaction([targetStore], "readonly");
-                const store = tx.objectStore(targetStore);
-                const req = store.getAll();
-
-                req.onsuccess = (e) => {
-                    window.recordsData = e.target.result || [];
-                    renderListbox(filter, category);
-                };
+            if (!targetStore) {
+                window._recordsLoaded = true;
+                window._recordsFetchStarted = false;
+                return;
             }
+
+            const tx = db.transaction(targetStore, "readonly");
+            const req = tx.objectStore(targetStore).getAll();
+
+            req.onsuccess = (e) => {
+                window.recordsData = e.target.result || [];
+                window._recordsLoaded = true;
+                window._recordsFetchStarted = false;
+                renderListbox(filter, category);
+            };
+
+            req.onerror = () => {
+                window._recordsFetchStarted = false;
+                console.error("❌ Failed to load RECORDS:", req.error);
+            };
         });
-        return;
     }
 
     listbox.innerHTML = "";
     currentIndex = -1;
+
+    // REST OF YOUR EXISTING CODE — UNCHANGED
 
     // Safe retrieval of global data arrays
     const pubData = (typeof publishersData !== 'undefined' && Array.isArray(publishersData)) ? publishersData : [];
@@ -932,10 +942,11 @@ function renderListbox(filter = "", category = "ACTIVE PUBLISHERS") {
             const recordMonthNum = Number(r.NUMBER ?? r.MonthIndex);
             return recordMonthNum === targetMonthIndex;
         });
-                activeMonthRecords.forEach(r => {
+
+        activeMonthRecords.forEach(r => {
             const rawPubId = r.IdPubs ?? r.IDPub ?? r.idpubs;
             if (rawPubId === undefined || rawPubId === null) return;
-            
+
             const pubIdStr = String(rawPubId).trim();
             const hours = Number(r.HRS || r.Hours || 0);
             const studies = Number(r.BS || r.Studies || 0);
@@ -953,6 +964,7 @@ function renderListbox(filter = "", category = "ACTIVE PUBLISHERS") {
             else reportedPubIds.add(pubIdStr);
         });
     }
+
     // =============================================================
     // STEP 2: FILTER PUBLISHERS DATA BY CATEGORY & SEARCH TEXT
     // =============================================================
@@ -962,15 +974,15 @@ function renderListbox(filter = "", category = "ACTIVE PUBLISHERS") {
         // Search Filter (First Name, Last Name, Nickname)
         const fullName = `${p.FNAME || ''} ${p.LName || ''}`.trim();
         const nickname = p.Nname || '';
-        const matchesSearch = fullName.toLowerCase().includes(filter.toLowerCase()) || 
+        const matchesSearch = fullName.toLowerCase().includes(filter.toLowerCase()) ||
                               nickname.toLowerCase().includes(filter.toLowerCase());
-        
+
         let matchesCategory = true;
         const statusVal = (p.Status || "").trim().toLowerCase();
-        
+
         // Normalize primary key as trimmed string
         const pubIdStr = String(p.IDPub ?? p.IdPubs ?? "").trim();
-        
+
         // Category Selection Filter
         switch (selectedCategory) {
             case "ACTIVE PUBLISHERS":
@@ -980,9 +992,11 @@ function renderListbox(filter = "", category = "ACTIVE PUBLISHERS") {
             case "ALL PUBLISHERS REPORTED":
                 matchesCategory = reportedPubIds.has(pubIdStr);
                 break;
+
             case "ALL AUX REPORTED":
                 matchesCategory = reportedAuxIds.has(pubIdStr);
                 break;
+
             case "ALL RP REPORTED":
                 matchesCategory = reportedRpIds.has(pubIdStr);
                 break;
@@ -991,28 +1005,36 @@ function renderListbox(filter = "", category = "ACTIVE PUBLISHERS") {
             case "ELDERS":
                 matchesCategory = isTrueMarker(p.Elder);
                 break;
+
             case "MINISTERIAL SERVANTS":
                 matchesCategory = isTrueMarker(p.MS);
                 break;
+
             case "BY GROUP":
                 matchesCategory = p.GROUP !== undefined && p.GROUP !== null && String(p.GROUP).trim() !== "";
                 break;
+
             case "UNBAPTIZED":
                 matchesCategory = !p.Baptism || p.Baptism === "";
                 break;
+
             case "REGULAR PIONEERS":
                 matchesCategory = isTrueMarker(p.RP);
                 break;
+
             case "SP / MISSIONARIES":
                 matchesCategory = isTrueMarker(p.SP) || String(p.SpecialPioneer || "").toLowerCase() === "1";
                 break;
+
             case "INACTIVES":
                 matchesCategory = statusVal === "inactive" || statusVal === "inactives";
                 break;
+
             case "MOVED OUT":
-                matchesCategory = (statusVal === "moved out" || statusVal === "disqualified" || statusVal === "removed") && 
+                matchesCategory = (statusVal === "moved out" || statusVal === "disqualified" || statusVal === "removed") &&
                                   statusVal !== "inactive" && statusVal !== "inactives";
                 break;
+
             case "1 YEAR BAPTIZED":
                 if (!p.Baptism) {
                     matchesCategory = false;
@@ -1023,6 +1045,7 @@ function renderListbox(filter = "", category = "ACTIVE PUBLISHERS") {
                     matchesCategory = bDate >= oneYearAgo;
                 }
                 break;
+
             case "ALL":
             default:
                 matchesCategory = true;
@@ -1049,12 +1072,12 @@ function renderListbox(filter = "", category = "ACTIVE PUBLISHERS") {
 
     // Sort Priority: Group first only when "BY GROUP" is selected; otherwise purely alphabetical (Last Name -> First Name)
     filtered.sort((a, b) => {
-      if (selectedCategory === "BY GROUP") {
-        const groupA = String(a.GROUP || "");
-        const groupB = String(b.GROUP || "");
-        const groupComp = groupA.localeCompare(groupB, undefined, { numeric: true, sensitivity: 'base' });
-        if (groupComp !== 0) return groupComp;
-    }
+        if (selectedCategory === "BY GROUP") {
+            const groupA = String(a.GROUP || "");
+            const groupB = String(b.GROUP || "");
+            const groupComp = groupA.localeCompare(groupB, undefined, { numeric: true, sensitivity: 'base' });
+            if (groupComp !== 0) return groupComp;
+        }
 
         const lastNameA = a.LName || "";
         const lastNameB = b.LName || "";
@@ -1066,60 +1089,58 @@ function renderListbox(filter = "", category = "ACTIVE PUBLISHERS") {
 
     let lastRenderedGroup = null;
 
-filtered.forEach((p, index) => {
-    const currentGroup = String(p.GROUP || "").trim();
+    filtered.forEach((p, index) => {
+        const currentGroup = String(p.GROUP || "").trim();
 
-    // Add GROUP HEADER when group changes
-    if (selectedCategory === "BY GROUP" && currentGroup !== lastRenderedGroup) {
-        const groupHeader = document.createElement("div");
+        // Add GROUP HEADER when group changes
+        if (selectedCategory === "BY GROUP" && currentGroup !== lastRenderedGroup) {
+            const groupHeader = document.createElement("div");
 
-        groupHeader.className = "group-header";
-        groupHeader.textContent = `── GROUP ${currentGroup} ──`;
+            groupHeader.className = "group-header";
+            groupHeader.textContent = `── GROUP ${currentGroup} ──`;
 
-        groupHeader.style.cssText = `
-            color: red;
-            font-weight: bold;
-            font-size: 11px;
-            padding: 6px 8px 3px;
-            margin-top: 4px;
-            pointer-events: none;
-        `;
+            groupHeader.style.cssText = `
+                color: red;
+                font-weight: bold;
+                font-size: 11px;
+                padding: 6px 8px 3px;
+                margin-top: 4px;
+                pointer-events: none;
+            `;
 
-        listbox.appendChild(groupHeader);
-        lastRenderedGroup = currentGroup;
-    }
+            listbox.appendChild(groupHeader);
+            lastRenderedGroup = currentGroup;
+        }
 
-    const displayName = `${p.LName || ''}, ${p.FNAME || ''}`.trim();
+        const displayName = `${p.LName || ''}, ${p.FNAME || ''}`.trim();
 
-    const div = document.createElement('div');
-    div.className = "listbox-item";
+        const div = document.createElement('div');
+        div.className = "listbox-item";
 
-    // Publisher Name
-    const nameSpan = document.createElement('span');
-    nameSpan.textContent = displayName;
-    div.appendChild(nameSpan);
+        // Publisher Name
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = displayName;
+        div.appendChild(nameSpan);
 
-    // Publisher Status Tag
-    if (p.Status && String(p.Status).trim() !== "") {
-        const statusSpan = document.createElement('span');
+        // Publisher Status Tag
+        if (p.Status && String(p.Status).trim() !== "") {
+            const statusSpan = document.createElement('span');
 
-        statusSpan.className = "status-badge";
-        statusSpan.style.cssText =
-            "font-size: 0.85em; opacity: 0.75; margin-left: 6px; font-style: italic;";
+            statusSpan.className = "status-badge";
+            statusSpan.style.cssText =
+                "font-size: 0.85em; opacity: 0.75; margin-left: 6px; font-style: italic;";
 
-        statusSpan.textContent = `(${String(p.Status).trim()})`;
+            statusSpan.textContent = `(${String(p.Status).trim()})`;
 
-        div.appendChild(statusSpan);
-    }
+            div.appendChild(statusSpan);
+        }
 
-    div.dataset.id = p.IDPub ?? p.IdPubs ?? "";
-    div.dataset.status = p.Status || "";
-    div._pubData = p;
-    div._pubIndex = index;
+        div.dataset.id = p.IDPub ?? p.IdPubs ?? "";
+        div.dataset.status = p.Status || "";
+        div._pubData = p;
+        div._pubIndex = index;
 
-
-
-       div.onclick = async () => {
+        div.onclick = async () => {
             currentIndex = div._pubIndex;
             selectedPubId = p.IDPub ?? p.IdPubs ?? "";
 
@@ -1133,8 +1154,8 @@ filtered.forEach((p, index) => {
             selectPublisher(p, div);
         };
 
-    listbox.appendChild(div);
-});
+        listbox.appendChild(div);
+    });
 
     const countEl = document.getElementById('listboxCount');
     if (countEl) countEl.textContent = `Count: ${filtered.length}`;
@@ -1142,30 +1163,25 @@ filtered.forEach((p, index) => {
     // =============================================================
     // RESTORE GLOBAL SELECTED PUBLISHER
     // =============================================================
-   // =============================================================
-// RESTORE GLOBAL SELECTED PUBLISHER
-// =============================================================
-        globalSelectedPubID().then(IDPubSel => {
-            if (!IDPubSel) return;
+    globalSelectedPubID().then(IDPubSel => {
+        if (!IDPubSel) return;
 
-            const matchingEl = listbox.querySelector(`[data-id="${IDPubSel}"]`);
-            if (!matchingEl) return;
+        const matchingEl = listbox.querySelector(`[data-id="${IDPubSel}"]`);
+        if (!matchingEl) return;
 
-            currentIndex = matchingEl._pubIndex;
-            selectedPubId = IDPubSel;
-            currentSelectedPublisher = matchingEl._pubData;
+        currentIndex = matchingEl._pubIndex;
+        selectedPubId = IDPubSel;
+        currentSelectedPublisher = matchingEl._pubData;
 
-            listbox.querySelectorAll('.listbox-item').forEach(el => el.classList.remove('active','selected'));
-            matchingEl.classList.add('active');
+        listbox.querySelectorAll('.listbox-item').forEach(el => el.classList.remove('active','selected'));
+        matchingEl.classList.add('active');
 
-            console.log("🌐 Restoring publisher:", IDPubSel);
+        console.log("🌐 Restoring publisher:", IDPubSel);
 
-            // Load publisher into the form without triggering onclick
-            selectPublisher(matchingEl._pubData, matchingEl);
-
-        });
+        // Load publisher into the form without triggering onclick
+        selectPublisher(matchingEl._pubData, matchingEl);
+    });
 }
-
 
 // 7. Populate Form Fields
 function populateForm(p) {

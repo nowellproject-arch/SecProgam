@@ -26,19 +26,9 @@ CREATE TABLE IF NOT EXISTS "MasterList" (
     "passcode" TEXT NOT NULL PRIMARY KEY,
     "username" TEXT NOT NULL,
     "congregation" TEXT NOT NULL,
-    "created_at" TIMESTAMPTZ NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS "UserBackups" (
-    "id" BIGSERIAL PRIMARY KEY,
-    "passcode" TEXT NOT NULL,
-    "payload" JSONB NOT NULL,
-    "updated_at" TIMESTAMPTZ NOT NULL,
-
-    CONSTRAINT fk_master
-        FOREIGN KEY ("passcode")
-        REFERENCES "MasterList"("passcode")
-        ON DELETE CASCADE
+    "created_at" TIMESTAMPTZ NOT NULL,
+    "payload" JSONB,
+    "updated_at" TIMESTAMPTZ
 );
 """
 
@@ -55,97 +45,124 @@ def get_db_connection():
         ssl_context=True
     )
 
+
 @router.post("/import-crb")
 async def import_crb_file(
     username: str = Form(...),
     passcode: str = Form(...),
     congregation: str = Form(...),
-    file: UploadFile = File(...)
+    file: UploadFile | None = File(None)
 ):
-    conn = None
-    current_time = datetime.now(timezone.utc)
-    clean_passcode = passcode.strip()
-    clean_username = username.strip()
+    conn=None
+    current_time=datetime.now(timezone.utc)
+    clean_passcode=passcode.strip()
+    clean_username=username.strip()
+    clean_congregation=congregation.strip()
 
     try:
-        conn = get_db_connection()
+        conn=get_db_connection()
         conn.run(CREATE_SCHEMA_SQL)
 
-        # 1. Credentials Lookup (Preserve cloud backup if user exists)
-        existing_user = conn.run(
-            'SELECT "passcode" FROM "MasterList" WHERE "passcode" = :passcode;',
+        # 1. Check if passcode already exists
+        existing_user=conn.run(
+            'SELECT "passcode" FROM "MasterList" WHERE "passcode"=:passcode;',
             passcode=clean_passcode
         )
 
         if existing_user:
-            return {
-                "status": "success",
-                "action": "login",
-                "message": "User authenticated. Existing cloud backup retained.",
-                "passcode": clean_passcode
+            raise HTTPException(
+                status_code=409,
+                detail="This code already exists. Please use Login."
+            )
+
+        # 2. Prepare CRB payload
+        required_stores=["CongInfo","GROUPS","PUBLISHERS","MonthlyRecords","RECORDS"]
+
+        if file is not None:
+            content=await file.read()
+
+            try:
+                text=content.decode("cp1252")
+                payload_data=json.loads(text)
+            except UnicodeDecodeError as e:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"CRB encoding error: {str(e)}"
+                )
+            except json.JSONDecodeError as e:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"CRB JSON error at line {e.lineno}, column {e.colno}: {e.msg}"
+                )
+
+            # Make sure it is actually an object
+            if not isinstance(payload_data,dict):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid CRB file format."
+                )
+
+            for store in required_stores:
+                if store not in payload_data:
+                    payload_data[store]=[]
+
+        else:
+            # No CRB supplied — create blank database payload
+            payload_data={
+                "CongInfo":[{
+                    "passcode":clean_passcode,
+                    "user":clean_username,
+                    "Congregation":clean_congregation
+                }],
+                "GROUPS":[],
+                "PUBLISHERS":[],
+                "MonthlyRecords":[],
+                "RECORDS":[]
             }
 
-        # 2. Parse uploaded .crb JSON file
-        content = await file.read()
-
-        try:
-             text = content.decode("cp1252")
-             payload_data = json.loads(text)
-        except UnicodeDecodeError as e:
-            raise HTTPException(
-                status_code=400,
-                detail=f"CRB encoding error: {str(e)}"
-            )
-        except json.JSONDecodeError as e:
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    f"CRB JSON error at line {e.lineno}, "
-                    f"column {e.colno}: {e.msg}"
-                )
-            )
-
-        # Ensure required array keys exist
-        required_stores = ["CongInfo", "GROUPS", "PUBLISHERS", "MonthlyRecords", "RECORDS"]
-        for store in required_stores:
-            if store not in payload_data:
-                payload_data[store] = []
-
-        # 3. Register Account into MasterList
+        # 3. Register NEW account in PostgreSQL
         conn.run(
             """
-            INSERT INTO "MasterList" ("passcode", "username", "congregation", "created_at")
-            VALUES (:passcode, :username, :congregation, :created_at);
+            INSERT INTO "MasterList"
+            ("passcode","username","congregation","created_at")
+            VALUES (:passcode,:username,:congregation,:created_at);
             """,
             passcode=clean_passcode,
             username=clean_username,
-            congregation=congregation.strip(),
+            congregation=clean_congregation,
             created_at=current_time
         )
 
-        # 4. Save payload into UserBackups
+        # 4. Save cloud backup
         conn.run(
             """
-            INSERT INTO "UserBackups" ("passcode", "payload", "updated_at")
-            VALUES (:passcode, CAST(:payload AS JSONB), :updated_at);
+            UPDATE "MasterList"
+            SET "payload"=CAST(:payload AS JSONB),
+                "updated_at"=:updated_at
+            WHERE "passcode"=:passcode;
             """,
             passcode=clean_passcode,
-            payload=json.dumps(payload_data, default=str),
+            payload=json.dumps(payload_data,default=str),
             updated_at=current_time
         )
 
         return {
-            "status": "success",
-            "action": "created",
-            "message": "New account created and .crb payload backed up.",
-            "data": payload_data
+            "status":"success",
+            "action":"created",
+            "message":"New account created successfully.",
+            "data":payload_data
         }
 
     except HTTPException as http_ex:
         raise http_ex
     except Exception as e:
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Database error: {str(e)}"
+        )
     finally:
         if conn:
             conn.close()
+
+         

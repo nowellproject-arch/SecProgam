@@ -364,12 +364,11 @@ async def login(data: LoginRequest):
 
         # Query MasterList joined with UserBackups
         query = """
-            SELECT m."username", m."passcode", b."payload"
-            FROM "MasterList" m
-            LEFT JOIN "UserBackups" b ON m."passcode" = b."passcode"
-            WHERE m."username" = :username AND m."passcode" = :passcode;
+            SELECT "username","passcode","payload"
+            FROM "MasterList"
+            WHERE "username"=:username AND "passcode"=:passcode;
         """
-        
+                        
         result = conn.run(
             query, 
             username=data.username.strip(), 
@@ -410,10 +409,9 @@ async def api_reports(passcode: str):
         conn = get_db_connection()
 
         query = """
-            SELECT m."username", m."congregation", b."payload", b."updated_at"
-            FROM "MasterList" m
-            LEFT JOIN "UserBackups" b ON m."passcode" = b."passcode"
-            WHERE m."passcode" = :passcode;
+            SELECT "username","congregation","payload","updated_at"
+            FROM "MasterList"
+            WHERE "passcode"=:passcode;
         """
         result = conn.run(query, passcode=passcode.strip())
 
@@ -968,36 +966,22 @@ async def save_indexeddb_backup(data: BackupRequest):
             " 0", " "
         ).lower()
 
-        # 1. Delete existing backup for this passcode
-        delete_query = """
-            DELETE FROM "UserBackups"
-            WHERE "passcode" = :passcode;
+        update_query = """
+            UPDATE "MasterList"
+            SET "payload"=CAST(:payload AS JSONB),
+                "updated_at"=:updated_at
+            WHERE "passcode"=:passcode;
         """
 
         conn.run(
-            delete_query,
-            passcode=clean_passcode
-        )
-
-        print(
-            f"🗑️ Deleted existing backup for "
-            f"passcode: {clean_passcode}"
-        )
-
-        # 2. Insert the new backup
-        insert_query = """
-            INSERT INTO "UserBackups"
-                ("passcode", "payload", "updated_at")
-            VALUES
-                (:passcode, CAST(:payload AS JSONB), :updated_at);
-        """
-
-        conn.run(
-            insert_query,
+            update_query,
             passcode=clean_passcode,
-            payload=json.dumps(data.payload),
-            updated_at=formatted_time
+            payload=json.dumps(data.payload,default=str),
+            updated_at=datetime.now(timezone.utc)
         )
+                        
+            
+    
 
         print(
             f"☁️ New backup saved for "
@@ -1041,11 +1025,9 @@ async def get_backup_payload(passcode: str):
         conn = get_db_connection()
 
         query = """
-            SELECT payload, updated_at
-            FROM "UserBackups"
-            WHERE "passcode" = :passcode
-            ORDER BY "updated_at" DESC
-            LIMIT 1;
+            SELECT "payload","updated_at"
+            FROM "MasterList"
+            WHERE "passcode"=:passcode;
         """
 
         rows = conn.run(
@@ -1399,6 +1381,41 @@ async def get_s21_data(data_payload: dict):
     return JSONResponse(content={"success": True, "payload": data_payload})
 
 
+@app.get("/api/check-passcode")
+async def check_passcode(passcode: str):
+    clean_passcode=passcode.strip()
+
+    if not clean_passcode:
+        return {"available":False,"message":"Enter a passcode."}
+
+    conn=None
+    try:
+        conn=get_db_connection()
+        result=conn.run(
+            'SELECT "passcode" FROM "MasterList" WHERE "passcode"=:passcode;',
+            passcode=clean_passcode
+        )
+
+        if result:
+            return {
+                "available":False,
+                "message":"This code already exists. Please use Login."
+            }
+
+        return {
+            "available":True,
+            "message":"Passcode is available."
+        }
+
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Database error: {str(e)}"
+        )
+    finally:
+        if conn:
+            conn.close()   
 
 
 if __name__ == "__main__":

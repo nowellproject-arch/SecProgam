@@ -829,32 +829,43 @@ function renderListbox(filter = "", category = "ACTIVE PUBLISHERS") {
     // -------------------------------------------------------------
     // AUTO-FETCH FROM INDEXEDDB IF GLOBAL CACHE IS EMPTY
     // -------------------------------------------------------------
-    if ((!window.recordsData || window.recordsData.length === 0) && typeof openCongregationDB === 'function') {
-        openCongregationDB((db) => {
-            const storeNames = Array.from(db.objectStoreNames);
-            const targetStore = storeNames.find(name => 
-                name.toUpperCase() === "RECORDS" || name.toUpperCase() === "S21RECORDS"
-            ) || "RECORDS";
+    // -------------------------------------------------------------
+// AUTO-FETCH RECORDS FROM INDEXEDDB WITHOUT BLOCKING PUBLISHERS
+// -------------------------------------------------------------
+        if (!Array.isArray(window.recordsData)) {
+            window.recordsData = [];
+            if (typeof openCongregationDB === 'function') {
+                openCongregationDB((db) => {
+                    const storeNames = Array.from(db.objectStoreNames);
+                    const targetStore = storeNames.find(name =>
+                        name.toUpperCase() === "RECORDS" ||
+                        name.toUpperCase() === "S21RECORDS"
+                    ) || "RECORDS";
 
-            if (db.objectStoreNames.contains(targetStore)) {
-                const tx = db.transaction([targetStore], "readonly");
-                const store = tx.objectStore(targetStore);
-                const req = store.getAll();
+                    if (db.objectStoreNames.contains(targetStore)) {
+                        const tx = db.transaction([targetStore], "readonly");
+                        const store = tx.objectStore(targetStore);
+                        const req = store.getAll();
 
-                req.onsuccess = (e) => {
-                    window.recordsData = e.target.result || [];
-                    renderListbox(filter, category);
-                };
+                        req.onsuccess = (e) => {
+                            window.recordsData = e.target.result || [];
+                        };
+                    }
+                });
             }
-        });
-        return;
-    }
-
+        }
     listbox.innerHTML = "";
     currentIndex = -1;
 
     // Safe retrieval of global data arrays
     const pubData = (typeof publishersData !== 'undefined' && Array.isArray(publishersData)) ? publishersData : [];
+            console.log("📋 pubData:", pubData.length);
+            console.log("🔎 Noels:", pubData.find(p =>
+                String(p.FNAME || "").trim().toLowerCase() === "noels" &&
+                String(p.LName || "").trim().toLowerCase() === "igong-igong"
+            ));
+                
+                
     const recData = Array.isArray(window.recordsData) ? window.recordsData : [];
 
     if (pubData.length === 0) {
@@ -3232,7 +3243,7 @@ async function saveNewPublisher() {
         "FNAME": fName,
         "Female": document.getElementById("isFemale")?.checked ? "1" : "0",
         "Fullname": `${lName}, ${fName}${mName ? " " + mName : ""}`,
-        "GROUP": document.getElementById("pubGroup")?.value || "2",
+        "GROUP": document.getElementById("pubGroup")?.value || "",
         "GROUP_": "",
         "ID": publisherId,
         "IDPub": publisherId,

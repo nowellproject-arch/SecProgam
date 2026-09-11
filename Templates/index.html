@@ -553,74 +553,74 @@
   
   <script>
 
-
-        const TAB_CONFIG = {
-        'tab-1': {
-            form: 'current_month_entry.html',
-            callback: () => window.renderCurrentMonthData?.()
-        },
-        'tab-2': {
-            form: 'PublishersRecord.html',
-            callback: () => window.renderPublisherData?.()
-        },
-        'tab-3': {
-              form:'AnalysisReport.html',
-              callback:async()=>{
-                  await window.renderAnalysisData?.();
-                  await window.loadUnbaptizedPublishers?.();
-                  await window.loadMSPublishers?.();
-                  await window.loadUnbaptizedPublishers?.();
-                  await window.loadActiveBaptizedPublishers?.();
-                  await window.loadElders?.();
-                  await window.loadRP?.();
-                  await window.updateRecordsPeriodLabels?.();
-                  await window.getSixMonthReportingPeriod();
-                  await window.loadIrregularPublishers?.();
-              }
-          },
-        'tab-4': {
-            form:"administration2.html",
-            callback:()=>window.loadAdministration?.()
+const TAB_CONFIG={
+    'tab-1':{
+        form:'current_month_entry.html',
+        callback:()=>window.renderCurrentMonthData?.()
+    },
+    'tab-2':{
+        form:'PublishersRecord.html',
+        callback:()=>window.renderPublisherData?.()
+    },
+    'tab-3':{
+        form:'AnalysisReport.html',
+        callback:async()=>{
+            await window.renderAnalysisData?.();
+            await window.loadUnbaptizedPublishers?.();
+            await window.loadMSPublishers?.();
+            await window.loadActiveBaptizedPublishers?.();
+            await window.loadElders?.();
+            await window.loadRP?.();
+            await window.updateRecordsPeriodLabels?.();
+            await window.getSixMonthReportingPeriod?.();
+            await window.loadIrregularPublishers?.();
         }
-    };
+    },
+    'tab-4':{
+        form:'administration2.html',
+        callback:()=>window.loadAdministration?.()
+    }
+};
+   
 // 2. TAB SWITCHING LOGIC
 async function switchTab(event,tabId){
-    document.querySelectorAll('.tab-panel').forEach(panel=>panel.classList.remove('active'));
-    document.querySelectorAll('.top-nav button,.tab-btn').forEach(btn=>btn.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(panel=>{
+        panel.classList.remove('active');
+    });
+
+    document.querySelectorAll('.top-nav button,.tab-btn').forEach(btn=>{
+        btn.classList.remove('active');
+    });
 
     const activePanel=document.getElementById(tabId);
     if(!activePanel)return;
 
     activePanel.classList.add('active');
 
-    if(event&&event.currentTarget){
-        event.currentTarget.classList.add('active');
-    }else{
-        document.querySelector(`.top-nav button[onclick*="'${tabId}'"]`)?.classList.add('active');
-    }
+    const selectedButton=event?.currentTarget||
+        document.querySelector(`.top-nav button[onclick*="'${tabId}'"]`);
+
+    selectedButton?.classList.add('active');
 
     const config=TAB_CONFIG[tabId];
     if(!config)return;
 
     if(activePanel.children.length===0){
         await loadSubForm(tabId,config.form,config.callback);
-    }else if(typeof config.callback==='function'){
-        await config.callback();
+    }else{
+        await config.callback?.();
     }
 
     if(tabId==="tab-3"){
-    const iframe=activePanel.querySelector("iframe");
-    if(iframe){
-        const run=()=>{
-            iframe.contentWindow.loadUnbaptizedPublishers?.();
-        };
-        if(iframe.contentDocument?.readyState==="complete")run();
-        else iframe.addEventListener("load",run,{once:true});
+        const iframe=activePanel.querySelector("iframe");
+        if(iframe){
+            const run=()=>iframe.contentWindow.loadUnbaptizedPublishers?.();
+            if(iframe.contentDocument?.readyState==="complete")run();
+            else iframe.addEventListener("load",run,{once:true});
         }
     }
 
     if(typeof renderListbox==='function'&&document.getElementById('publisherListbox')){
-        console.log("🔄 Refreshing publisher listbox after tab switch...");
         renderListbox();
     }
 }
